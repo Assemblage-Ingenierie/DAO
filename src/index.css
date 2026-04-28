@@ -1,0 +1,53 @@
+/* DTAO — Charte graphique AFD / Assemblage Ingénierie */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --red: #E30513;
+  --red-light: #F9E1E3;
+  --violet-dark: #30323E;
+  --gray-light: #DFE4E8;
+  --gray-xlight: #F2F2F2;
+  --black-70: #4D4D4D;
+  --white: #ffffff;
+  --font: "Open Sans", sans-serif;
+  --sidebar-w: 280px;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--black-70);
+  background: var(--gray-xlight);
+  height: 100%;
+}
+
+#root {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--gray-light); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #c0c0c0; }
+
+/* Form resets */
+input, textarea, select, button {
+  font-family: var(--font);
+  font-size: 13px;
+}
+
+button {
+  cursor: pointer;
+}
+
+textarea {
+  resize: vertical;
+}

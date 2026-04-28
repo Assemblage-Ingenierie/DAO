@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+dist-ssr/
+*.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Word / Excel temp lock files
+~$*.docx
+~$*.xlsx
+~$*.doc
+~$*.xls
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# Local-only Claude Code config (user-specific permissions)
+.claude/settings.local.json
+
+# Local npm config (user-specific cache path)
+.npmrc
+
+# Misc
+*.tmp
+*.bak
