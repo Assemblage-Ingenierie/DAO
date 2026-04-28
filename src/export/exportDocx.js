@@ -4097,7 +4097,9 @@ export async function exportDocx({
   }
   const res = await fetchTemplate();
   const zip = await JSZip.loadAsync(await res.arrayBuffer());
-  let docXml = await zip.file('word/document.xml').async('string');
+  const docXmlFile = zip.file('word/document.xml');
+  if (!docXmlFile) throw new Error('Template corrompu : word/document.xml introuvable dans le zip.');
+  let docXml = await docXmlFile.async('string');
   // Footnotes are stored separately. Load if present so conditional helpers
   // can flip yellow draft markers (e.g. Sûreté footnotes 26/27/28) to red.
   let footnotesXml = await zip.file('word/footnotes.xml')?.async('string');
@@ -5285,7 +5287,7 @@ export async function exportDocx({
   });
 
   const projectName = (formData.nom_projet || 'DTAO')
-    .replace(/[^a-zA-Z0-9À-ÿ\s-]/g, '')
+    .replace(/[^a-zA-Z0-9À-ÖØ-öø-ÿ\s-]/g, '') // exclut × (U+00D7) et ÷ (U+00F7), invalides dans les noms de fichiers Windows
     .trim()
     .replace(/\s+/g, '_');
   const suffix = cleanMode ? '_clean' : '';
