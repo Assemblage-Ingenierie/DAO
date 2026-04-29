@@ -102,7 +102,8 @@ export const SECTIONS = [
         // est/n'est pas — nth=1 of three (garantie_soumission=2, declaration_garantie=3).
         templateBinding: { ph: "[est / n'est pas]", nth: 1, choice: ["est", "n'est pas"] } },
       { uid: "S02-002", id: "max_groupement", label: "Nombre max membres groupement", type: "text", placeholder: "3 ou 'sans objet'", ref: "IS 4.1",
-        context: "Le nombre des membres d'un groupement sera au maximum de : [insérer un nombre maximum, par exemple trois, sinon indiquer la mention \"sans objet\"]" },
+        context: "Le nombre des membres d'un groupement sera au maximum de : [insérer un nombre maximum, par exemple trois, sinon indiquer la mention \"sans objet\"]",
+        templateBinding: { ph: '[insérer un nombre maximum, par exemple trois, sinon indiquer la mention "sans objet"]' } },
     ],
   },
   {
@@ -114,13 +115,17 @@ export const SECTIONS = [
       { uid: "S02-003", id: "contact_attention", label: "À l'attention de", type: "text", placeholder: "Nom du responsable", ref: "IS 7.1",
         context: "Aux seules fins d'obtention d'éclaircissements, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :" },
       { uid: "S02-004", id: "contact_adresse", label: "Adresse postale", type: "textarea", placeholder: "Adresse complète", ref: "IS 7.1",
-        context: "Adresse :" },
+        context: "Adresse :",
+        templateBinding: { captionInline: "Adresse" } },
       { uid: "S02-005", id: "contact_tel", label: "Téléphone", type: "text", placeholder: "+XXX XX XX XX XX", ref: "IS 7.1",
-        context: "Numéro de téléphone :" },
+        context: "Numéro de téléphone :",
+        templateBinding: { captionInline: "Numéro de téléphone" } },
       { uid: "S02-006", id: "contact_email", label: "Adresse électronique", type: "text", placeholder: "email@example.com", ref: "IS 7.1",
-        context: "Adresse électronique :" },
+        context: "Adresse électronique :",
+        templateBinding: { captionInline: "Adresse électronique" } },
       { uid: "S02-007", id: "contact_web", label: "Page Web", type: "text", placeholder: "https://...", ref: "IS 7.1",
-        context: "Adresse de la page Web :" },
+        context: "Adresse de la page Web :",
+        templateBinding: { captionInline: "Adresse de la page Web" } },
     ],
   },
   {
@@ -130,15 +135,21 @@ export const SECTIONS = [
     description: "Réunion préparatoire et visite du site des travaux",
     fields: [
       { uid: "S02-008", id: "reunion_prevue", label: "Réunion préparatoire", type: "select", options: ["se tiendra", "n'est pas prévue"], ref: "IS 7.4",
-        context: "Une réunion préparatoire [se tiendra / n'est pas prévue] à l'adresse, date et heure ci-après :" },
+        context: "Une réunion préparatoire [se tiendra / n'est pas prévue] à l'adresse, date et heure ci-après :",
+        // Template ships two typographic variants of the same placeholder
+        // (with and without spaces around the slash); both must match.
+        templateBinding: { ph: ["[se tiendra / n'est pas prévue]", "[se tiendra/n'est pas prévue]"], choice: ["se tiendra", "n'est pas prévue"] } },
       { uid: "S02-009", id: "reunion_lieu", label: "Lieu", type: "text", placeholder: "Adresse", ref: "IS 7.4", condition: "reunion_prevue=se tiendra",
-        context: "Lieu :" },
+        context: "Lieu :",
+        templateBinding: { captionInline: "Lieu" } },
       { uid: "S02-010", id: "reunion_date", label: "Date", type: "date", ref: "IS 7.4", condition: "reunion_prevue=se tiendra",
         context: "Date : [de préférence à mi-période de préparation des Offres]" },
       { uid: "S02-011", id: "reunion_heure", label: "Heure", type: "time", ref: "IS 7.4", condition: "reunion_prevue=se tiendra",
         context: "Heure :" },
       { uid: "S02-012", id: "visite_site", label: "Visite du site", type: "select", options: ["sera", "ne sera pas"], ref: "IS 7.4",
-        context: "Une visite du Site des Travaux [sera / ne sera pas] organisée par le Maître d'Ouvrage." },
+        context: "Une visite du Site des Travaux [sera / ne sera pas] organisée par le Maître d'Ouvrage.",
+        // sera/ne sera pas — nth=1 of two (marge_preference=2).
+        templateBinding: { ph: "[sera / ne sera pas]", nth: 1, choice: ["sera", "ne sera pas"] } },
     ],
   },
   {
@@ -214,7 +225,8 @@ export const SECTIONS = [
     description: "Adresses, dates limites et ouverture des plis",
     fields: [
       { uid: "S02-030", id: "copies_offre", label: "Nombre de copies papier", type: "text", placeholder: "3", ref: "IS 20.1",
-        context: "Outre l'original de l'Offre, le nombre de copies demandé est de : [insérer le nombre] copies papier et une (1) copie numérique." },
+        context: "Outre l'original de l'Offre, le nombre de copies demandé est de : [insérer le nombre] copies papier et une (1) copie numérique.",
+        templateBinding: { ph: "[insérer le nombre]", nth: 1 } },
       { uid: "S02-031", id: "habilitation", label: "Habilitation du signataire", type: "text", placeholder: "Pouvoir de l'autorité compétente...", ref: "IS 20.2",
         context: "La confirmation écrite de l'habilitation du signataire à engager le Soumissionnaire consistera en : [insérer]" },
       { uid: "S02-032", id: "remise_attention", label: "Remise – À l'attention de", type: "text", ref: "IS 22.1",
@@ -248,7 +260,9 @@ export const SECTIONS = [
         note: "Le bloc de l'option non retenue sera surligné en rouge dans le document exporté." },
       { uid: "S02-042", id: "marge_preference", label: "Marge de préférence", type: "select", options: ["sera", "ne sera pas"], ref: "IS 33.1",
         context: "Une marge de préférence [sera / ne sera pas] accordée aux entreprises nationales.",
-        note: "Uniquement si réglementation locale l'exige + accord AFD. Les guides AFD seront toujours surlignés en rouge." },
+        note: "Uniquement si réglementation locale l'exige + accord AFD. Les guides AFD seront toujours surlignés en rouge.",
+        // sera/ne sera pas — nth=2 of two (visite_site=1).
+        templateBinding: { ph: "[sera / ne sera pas]", nth: 2, choice: ["sera", "ne sera pas"] } },
       { uid: "S02-043", id: "sous_traitants_designes", label: "Sous-traitants désignés", type: "select", options: ["prévoit", "ne prévoit pas"], ref: "IS 34.1",
         context: "Le Maître d'Ouvrage [prévoit / ne prévoit pas] de faire réaliser certaines parties par des sous-traitants désignés." },
     ],

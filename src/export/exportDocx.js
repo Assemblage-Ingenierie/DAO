@@ -757,24 +757,24 @@ const FIELD_MAP = [
 
   // ── Préqualification ─────────────────────────────────────────────────
   { id: 'prequalification' },
-  { id: 'max_groupement',    ph: '[insérer un nombre maximum, par exemple trois, sinon indiquer la mention "sans objet"]' },
+  { id: 'max_groupement' },
 
   // ── Coordonnées (label captions, pas de placeholder) ─────────────────
   { id: 'contact_attention', captionInline: "A l'attention de" },
-  { id: 'contact_adresse',   captionInline: "Adresse" },
-  { id: 'contact_tel',       captionInline: "Numéro de téléphone" },
-  { id: 'contact_email',     captionInline: "Adresse électronique" },
-  { id: 'contact_web',       captionInline: "Adresse de la page Web" },
+  { id: 'contact_adresse' },
+  { id: 'contact_tel' },
+  { id: 'contact_email' },
+  { id: 'contact_web' },
 
   // ── Réunion ──────────────────────────────────────────────────────────
-  { id: 'reunion_prevue',  ph: ["[se tiendra / n'est pas prévue]", "[se tiendra/n'est pas prévue]"], choice: ["se tiendra", "n'est pas prévue"] },
-  { id: 'reunion_lieu',    captionInline: "Lieu" },
+  { id: 'reunion_prevue' },
+  { id: 'reunion_lieu' },
   // reunion_date fills the "Date :" caption at IS 7.4 (nth=1 for Date captions).
   // The standalone guide paragraph "[de préférence à mi-période ...]" stays as
   // a yellow-highlighted guide for the MOA to delete manually.
   { id: 'reunion_date',    captionInline: "Date", nth: 1, isDate: true },
   { id: 'reunion_heure',   captionInline: "Heure", isTime: true },
-  { id: 'visite_site',     ph: "[sera / ne sera pas]", nth: 1, choice: ["sera", "ne sera pas"] },
+  { id: 'visite_site' },
 
   // ── Offre ────────────────────────────────────────────────────────────
   { id: 'type_prix',              ph: "[Rayer la mention inutile]", deleteHint: true },
@@ -800,7 +800,7 @@ const FIELD_MAP = [
   { id: 'exclusion_annees',     ph: "[insérer le nombre d'années]", stripUnderscores: true },
 
   // ── Remise ───────────────────────────────────────────────────────────
-  { id: 'copies_offre',   ph: "[insérer le nombre]", nth: 1 },
+  { id: 'copies_offre' },
   { id: 'habilitation',   ph: '[insérer par exemple "un pouvoir de l\'autorité compétente établi au nom du signataire de l\'Offre".]' },
   { id: 'remise_attention', captionInline: "A l'attention de", nth: 2 },
   { id: 'remise_adresse',   captionInline: "Adresse complète", nth: 1 },
@@ -822,7 +822,7 @@ const FIELD_MAP = [
   { id: 'monnaie_evaluation',      ph: "[Insérer la monnaie, normalement la monnaie nationale du Maître d'Ouvrage]" },
   { id: 'source_taux_change',      ph: "[habituellement on utilisera la banque centrale du pays du Maître d'Ouvrage]" },
   { id: 'option_conversion',       ph: "[A / B]", choice: ["A", "B"] },
-  { id: 'marge_preference',        ph: "[sera / ne sera pas]", nth: 2, choice: ["sera", "ne sera pas"] },
+  { id: 'marge_preference' },
   { id: 'sous_traitants_designes', ph: "[prévoit / ne prévoit pas]", choice: ["prévoit", "ne prévoit pas"] },
 
   // ── Qualification financière ──────────────────────────────────────────
