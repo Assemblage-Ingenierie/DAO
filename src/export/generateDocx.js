@@ -15,7 +15,7 @@ import {
   Packer,
 } from "docx";
 import { saveAs } from "../utils/saveBlob.js";
-import { SECTIONS, SECTION_GROUPS } from "../data/sections.js";
+import { SECTIONS, SECTION_GROUPS } from "../packages/v2024/fr/sections.js";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -10,9 +10,9 @@ import {
   MARGE_PREFERENCE_HEADER_ANCHOR,
   NO_PREQUAL_GUIDE_ANCHORS,
   NO_PREQUAL_HEADER_ANCHOR,
-} from '../data/templateAnchors.js';
+} from '../packages/v2024/fr/anchors.js';
 import { isFilled } from '../utils/fieldStatus.js';
-import { isEnjeuEsssLabel } from '../data/enjeuxEsss.js';
+import { isEnjeuEsssLabel } from '../packages/v2024/fr/enjeux.js';
 
 // ── CCAP Partie A — Notes jaunes "draft" à rougir si le champ est rempli ────
 // Règle : chaque note bracketée jaune devient rouge si le champ relié a une

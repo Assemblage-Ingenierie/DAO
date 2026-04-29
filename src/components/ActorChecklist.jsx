@@ -1,4 +1,4 @@
-import { SECTIONS } from "../data/sections.js";
+import { SECTIONS } from "../packages/v2024/fr/sections.js";
 import ActorTag from "./ActorTag.jsx";
 
 const SPECIAL_TYPES = ["personnel_table", "materiel_table", "proposition_list"];

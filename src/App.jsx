@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { SECTIONS, SECTION_GROUPS, DEFAULT_ACTORS } from "./data/sections.js";
+import { SECTIONS, SECTION_GROUPS, DEFAULT_ACTORS } from "./packages/v2024/fr/sections.js";
 import { usePersistedState } from "./hooks/usePersistedState.js";
-import { isEnjeuEsssLabel } from "./data/enjeuxEsss.js";
+import { isEnjeuEsssLabel } from "./packages/v2024/fr/enjeux.js";
 import Sidebar from "./components/Sidebar.jsx";
 import FieldInput from "./components/FieldInput.jsx";
 import ProgressBar from "./components/ProgressBar.jsx";

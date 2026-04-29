@@ -1,4 +1,4 @@
-import { ENJEUX_ESSS as ENJEUX } from "../data/enjeuxEsss.js";
+import { ENJEUX_ESSS as ENJEUX } from "../packages/v2024/fr/enjeux.js";
 
 const cellStyle = {
   padding: "8px 10px",
