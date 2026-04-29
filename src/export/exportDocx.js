@@ -811,33 +811,20 @@ const FIELD_MAP = [
   { id: 'sous_traitants_designes' },
 
   // ── Qualification financière ──────────────────────────────────────────
-  // S03-001 — fills the long bracket in 3.1 row of the Section III table; the
-  // template wording is verbose ("au montant de trois à quatre mois … pour le
-  // marché"), distinct from the IS-level shorthand. Match the table form here.
-  { id: 'capacite_financiere', ph: "[insérer le montant en € correspondant au montant de trois à quatre mois de facturation de travaux pour le marché]" },
-  // S03-002 / S03-003 — `stripUnderscores` strips the 6–8 leading `____` runs
-  // ("d'au moins ________ [insérer montant…]" / "sur les ______ [insérer le
-  // nombre d'années…]") that sit immediately before each bracket in the 3.2
-  // template row. Without this flag the underscores remained visible next to
-  // the green-filled value.
-  { id: 'ca_minimum',          ph: "[insérer montant en équivalent € en toutes lettres et en chiffres]", stripUnderscores: true },
+  { id: 'capacite_financiere' },
+  { id: 'ca_minimum' },
   { id: 'ca_periode' },
-  // 3.2 row — Groupement d'entreprises columns. Two yellow placeholders per
-  // column ([letters] + [digits%]). Each cell appears once in the template.
-  { id: 'ca_membre_pct_lettres', ph: "[vingt-cinq]" },
-  { id: 'ca_membre_pct_chiffre', ph: "[25%]", valueSuffix: '%' },
-  { id: 'ca_unique_pct_lettres', ph: "[quarante]" },
-  { id: 'ca_unique_pct_chiffre', ph: "[40%]", valueSuffix: '%' },
+  { id: 'ca_membre_pct_lettres' },
+  { id: 'ca_membre_pct_chiffre' },
+  { id: 'ca_unique_pct_lettres' },
+  { id: 'ca_unique_pct_chiffre' },
 
   // ── Qualification expérience ──────────────────────────────────────────
-  // §4.1 row — `stripUnderscores` cleans the leading `____` runs around each
-  // bracket ("au cours des ______ [insérer le nombre d'années…]" and
-  // "à partir du 1er janvier de l'année _______ [insérer l'année]").
   { id: 'exp_generale_annees' },
-  { id: 'exp_generale_annee_depart', ph: "[insérer l'année]", nth: 1, stripUnderscores: true },
-  { id: 'exp_specifique_n',          ph: "[insérer des valeurs pour N, normalement deux, et V]" },
-  { id: 'exp_specifique_v',          ph: "[insérer la valeur de V]" },
-  { id: 'exp_specifique_annee',      ph: "[insérer l'année, la période à considérer est généralement de 5 à 10 ans]" },
+  { id: 'exp_generale_annee_depart' },
+  { id: 'exp_specifique_n' },
+  { id: 'exp_specifique_v' },
+  { id: 'exp_specifique_annee' },
   // §4.2(b) — the inline placeholder in the main "Condition Requise" cell ends
   // with "tel qu'applicable]" in the template (was missing from the previous
   // ph, so S03-009 was never filling). The "Un membre" column has its own

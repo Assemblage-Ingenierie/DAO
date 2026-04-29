@@ -321,9 +321,15 @@ export const SECTIONS = [
     fields: [
       { uid: "S03-001", id: "capacite_financiere", label: "Trésorerie exigée (€)", type: "text", placeholder: "3-4 mois facturation", ref: "III – 3.1",
         context: "Le Soumissionnaire doit démontrer qu'il dispose [...] à hauteur de [insérer le montant en € correspondant au montant de trois à quatre mois de facturation de travaux pour le marché]",
-        note: "3 à 4 mois de facturation des travaux." },
+        note: "3 à 4 mois de facturation des travaux.",
+        // Fills the long bracket in the §3.1 row of the Section III table.
+        // Template wording is verbose and distinct from any IS-level shorthand.
+        templateBinding: { ph: "[insérer le montant en € correspondant au montant de trois à quatre mois de facturation de travaux pour le marché]" } },
       { uid: "S03-002", id: "ca_minimum", label: "CA annuel moyen min. (€)", type: "text", placeholder: "1,5-2× facturation annuelle", ref: "III – 3.2",
-        context: "Avoir un chiffre d'affaires annuel moyen d'au moins ________ [insérer montant en équivalent € en toutes lettres et en chiffres]" },
+        context: "Avoir un chiffre d'affaires annuel moyen d'au moins ________ [insérer montant en équivalent € en toutes lettres et en chiffres]",
+        // §3.2 row — strip the leading "________" runs that sit immediately
+        // before the bracket ("d'au moins ________ [insérer …]").
+        templateBinding: { ph: "[insérer montant en équivalent € en toutes lettres et en chiffres]", stripUnderscores: true } },
       { uid: "S03-003", id: "ca_periode", label: "Années pour le CA", type: "text", placeholder: "5 (min. 3)", ref: "III – 3.2",
         context: "sur les ______ [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années.",
         // Same ph as exp_generale_annees but distinct nth occurrence:
@@ -331,13 +337,17 @@ export const SECTIONS = [
         // together so replacedCountByPh stays consistent.
         templateBinding: { ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 1, stripUnderscores: true } },
       { uid: "S03-002b", id: "ca_membre_pct_lettres", label: "% Chaque membre — en lettres", type: "text", placeholder: "vingt-cinq", ref: "III – 3.2",
-        context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise (colonne « Chaque membre » du Groupement d'entreprises)" },
+        context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise (colonne « Chaque membre » du Groupement d'entreprises)",
+        templateBinding: { ph: "[vingt-cinq]" } },
       { uid: "S03-002c", id: "ca_membre_pct_chiffre", label: "% Chaque membre — en chiffres", type: "text", placeholder: "25", ref: "III – 3.2",
-        context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise — chiffre uniquement, le « % » est ajouté automatiquement" },
+        context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise — chiffre uniquement, le « % » est ajouté automatiquement",
+        templateBinding: { ph: "[25%]", valueSuffix: '%' } },
       { uid: "S03-002d", id: "ca_unique_pct_lettres", label: "% Un membre — en lettres", type: "text", placeholder: "quarante", ref: "III – 3.2",
-        context: "Doit satisfaire à [quarante] pour cent [40%] de la condition requise (colonne « Un membre » du Groupement d'entreprises)" },
+        context: "Doit satisfaire à [quarante] pour cent [40%] de la condition requise (colonne « Un membre » du Groupement d'entreprises)",
+        templateBinding: { ph: "[quarante]" } },
       { uid: "S03-002e", id: "ca_unique_pct_chiffre", label: "% Un membre — en chiffres", type: "text", placeholder: "40", ref: "III – 3.2",
-        context: "Doit satisfaire à [quarante] pour cent [40%] de la condition requise — chiffre uniquement, le « % » est ajouté automatiquement" },
+        context: "Doit satisfaire à [quarante] pour cent [40%] de la condition requise — chiffre uniquement, le « % » est ajouté automatiquement",
+        templateBinding: { ph: "[40%]", valueSuffix: '%' } },
     ],
   },
   {
@@ -351,13 +361,19 @@ export const SECTIONS = [
         // Same ph as ca_periode (nth=1), here nth=2 (§4.1 row vs §3.2 row).
         templateBinding: { ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 2, stripUnderscores: true } },
       { uid: "S03-005", id: "exp_generale_annee_depart", label: "Année de début", type: "text", placeholder: "2020", ref: "III – 4.1",
-        context: "à partir du 1er janvier de l'année _______ [insérer l'année]" },
+        context: "à partir du 1er janvier de l'année _______ [insérer l'année]",
+        // §4.1 row — strip the leading "_______ " runs that sit before the
+        // bracket ("à partir du 1er janvier de l'année _______ [insérer l'année]").
+        templateBinding: { ph: "[insérer l'année]", nth: 1, stripUnderscores: true } },
       { uid: "S03-006", id: "exp_specifique_n", label: "Nombre marchés similaires (N)", type: "text", placeholder: "2", ref: "III – 4.2(a)",
-        context: "Participation [...] dans N marchés, d'un montant minimum de V [insérer des valeurs pour N, normalement deux, et V] chacun." },
+        context: "Participation [...] dans N marchés, d'un montant minimum de V [insérer des valeurs pour N, normalement deux, et V] chacun.",
+        templateBinding: { ph: "[insérer des valeurs pour N, normalement deux, et V]" } },
       { uid: "S03-007", id: "exp_specifique_v", label: "Montant min. par marché (V, €)", type: "text", placeholder: "En €", ref: "III – 4.2(a)",
-        context: "d'un montant minimum de V [insérer la valeur de V]" },
+        context: "d'un montant minimum de V [insérer la valeur de V]",
+        templateBinding: { ph: "[insérer la valeur de V]" } },
       { uid: "S03-008", id: "exp_specifique_annee", label: "Année début référence", type: "text", placeholder: "5-10 ans", ref: "III – 4.2(a)",
-        context: "exécutés à compter du 1er janvier [insérer l'année, la période à considérer est généralement de 5 à 10 ans]" },
+        context: "exécutés à compter du 1er janvier [insérer l'année, la période à considérer est généralement de 5 à 10 ans]",
+        templateBinding: { ph: "[insérer l'année, la période à considérer est généralement de 5 à 10 ans]" } },
       { uid: "S03-009", id: "exp_activites_cles", label: "Activités clés (4.2b)", type: "textarea", placeholder: "Activités, volumes, taux de production...", ref: "III – 4.2(b)",
         context: "une expérience minimale de construction achevée de manière satisfaisante dans les domaines suivants [fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]" },
       { uid: "S03-009b", id: "exp_activites_un_membre", label: "Activités clés — colonne « Un membre »", type: "textarea", placeholder: "Liste des activités et minima requis...", ref: "III – 4.2(b)",
