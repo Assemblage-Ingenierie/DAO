@@ -1,4 +1,5 @@
 import { ENJEUX_ESSS as ENJEUX } from "../packages/v2024/fr/enjeux.js";
+import { LABELS } from "../packages/v2024/fr/labels.js";
 
 const cellStyle = {
   padding: "8px 10px",
@@ -32,7 +33,7 @@ function Toggle({ value, onChange }) {
           borderColor: isOui ? "#2E7D32" : "#DFE4E8",
         }}
       >
-        OUI
+        {LABELS.fieldInput.yes}
       </button>
       <button
         type="button"
@@ -44,7 +45,7 @@ function Toggle({ value, onChange }) {
           borderColor: isNon ? "#C62828" : "#DFE4E8",
         }}
       >
-        NON
+        {LABELS.fieldInput.no}
       </button>
     </div>
   );
@@ -59,8 +60,8 @@ export default function EnjeuxList({ value = {}, onChange }) {
         <thead>
           <tr style={{ background: "#F2F2F2" }}>
             <th style={{ ...cellStyle, width: 36, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}></th>
-            <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>Enjeu ESSS</th>
-            <th style={{ ...cellStyle, width: 140, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>Applicable ?</th>
+            <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>{LABELS.enjeux.label}</th>
+            <th style={{ ...cellStyle, width: 140, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>{LABELS.enjeux.applicable}</th>
           </tr>
         </thead>
         <tbody>

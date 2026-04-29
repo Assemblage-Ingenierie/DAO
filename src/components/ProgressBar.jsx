@@ -1,4 +1,5 @@
 import { SECTIONS } from "../packages/v2024/fr/sections.js";
+import { LABELS } from "../packages/v2024/fr/labels.js";
 
 const SPECIAL_TYPES = ["personnel_table", "materiel_table", "proposition_list"];
 
@@ -39,7 +40,7 @@ export default function ProgressBar({ formData, actorAssignments }) {
           marginBottom: 6,
         }}
       >
-        <span style={{ fontWeight: 600 }}>Progression globale</span>
+        <span style={{ fontWeight: 600 }}>{LABELS.progressBar.label}</span>
         <span
           style={{
             fontWeight: 700,

@@ -1,16 +1,8 @@
 import { useState } from "react";
+import { LABELS } from "../packages/v2024/fr/labels.js";
+import { DEFAULT_PROPOSITION_ITEMS as DEFAULT_ITEMS } from "../packages/v2024/fr/defaults.js";
 
 let nextId = 20;
-
-const DEFAULT_ITEMS = [
-  { id: 1, label: "Variantes techniques", enabled: true, description: "Proposition pour les éléments des ouvrages pour lesquels des variantes techniques sont autorisées" },
-  { id: 2, label: "Méthodologie ESSS", enabled: true, description: "Version préliminaire du PGES-Travaux conforme aux Spécifications ESSS" },
-  { id: 3, label: "Liste des sous-traitants", enabled: true, description: "Sous-traitants proposés avec formulaire d'engagement ESSS" },
-  { id: 4, label: "Organisation des travaux sur site et Méthode de réalisation", enabled: true, description: "Dispositions et méthodes, gestion coordination accès Site, aspects géotechniques" },
-  { id: 5, label: "Programme / Calendrier de Construction", enabled: true, description: "Programme détaillé, calendrier mobilisation, étapes clés, chemin critique" },
-  { id: 6, label: "Personnel proposé et CV (formulaires PER-1 et PER-2)", enabled: true, description: "Noms et CV du personnel qualifié pour les postes clés" },
-  { id: 7, label: "Matériel (formulaire MAT)", enabled: true, description: "Détails matériel proposé pour les équipements clés" },
-];
 
 export default function PropositionTechnique({ items, onChange }) {
   const [editingId, setEditingId] = useState(null);
@@ -23,7 +15,7 @@ export default function PropositionTechnique({ items, onChange }) {
   const addItem = () => {
     onChange([
       ...data,
-      { id: nextId++, label: "Nouvel élément", enabled: true, description: "" },
+      { id: nextId++, label: LABELS.proposition.newItem, enabled: true, description: "" },
     ]);
   };
 
@@ -82,7 +74,7 @@ export default function PropositionTechnique({ items, onChange }) {
                       width: "100%",
                       resize: "vertical",
                     }}
-                    placeholder="Description…"
+                    placeholder={LABELS.proposition.descriptionPlaceholder}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -98,7 +90,7 @@ export default function PropositionTechnique({ items, onChange }) {
                         cursor: "pointer",
                       }}
                     >
-                      Valider
+                      {LABELS.common.validate}
                     </button>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -112,7 +104,7 @@ export default function PropositionTechnique({ items, onChange }) {
                         cursor: "pointer",
                       }}
                     >
-                      Supprimer
+                      {LABELS.common.delete}
                     </button>
                   </div>
                 </div>
@@ -120,7 +112,7 @@ export default function PropositionTechnique({ items, onChange }) {
                 <div
                   style={{ cursor: "pointer" }}
                   onClick={() => setEditingId(item.id)}
-                  title="Cliquer pour modifier"
+                  title={LABELS.proposition.clickToEdit}
                 >
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#4D4D4D", marginBottom: 2 }}>
                     {item.label}
@@ -152,7 +144,7 @@ export default function PropositionTechnique({ items, onChange }) {
           cursor: "pointer",
         }}
       >
-        + Ajouter un élément
+        {LABELS.proposition.addButton}
       </button>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { LABELS } from "../packages/v2024/fr/labels.js";
 
 let nextId = 10;
 
@@ -60,10 +61,10 @@ export default function ArticlesTable({ rows, onChange }) {
             <tr style={{ background: "#F2F2F2" }}>
               <th style={{ ...cellStyle, width: 36, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>No.</th>
               <th style={{ ...cellStyle, width: "35%", fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                N° d'Article non applicable
+                {LABELS.articles.articleNumber}
               </th>
               <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                Explications
+                {LABELS.articles.explanations}
               </th>
               <th style={{ ...cellStyle, width: 36 }}></th>
             </tr>
@@ -72,7 +73,7 @@ export default function ArticlesTable({ rows, onChange }) {
             {data.length === 0 ? (
               <tr>
                 <td colSpan={4} style={{ ...cellStyle, textAlign: "center", color: "#aaa", fontStyle: "italic", padding: "16px 8px" }}>
-                  Aucun article exclu — cliquez sur « + Ajouter un article »
+                  {LABELS.articles.emptyState}
                 </td>
               </tr>
             ) : (
@@ -84,7 +85,7 @@ export default function ArticlesTable({ rows, onChange }) {
                       style={inputStyle}
                       value={row.article || ""}
                       onChange={(e) => updateRow(row.id, "article", e.target.value)}
-                      placeholder="Ex : Article 9.2"
+                      placeholder={LABELS.articles.articlePlaceholder}
                     />
                   </td>
                   <td style={cellStyle}>
@@ -92,7 +93,7 @@ export default function ArticlesTable({ rows, onChange }) {
                       style={inputStyle}
                       value={row.explication || ""}
                       onChange={(e) => updateRow(row.id, "explication", e.target.value)}
-                      placeholder="Explication de non-applicabilité"
+                      placeholder={LABELS.articles.explanationPlaceholder}
                     />
                   </td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -107,7 +108,7 @@ export default function ArticlesTable({ rows, onChange }) {
                         padding: "0 4px",
                         lineHeight: 1,
                       }}
-                      title="Supprimer"
+                      title={LABELS.common.delete}
                     >
                       ×
                     </button>
@@ -132,7 +133,7 @@ export default function ArticlesTable({ rows, onChange }) {
           cursor: "pointer",
         }}
       >
-        + Ajouter un article
+        {LABELS.articles.addButton}
       </button>
     </div>
   );

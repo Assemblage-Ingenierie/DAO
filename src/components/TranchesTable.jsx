@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { LABELS } from "../packages/v2024/fr/labels.js";
 
 let nextId = 10;
 
@@ -70,7 +71,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
             justifyContent: "center",
             borderRadius: 4,
           }}
-          title="Le marché ne comporte pas de tranches (CCAP-003 = Non)"
+          title={LABELS.tranches.disabledTooltip}
         >
           <span style={{
             fontSize: 11,
@@ -81,7 +82,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
             borderRadius: 3,
             padding: "4px 10px",
           }}>
-            🔒 Tableau désactivé — CCAP-003 = Non
+            {LABELS.tranches.disabledLabel}
           </span>
         </div>
       )}
@@ -91,21 +92,21 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
             <tr style={{ background: "#F2F2F2" }}>
               <th style={{ ...cellStyle, width: 36, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>No.</th>
               <th style={{ ...cellStyle, width: "40%", fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                Nom / Description des Tranches
+                {LABELS.tranches.nomHeader}
                 <div style={{ fontWeight: 400, fontSize: 11, color: "#999", marginTop: 2 }}>
-                  Article 1.1.5.6
+                  {LABELS.tranches.nomHeaderRef}
                 </div>
               </th>
               <th style={{ ...cellStyle, width: "25%", fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                Délai d'Achèvement
+                {LABELS.tranches.delaiHeader}
                 <div style={{ fontWeight: 400, fontSize: 11, color: "#999", marginTop: 2 }}>
-                  Article 1.1.3.3
+                  {LABELS.tranches.delaiHeaderRef}
                 </div>
               </th>
               <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                Pénalités de retard
+                {LABELS.tranches.penalitesHeader}
                 <div style={{ fontWeight: 400, fontSize: 11, color: "#999", marginTop: 2 }}>
-                  Article 8.7
+                  {LABELS.tranches.penalitesHeaderRef}
                 </div>
               </th>
               <th style={{ ...cellStyle, width: 36 }}></th>
@@ -120,7 +121,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
                     style={inputStyle}
                     value={row.nom || ""}
                     onChange={(e) => updateRow(row.id, "nom", e.target.value)}
-                    placeholder="Ex : Tranche ferme — Bâtiment A"
+                    placeholder={LABELS.tranches.nomPlaceholder}
                     disabled={disabled}
                   />
                 </td>
@@ -129,7 +130,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
                     style={inputStyle}
                     value={row.delai || ""}
                     onChange={(e) => updateRow(row.id, "delai", e.target.value)}
-                    placeholder="Ex : 12 mois"
+                    placeholder={LABELS.tranches.delaiPlaceholder}
                     disabled={disabled}
                   />
                 </td>
@@ -138,7 +139,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
                     style={inputStyle}
                     value={row.penalites || ""}
                     onChange={(e) => updateRow(row.id, "penalites", e.target.value)}
-                    placeholder="Ex : 0,1 % du montant par jour"
+                    placeholder={LABELS.tranches.penalitesPlaceholder}
                     disabled={disabled}
                   />
                 </td>
@@ -154,7 +155,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
                       padding: "0 4px",
                       lineHeight: 1,
                     }}
-                    title="Supprimer"
+                    title={LABELS.common.delete}
                   >
                     ×
                   </button>
@@ -179,7 +180,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
           cursor: disabled ? "not-allowed" : "pointer",
         }}
       >
-        + Ajouter une tranche
+        {LABELS.tranches.addButton}
       </button>
     </div>
   );

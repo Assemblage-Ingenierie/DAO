@@ -1,3 +1,5 @@
+import { LABELS, tpl } from "../packages/v2024/fr/labels.js";
+
 export default function ActorTag({ actor, onRemove }) {
   return (
     <span
@@ -30,7 +32,7 @@ export default function ActorTag({ actor, onRemove }) {
             fontSize: 13,
             opacity: 0.7,
           }}
-          title={`Retirer ${actor.label}`}
+          title={tpl(LABELS.actorTag.removeTooltip, { label: actor.label })}
         >
           ×
         </button>

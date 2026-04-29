@@ -1,3 +1,5 @@
+import { LABELS } from "../packages/v2024/fr/labels.js";
+
 let nextId = 10;
 
 const cellStyle = {
@@ -43,10 +45,10 @@ export default function MaterielTable({ rows, onChange }) {
             <tr style={{ background: "#F2F2F2" }}>
               <th style={{ ...cellStyle, width: 36, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>No.</th>
               <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                Type de matériel et caractéristiques
+                {LABELS.materiel.type}
               </th>
               <th style={{ ...cellStyle, width: 160, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>
-                Nombre minimal requis
+                {LABELS.materiel.minNumber}
               </th>
               <th style={{ ...cellStyle, width: 36 }}></th>
             </tr>
@@ -55,7 +57,7 @@ export default function MaterielTable({ rows, onChange }) {
             {data.length === 0 ? (
               <tr>
                 <td colSpan={4} style={{ ...cellStyle, textAlign: "center", color: "#aaa", fontStyle: "italic", padding: "16px 8px" }}>
-                  Aucun matériel ajouté — cliquez sur « + Ajouter un matériel »
+                  {LABELS.materiel.emptyState}
                 </td>
               </tr>
             ) : (
@@ -67,7 +69,7 @@ export default function MaterielTable({ rows, onChange }) {
                       style={inputStyle}
                       value={row.type || ""}
                       onChange={(e) => updateRow(row.id, "type", e.target.value)}
-                      placeholder="Ex : Pelle hydraulique ≥ 1 m³"
+                      placeholder={LABELS.materiel.typePlaceholder}
                     />
                   </td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -90,7 +92,7 @@ export default function MaterielTable({ rows, onChange }) {
                         padding: "0 4px",
                         lineHeight: 1,
                       }}
-                      title="Supprimer"
+                      title={LABELS.common.delete}
                     >
                       ×
                     </button>
@@ -115,7 +117,7 @@ export default function MaterielTable({ rows, onChange }) {
           cursor: "pointer",
         }}
       >
-        + Ajouter un matériel
+        {LABELS.materiel.addButton}
       </button>
     </div>
   );

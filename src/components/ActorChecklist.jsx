@@ -1,4 +1,5 @@
 import { SECTIONS } from "../packages/v2024/fr/sections.js";
+import { LABELS, tpl } from "../packages/v2024/fr/labels.js";
 import ActorTag from "./ActorTag.jsx";
 
 const SPECIAL_TYPES = ["personnel_table", "materiel_table", "proposition_list"];
@@ -25,12 +26,12 @@ export default function ActorChecklist({ actors, actorAssignments, onNavigate })
   return (
     <div style={{ padding: "24px 28px", maxWidth: 800 }}>
       <h2 style={{ fontSize: 18, fontWeight: 700, color: "#30323E", marginBottom: 6 }}>
-        📌 Suivi des champs délégués
+        {LABELS.checklist.title}
       </h2>
       <p style={{ fontSize: 13, color: "#777", marginBottom: 24 }}>
         {totalDelegated === 0
-          ? "Aucun champ n'a encore été délégué à un acteur."
-          : `${totalDelegated} champ${totalDelegated > 1 ? "s" : ""} délégué${totalDelegated > 1 ? "s" : ""} au total.`}
+          ? LABELS.checklist.noFieldsDelegated
+          : tpl(LABELS.checklist.fieldsDelegatedSummary, { n: totalDelegated, plural: totalDelegated > 1 ? LABELS.checklist.pluralMark : "" })}
       </p>
 
       {actors.map((actor) => {
@@ -63,13 +64,13 @@ export default function ActorChecklist({ actors, actorAssignments, onNavigate })
                   fontWeight: 700,
                 }}
               >
-                {fields.length} champ{fields.length !== 1 ? "s" : ""}
+                {tpl(LABELS.checklist.fieldCountSuffix, { n: fields.length, plural: fields.length !== 1 ? LABELS.checklist.pluralMark : "" })}
               </span>
             </div>
 
             {fields.length === 0 ? (
               <p style={{ fontSize: 13, color: "#aaa", fontStyle: "italic", paddingLeft: 8 }}>
-                Aucun champ délégué à {actor.label}.
+                {tpl(LABELS.checklist.noFieldsForActor, { label: actor.label })}
               </p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -87,7 +88,7 @@ export default function ActorChecklist({ actors, actorAssignments, onNavigate })
                       cursor: "pointer",
                     }}
                     onClick={() => onNavigate(section.id)}
-                    title={`Aller à : ${section.title}`}
+                    title={tpl(LABELS.checklist.goToSection, { title: section.title })}
                   >
                     <span style={{ fontSize: 16, flexShrink: 0 }}>{section.icon}</span>
                     <div style={{ flex: 1 }}>
@@ -119,10 +120,9 @@ export default function ActorChecklist({ actors, actorAssignments, onNavigate })
             color: "#E30513",
           }}
         >
-          <strong>Comment déléguer un champ ?</strong>
+          <strong>{LABELS.checklist.delegationGuideTitle}</strong>
           <br />
-          Dans chaque section, cliquez sur « Déléguer à... » sous un champ et cochez l'acteur
-          responsable. Le champ apparaîtra ici pour le suivi.
+          {LABELS.checklist.delegationGuideBody}
         </div>
       )}
     </div>

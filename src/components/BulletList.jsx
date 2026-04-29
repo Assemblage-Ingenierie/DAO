@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { LABELS } from "../packages/v2024/fr/labels.js";
 
 let nextId = 10000;
 
@@ -23,7 +24,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
     const base = items && items.length > 0 ? items : defaults;
     onChange([
       ...base,
-      { id: nextId++, label: "Nouvel élément", enabled: true, description: "" },
+      { id: nextId++, label: LABELS.bulletList.newItem, enabled: true, description: "" },
     ]);
   };
 
@@ -83,7 +84,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                       width: "100%",
                       resize: "vertical",
                     }}
-                    placeholder="Description…"
+                    placeholder={LABELS.bulletList.descriptionPlaceholder}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -99,7 +100,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                         cursor: "pointer",
                       }}
                     >
-                      Valider
+                      {LABELS.common.validate}
                     </button>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -113,7 +114,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                         cursor: "pointer",
                       }}
                     >
-                      Supprimer
+                      {LABELS.common.delete}
                     </button>
                   </div>
                 </div>
@@ -121,7 +122,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                 <div
                   style={{ cursor: "pointer" }}
                   onClick={() => setEditingId(item.id)}
-                  title="Cliquer pour modifier"
+                  title={LABELS.bulletList.clickToEdit}
                 >
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#4D4D4D", marginBottom: 2 }}>
                     {item.label}
@@ -153,7 +154,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
           cursor: "pointer",
         }}
       >
-        + Ajouter un élément
+        {LABELS.bulletList.addButton}
       </button>
     </div>
   );

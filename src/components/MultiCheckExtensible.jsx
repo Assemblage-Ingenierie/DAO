@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { LABELS } from "../packages/v2024/fr/labels.js";
 
 // MultiCheckExtensible — checklist with predefined "default" options that the
 // user can toggle on/off, plus the ability to add custom options at the
@@ -117,7 +118,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
                     type="text"
                     value={it.label || ""}
                     onChange={(e) => updateLabel(it.id, e.target.value)}
-                    placeholder="Saisir le libellé de l'option…"
+                    placeholder={LABELS.multiCheck.optionPlaceholder}
                     style={{
                       flex: 1,
                       border: "1px solid #DFE4E8",
@@ -145,7 +146,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
                   <button
                     type="button"
                     onClick={() => setExpandedId(expanded ? null : it.id)}
-                    title={expanded ? "Masquer la sous-clause" : "Afficher la sous-clause"}
+                    title={expanded ? LABELS.multiCheck.hideSubclause : LABELS.multiCheck.showSubclause}
                     style={{
                       width: 22,
                       height: 22,
@@ -169,7 +170,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
                 <button
                   type="button"
                   onClick={() => removeItem(it.id)}
-                  title={it.custom ? "Supprimer cette option" : "Décocher (sera surligné rouge à l'export)"}
+                  title={it.custom ? LABELS.multiCheck.deleteCheckedTooltip : LABELS.multiCheck.uncheckTooltip}
                   style={{
                     background: "none",
                     border: "none",
@@ -204,7 +205,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
                       📖 {meta.subClauseRef}
                     </div>
                   )}
-                  {meta.subClauseText || "(texte de la sous-clause non fourni)"}
+                  {meta.subClauseText || LABELS.multiCheck.noSubclauseText}
                 </div>
               )}
             </div>
@@ -226,7 +227,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
           cursor: "pointer",
         }}
       >
-        + Ajouter une option
+        {LABELS.multiCheck.addButton}
       </button>
     </div>
   );

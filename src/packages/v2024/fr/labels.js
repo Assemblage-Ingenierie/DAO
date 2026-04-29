@@ -121,6 +121,7 @@ export const LABELS = {
     showContext: "Afficher le contexte",
     freeComment: "Commentaire libre",
     delegateTo: "Déléguer à {label}",
+    delegatedSuffix: "(délégué — {labels})",
     missingReference:
       "(non renseigné — à compléter dans sa section d'origine)",
     yes: "OUI",
@@ -216,15 +217,14 @@ export const LABELS = {
   checklist: {
     title: "📌 Suivi des champs délégués",
     noFieldsDelegated: "Aucun champ n'a encore été délégué à un acteur.",
-    fieldsDelegatedSummary:
-      "{n} champ{s} délégué{s} sur {total} ({percent}%)",
-    fieldCountSingular: "champ",
-    fieldCountPlural: "champs",
+    fieldsDelegatedSummary: "{n} champ{plural} délégué{plural} au total.",
+    fieldCountSuffix: "{n} champ{plural}",
+    pluralMark: "s",
     noFieldsForActor: "Aucun champ délégué à {label}.",
     goToSection: "Aller à : {title}",
     delegationGuideTitle: "Comment déléguer un champ ?",
     delegationGuideBody:
-      "Dans n'importe quelle section, cliquez sur l'icône acteur à droite d'un champ et choisissez le ou les destinataires. Le champ délégué apparaîtra ici, regroupé par acteur.",
+      "Dans chaque section, cliquez sur « Déléguer à... » sous un champ et cochez l'acteur responsable. Le champ apparaîtra ici pour le suivi.",
   },
 
   actorTag: {
