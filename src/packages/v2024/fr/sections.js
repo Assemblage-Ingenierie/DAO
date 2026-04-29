@@ -42,11 +42,14 @@ export const SECTIONS = [
         context: "Le contenu de la Déclaration d'Intégrité, de la Section V et de la Section VI dépend de la date de signature de la Convention de Financement de l'AFD.",
         note: "Détermine le contenu de 3 sections : Déclaration d'Intégrité, Critères d'éligibilité, Règles AFD. Le texte de l'option non retenue sera surligné en rouge dans le .docx exporté (à supprimer)." },
       { uid: "PREA-002", id: "nom_projet", label: "Nom du Projet", type: "text", placeholder: "Ex: Construction du pont de Koudougou", ref: "IS 2.1",
-        context: "Projet : [insérer le nom du Projet]" },
+        context: "Projet : [insérer le nom du Projet]",
+        templateBinding: { global: true, ph: ["[insérer le nom du Projet]", "[nom du Projet]", "[Nom du Projet]"], captions: ["Nom du Projet"] } },
       { uid: "PREA-003", id: "identification_travaux", label: "Identification des Travaux", type: "textarea", placeholder: "Description succincte des travaux", ref: "Page de garde",
-        context: "Passation des marchés de travaux de [Insérer l'identification des Travaux]" },
+        context: "Passation des marchés de travaux de [Insérer l'identification des Travaux]",
+        templateBinding: { global: true, ph: ["[Insérer l'identification des Travaux]", "[insérer une brève description des travaux]", "[nom du Marché]"] } },
       { uid: "PREA-004-a", id: "nom_maitrise_ouvrage", label: "Nom du Maître d'Ouvrage (MOA)", type: "text", placeholder: "Ex: Ministère des Infrastructures", ref: "IS 1.1 / CCAP 1.1.2.2",
-        context: "Maître d'Ouvrage : [insérer le nom du Maître d'Ouvrage]" },
+        context: "Maître d'Ouvrage : [insérer le nom du Maître d'Ouvrage]",
+        templateBinding: { global: true, ph: ["[insérer le nom du Maître d'Ouvrage]", "[nom du Maître d'Ouvrage]", "[Nom du Maître d'Ouvrage]"], captions: ["Nom du Maître d'Ouvrage"] } },
       { uid: "PREA-004-a2", id: "adresse_moa", label: "Adresse du Maître d'Ouvrage (MOA)", type: "textarea", placeholder: "Adresse complète du MOA", ref: "CCAP 1.3",
         context: "L'adresse du Maître d'Ouvrage est : [insérer l'adresse du Maître d'Ouvrage]" },
       { uid: "PREA-004b", id: "nom_moe", label: "Nom du Maître d'Œuvre (MOE)", type: "text", placeholder: "Ex: Bureau d'études XYZ", ref: "CCAP 1.1.2.4",
@@ -54,15 +57,21 @@ export const SECTIONS = [
       { uid: "PREA-004c", id: "adresse_moe", label: "Adresse du Maître d'Œuvre (MOE)", type: "textarea", placeholder: "Adresse complète du MOE", ref: "CCAP 1.3",
         context: "L'adresse du Maître d'Œuvre est : [insérer l'adresse du Maître d'Œuvre]" },
       { uid: "PREA-005", id: "pays", label: "Pays", type: "text", placeholder: "Ex: Burkina Faso", ref: "Page de garde",
-        context: "Pays : [insérer le pays]" },
+        context: "Pays : [insérer le pays]",
+        templateBinding: { global: true, ph: ["[insérer le pays]", "[Pays]"] } },
       { uid: "PREA-006", id: "ref_aoi", label: "Référence de l'AOI", type: "text", placeholder: "Ex: AOI/2025/BF/001", ref: "IS 1.1",
-        context: "AOI No : [insérer la référence]" },
+        context: "AOI No : [insérer la référence]",
+        templateBinding: { global: true, ph: ["[insérer la référence]", "[Référence de l'AOI]", "[référence de l'AOI]"] } },
       { uid: "PREA-007", id: "num_aao", label: "Numéro de l'Avis d'Appel d'Offres", type: "text", placeholder: "Ex: AAO-2025-001", ref: "IS 1.1",
         context: "Numéro de l'Avis d'Appel d'Offres :" },
       { uid: "PREA-008", id: "nombre_lots", label: "Nombre et identification des lots", type: "text", placeholder: "Lot unique / 3 lots", ref: "IS 1.1",
-        context: "Nombre et numéro d'identification des lots faisant l'objet du présent AOI : [indiquer si non applicable]" },
+        context: "Nombre et numéro d'identification des lots faisant l'objet du présent AOI : [indiquer si non applicable]",
+        // Sibling caption paragraph ends in a <w:tab/> with underscore leader;
+        // strip that line so it doesn't visually compete with the filled value.
+        templateBinding: { ph: "[indiquer si non applicable]", stripUnderscores: { caption: "Nombre et numéro d'identification des lots" } } },
       { uid: "PREA-009", id: "date_emission", label: "Date d'émission du DAO", type: "date", ref: "Page de garde",
-        context: "Emis le : [insérer la date]" },
+        context: "Emis le : [insérer la date]",
+        templateBinding: { global: true, isDate: true, ph: ["[insérer la date]", "[Date de publication de l'AAO]"] } },
     ],
   },
   {
@@ -89,7 +98,9 @@ export const SECTIONS = [
     fields: [
       { uid: "S02-001", id: "prequalification", label: "Pré-qualification", type: "select", options: ["est", "n'est pas"], ref: "IS 4.5",
         context: "Le présent Appel d'Offres [est / n'est pas] précédé d'une pré-qualification.",
-        note: "La pré-qualification est recommandée pour les marchés de travaux importants. Si « n'est pas », la lettre aux soumissionnaires préqualifiés sera retirée du document exporté." },
+        note: "La pré-qualification est recommandée pour les marchés de travaux importants. Si « n'est pas », la lettre aux soumissionnaires préqualifiés sera retirée du document exporté.",
+        // est/n'est pas — nth=1 of three (garantie_soumission=2, declaration_garantie=3).
+        templateBinding: { ph: "[est / n'est pas]", nth: 1, choice: ["est", "n'est pas"] } },
       { uid: "S02-002", id: "max_groupement", label: "Nombre max membres groupement", type: "text", placeholder: "3 ou 'sans objet'", ref: "IS 4.1",
         context: "Le nombre des membres d'un groupement sera au maximum de : [insérer un nombre maximum, par exemple trois, sinon indiquer la mention \"sans objet\"]" },
     ],
@@ -173,10 +184,16 @@ export const SECTIONS = [
     fields: [
       { uid: "S02-024", id: "garantie_soumission", label: "Garantie de Soumission", type: "select", options: ["est", "n'est pas"], ref: "IS 19.1",
         context: "Une Garantie de Soumission [est / n'est pas] requise.",
-        note: "Si « n'est pas », les champs ci-dessous restent exportés (valeur « non-applicable ») et les blocs d'explication seront surlignés en rouge dans le document." },
+        note: "Si « n'est pas », les champs ci-dessous restent exportés (valeur « non-applicable ») et les blocs d'explication seront surlignés en rouge dans le document.",
+        // est/n'est pas — nth=2 of three (prequalification=1, declaration_garantie=3).
+        templateBinding: { ph: "[est / n'est pas]", nth: 2, choice: ["est", "n'est pas"] } },
       { uid: "S02-025", id: "declaration_garantie", label: "Déclaration de Garantie", type: "select", options: ["est", "n'est pas"], ref: "IS 19.1",
         context: "Une Déclaration de Garantie de Soumission [est / n'est pas] requise.",
-        note: "Garantie et Déclaration sont mutuellement exclusives." },
+        note: "Garantie et Déclaration sont mutuellement exclusives.",
+        // est/n'est pas — nth=3 of three. Template: "Déclaration de Garantie de
+        // Soumission ____________ [est / n'est pas] requise." — strip the 12
+        // leading underscores after the substitution.
+        templateBinding: { ph: "[est / n'est pas]", nth: 3, choice: ["est", "n'est pas"], stripUnderscores: true } },
       { uid: "S02-026", id: "montant_garantie", label: "Montant de la Garantie", type: "text", placeholder: "50 000 000 XOF", ref: "IS 19.1",
         condition: "garantie_soumission=est",
         context: "Son montant est de : [insérer montant entre 1% et 3% de l'estimation du Montant du Marché et préciser la monnaie].",

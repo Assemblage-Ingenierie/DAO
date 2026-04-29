@@ -746,31 +746,17 @@ function replaceField(xml, search, nth, value, commentIds, global) {
 // `ph` may be a string or an array of strings (multiple placeholder variants
 // that all map to the same field). Each variant is replaced independently.
 const FIELD_MAP = [
-  // ── Identification (global: propagés dans tout le document) ──────────
-  //  `captions` = raw labels (no brackets) that appear alone — possibly
-  //  followed by ":" — in a paragraph whose adjacent signature line should
-  //  be filled with the value.
-  { id: 'nom_projet',             global: true,
-    ph: ["[insérer le nom du Projet]", "[nom du Projet]", "[Nom du Projet]"],
-    captions: ["Nom du Projet"] },
-  { id: 'identification_travaux', global: true,
-    ph: ["[Insérer l'identification des Travaux]", "[insérer une brève description des travaux]", "[nom du Marché]"] },
-  { id: 'nom_maitrise_ouvrage',   global: true,
-    ph: ["[insérer le nom du Maître d'Ouvrage]", "[nom du Maître d'Ouvrage]", "[Nom du Maître d'Ouvrage]"],
-    captions: ["Nom du Maître d'Ouvrage"] },
-  { id: 'pays',                   global: true,
-    ph: ["[insérer le pays]", "[Pays]"] },
-  { id: 'ref_aoi',                global: true,
-    ph: ["[insérer la référence]", "[Référence de l'AOI]", "[référence de l'AOI]"] },
-  { id: 'date_emission',          global: true, isDate: true,
-    ph: ["[insérer la date]", "[Date de publication de l'AAO]"] },
-  { id: 'nombre_lots',            ph: "[indiquer si non applicable]",
-    // Sibling caption paragraph ends in a <w:tab/> with underscore leader;
-    // strip that line so it doesn't visually compete with the filled value.
-    stripUnderscores: { caption: "Nombre et numéro d'identification des lots" } },
+  // ── Identification (migrated to sections.js templateBinding) ─────────
+  { id: 'nom_projet' },
+  { id: 'identification_travaux' },
+  { id: 'nom_maitrise_ouvrage' },
+  { id: 'pays' },
+  { id: 'ref_aoi' },
+  { id: 'date_emission' },
+  { id: 'nombre_lots' },
 
   // ── Préqualification ─────────────────────────────────────────────────
-  { id: 'prequalification',  ph: "[est / n'est pas]", nth: 1, choice: ["est", "n'est pas"] },
+  { id: 'prequalification' },
   { id: 'max_groupement',    ph: '[insérer un nombre maximum, par exemple trois, sinon indiquer la mention "sans objet"]' },
 
   // ── Coordonnées (label captions, pas de placeholder) ─────────────────
@@ -806,10 +792,8 @@ const FIELD_MAP = [
   { id: 'actualisation_prix',     ph: '[insérer formule ou "selon un coefficient d\'actualisation"]' },
 
   // ── Garanties ────────────────────────────────────────────────────────
-  { id: 'garantie_soumission',  ph: "[est / n'est pas]", nth: 2, choice: ["est", "n'est pas"] },
-  // Template: "Déclaration de Garantie de Soumission ____________ [est / n'est pas] requise."
-  // The 12 underscores before the placeholder must be stripped on fill.
-  { id: 'declaration_garantie', ph: "[est / n'est pas]", nth: 3, choice: ["est", "n'est pas"], stripUnderscores: true },
+  { id: 'garantie_soumission' },
+  { id: 'declaration_garantie' },
   { id: 'montant_garantie',     ph: "[insérer montant entre 1% et 3% de l'estimation du Montant du Marché et préciser la monnaie]" },
   { id: 'autres_garanties',     ph: '[indiquer "Néant" si pas applicable]' },
   // Template: "période de _________________ [insérer le nombre d'années] ans."
