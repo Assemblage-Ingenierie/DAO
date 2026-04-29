@@ -3,6 +3,7 @@ import JSZip from 'jszip';
 // a 0-byte cloud-only placeholder in this Google Drive shared folder.
 // Use the local equivalent in src/utils/saveBlob.js instead.
 import { saveAs } from '../utils/saveBlob.js';
+import * as anchors from '../packages/v2024/fr/anchors.js';
 import {
   STATIC_GUIDE_ANCHORS,
   IS_13_5_VARIANTES_DELAIS_ANCHORS,
@@ -11,6 +12,7 @@ import {
   NO_PREQUAL_GUIDE_ANCHORS,
   NO_PREQUAL_HEADER_ANCHOR,
 } from '../packages/v2024/fr/anchors.js';
+import { HIGHLIGHTING_RULES } from '../packages/v2024/fr/highlightingRules.js';
 import { isFilled } from '../utils/fieldStatus.js';
 import { isEnjeuEsssLabel } from '../packages/v2024/fr/enjeux.js';
 import { SECTIONS } from '../packages/v2024/fr/sections.js';
@@ -866,10 +868,14 @@ const DELETION_MARKER_PATTERNS = [
   /rayer la mention inutile/g,
 ];
 
-function highlightDeletionMarkers(xml) {
+// Generic inline-marker red-highlighter: for every paragraph (outside
+// Section I), scan run-text for any of the supplied global regex patterns
+// and red-highlight only the matching slices. The pre-filter heuristic
+// (`prefilter`, optional) lets callers skip paragraphs that obviously don't
+// contain the marker text — speeds up large XML scans. When omitted, every
+// paragraph with at least one run is scanned.
+function highlightInlineMarkers(xml, patterns, prefilter) {
   let count = 0;
-  // For each <w:p>, scan all runs, find matching text and replace that run
-  // fragment with a red-highlighted version.
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   // Règle d'or: Section I "Instructions aux Soumissionnaires" is off-limits
   // to every red-highlight intervention. Compute its byte bounds once and
@@ -879,7 +885,7 @@ function highlightDeletionMarkers(xml) {
   for (let i = 1; i < parts.length; i += 2) {
     if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
     let para = parts[i];
-    if (!/[Ss]upprimer|[Rr]ayer/.test(para)) continue;
+    if (prefilter && !prefilter.test(para)) continue;
     const runs = extractRunNodes(para);
     if (runs.length === 0) continue;
     let combined = '';
@@ -889,7 +895,7 @@ function highlightDeletionMarkers(xml) {
       return { ...r, cStart: start, cEnd: combined.length };
     });
     const hits = [];
-    for (const pat of DELETION_MARKER_PATTERNS) {
+    for (const pat of patterns) {
       pat.lastIndex = 0;
       let m;
       while ((m = pat.exec(combined)) !== null) {
@@ -3352,6 +3358,126 @@ function removeNoPrequalQualificationBlock(xml, prequalification) {
   return { xml: newXml, removed: removedParaCount, preservedSectPr: !!keptSectPrPara };
 }
 
+// ── Highlighting-rules dispatcher ─────────────────────────────────────────
+//
+// Walks `HIGHLIGHTING_RULES` (FR pack) in order, fires triggers, and dispatches
+// each op to the matching engine helper. See
+// `src/packages/v2024/fr/highlightingRules.js` for the rule schema.
+//
+// Returns the (possibly updated) docXml + footnotesXml. footnotesXml may be
+// undefined if the export hasn't loaded word/footnotes.xml yet — rules that
+// touch footnotes simply skip when it's missing.
+
+function shouldFireRule(rule, formData) {
+  const t = rule?.trigger;
+  if (!t) return false;
+  if (t.always) return true;
+  if (t.field) return formData?.[t.field] === t.equals;
+  if (t.fieldIn) return Array.isArray(t.values) && t.values.includes(formData?.[t.fieldIn]);
+  if (t.fieldExists) {
+    const v = formData?.[t.fieldExists];
+    return v != null && v !== '';
+  }
+  if (t.fieldFilled) return isFilled(formData?.[t.fieldFilled]);
+  return false;
+}
+
+function resolveAnchor(name, ctx) {
+  const v = ctx.anchors?.[name];
+  if (v === undefined) {
+    throw new Error(`[applyHighlightingRules] unknown anchor "${name}"`);
+  }
+  return v;
+}
+
+function applyRuleOp(op, docXml, footnotesXml, ctx) {
+  switch (op.type) {
+    case 'highlight-range': {
+      const r = highlightParagraphRange(docXml, resolveAnchor(op.startAnchor, ctx), resolveAnchor(op.endAnchor, ctx));
+      return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+    }
+    case 'highlight-matching': {
+      if (op.matchAnchor) {
+        const r = highlightParagraphsMatching(docXml, resolveAnchor(op.matchAnchor, ctx));
+        return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+      }
+      if (Array.isArray(op.matchAnchors)) {
+        let xml = docXml, paraCount = 0, runCount = 0;
+        for (const name of op.matchAnchors) {
+          const r = highlightParagraphsMatching(xml, resolveAnchor(name, ctx));
+          xml = r.xml; paraCount += r.paraCount; runCount += r.runCount;
+        }
+        return { docXml: xml, paraCount, runCount };
+      }
+      throw new Error('[applyHighlightingRules] highlight-matching requires matchAnchor or matchAnchors');
+    }
+    case 'yellow-to-red-range': {
+      const r = convertYellowToRedInParaRange(docXml, resolveAnchor(op.startAnchor, ctx), resolveAnchor(op.endAnchor, ctx));
+      return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+    }
+    case 'yellow-to-red-matching': {
+      const r = convertYellowToRedInMatchingParagraphs(docXml, resolveAnchor(op.matchAnchor, ctx));
+      return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+    }
+    case 'yellow-to-red-footnotes': {
+      if (!footnotesXml) return {};
+      const r = convertYellowToRedInFootnoteIds(footnotesXml, op.footnoteIds);
+      return { footnotesXml: r.xml, footnoteCount: r.footnoteCount, runCount: r.runCount };
+    }
+    case 'replace-yellow-guide': {
+      const value = ctx.formData?.[op.fieldId];
+      const r = replaceYellowGuideParagraph(docXml, resolveAnchor(op.matchAnchor, ctx), value);
+      return { docXml: r.xml, replaced: r.replaced };
+    }
+    case 'replace': {
+      const r = replaceInlinePhrase(docXml, op.find, op.replace);
+      return { docXml: r.xml, replaced: r.replaced };
+    }
+    case 'highlight-inline-markers': {
+      const patterns = resolveAnchor(op.patternsAnchor, ctx);
+      const r = highlightInlineMarkers(docXml, patterns, op.prefilter);
+      return { docXml: r.xml, count: r.count };
+    }
+    case 'delete-block': {
+      const r = removeNoPrequalQualificationBlock(docXml, ctx.formData?.prequalification);
+      return { docXml: r.xml, removed: r.removed, preservedSectPr: r.preservedSectPr };
+    }
+    default:
+      throw new Error(`[applyHighlightingRules] unknown op type "${op.type}"`);
+  }
+}
+
+function applyHighlightingRules(docXml, footnotesXml, ctx) {
+  let xml = docXml;
+  let fnXml = footnotesXml;
+  for (const rule of HIGHLIGHTING_RULES) {
+    if (!shouldFireRule(rule, ctx.formData)) continue;
+    let result;
+    try {
+      if (typeof rule.apply === 'function') {
+        result = rule.apply(xml, ctx.formData, { ...ctx, footnotesXml: fnXml });
+      } else if (Array.isArray(rule.ops)) {
+        for (const op of rule.ops) {
+          const opResult = applyRuleOp(op, xml, fnXml, ctx);
+          if (opResult?.docXml !== undefined) xml = opResult.docXml;
+          if (opResult?.footnotesXml !== undefined) fnXml = opResult.footnotesXml;
+        }
+        result = undefined;
+      } else {
+        console.warn(`[applyHighlightingRules] rule "${rule.id}" has neither apply nor ops — skipped`);
+        continue;
+      }
+    } catch (err) {
+      console.error(`[applyHighlightingRules] rule "${rule.id}" failed:`, err);
+      continue;
+    }
+    if (result?.docXml !== undefined) xml = result.docXml;
+    if (result?.footnotesXml !== undefined) fnXml = result.footnotesXml;
+    if (result?.message) console.log(result.message);
+  }
+  return { docXml: xml, footnotesXml: fnXml };
+}
+
 // ── AAO letter placeholders (Modèle d'Avis d'Appel d'Offres) ─────────────
 // The "Modèle d'AAO" section contains composite placeholders that combine
 // several fields (e.g., "nom MOA ; responsable, courriel"). We replace them
@@ -4406,6 +4532,15 @@ export async function exportDocx({
     if (docXml !== before) console.log(`[exportDocx] Liste « ${fieldId} » rebâtie (${items.length} item(s))`);
   }
 
+  // 3b-zero. Run declarative highlighting rules (FR pack). Empty in 1.7.0,
+  // populated incrementally in 1.7.1 → 1.7.4. Each migrated rule replaces a
+  // corresponding inline block below in the same commit.
+  {
+    const r = applyHighlightingRules(docXml, footnotesXml, { formData, anchors });
+    docXml = r.docXml;
+    if (r.footnotesXml !== undefined) footnotesXml = r.footnotesXml;
+  }
+
   // 3c. Red-highlight the non-selected OPTION block for date_convention
   const dateConv = formData.date_convention;
   if (dateConv) {
@@ -5006,7 +5141,7 @@ export async function exportDocx({
 
   // 3d. Red-highlight deletion markers ("[Rayer la mention inutile]" etc.)
   {
-    const { xml: out, count } = highlightDeletionMarkers(docXml);
+    const { xml: out, count } = highlightInlineMarkers(docXml, DELETION_MARKER_PATTERNS, /[Ss]upprimer|[Rr]ayer/);
     docXml = out;
     if (count > 0) console.log(`[exportDocx] ${count} marqueur(s) de suppression surligné(s) rouge`);
   }
