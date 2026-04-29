@@ -1,4 +1,5 @@
 import { SECTIONS, SECTION_GROUPS } from "../packages/v2024/fr/sections.js";
+import { LABELS, tpl } from "../packages/v2024/fr/labels.js";
 import { getFieldStatus } from "../utils/fieldStatus.js";
 
 function aggregateStatus(section, formData, actorAssignments, fieldComments) {
@@ -52,23 +53,23 @@ export default function Sidebar({ activeSection, onNavigate, formData, actorAssi
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
           <img
             src="/assemblage-logo.png"
-            alt="Assemblage ingénierie"
+            alt={LABELS.sidebar.logoAlt}
             style={{ height: 36, width: "auto", display: "block" }}
           />
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, opacity: 0.9 }}>
-            DAO Travaux
+            {LABELS.sidebar.title}
           </span>
         </div>
         <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2, letterSpacing: 0.5 }}>
-          AFD · Format PAY · Fév. 2024
+          {LABELS.sidebar.version}
         </div>
       </div>
 
       {/* Special tabs */}
       <div style={{ padding: "8px 10px 4px", flexShrink: 0 }}>
         {[
-          { id: "__suivi__", label: "Suivi acteurs", icon: "📌" },
-          { id: "__acteurs__", label: "Acteurs", icon: "⚙️" },
+          { id: "__suivi__", label: LABELS.sidebar.actorTracking, icon: "📌" },
+          { id: "__acteurs__", label: LABELS.sidebar.actors, icon: "⚙️" },
         ].map((tab) => {
           const active = activeSection === tab.id;
           return (
@@ -174,7 +175,7 @@ export default function Sidebar({ activeSection, onNavigate, formData, actorAssi
                         unfilled: "#E30513",
                       }[status],
                     }}
-                    title={`${unfilled} non rempli(s) · ${delegated} délégué(s) · ${filled} rempli(s)`}
+                    title={tpl(LABELS.sidebar.statusTooltip, { unfilled, delegated, filled })}
                   />
                   <span style={{ flex: 1, lineHeight: 1.3 }}>{section.title}</span>
                 </button>

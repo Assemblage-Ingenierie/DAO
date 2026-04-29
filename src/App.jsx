@@ -8,6 +8,7 @@ import {
 } from "./packages/v2024/fr/defaults.js";
 import { usePersistedState } from "./hooks/usePersistedState.js";
 import { isEnjeuEsssLabel } from "./packages/v2024/fr/enjeux.js";
+import { LABELS, tpl } from "./packages/v2024/fr/labels.js";
 import Sidebar from "./components/Sidebar.jsx";
 import FieldInput from "./components/FieldInput.jsx";
 import ProgressBar from "./components/ProgressBar.jsx";
@@ -51,7 +52,7 @@ export default function App() {
     if (polluted) {
       const cleaned = propositionItems.filter((it) => !isEnjeuEsssLabel(it.label));
       console.warn(
-        `[App] propositionItems: ${propositionItems.length - cleaned.length} item(s) ESSS retirés (état corrompu)`
+        tpl(LABELS.app.selfHealLog, { count: propositionItems.length - cleaned.length })
       );
       setPropositionItems(cleaned);
     }
@@ -112,17 +113,15 @@ export default function App() {
         tranchesRows,
         cleanMode,
       });
-      setExportMsg({ type: "success", text: `✓ Fichier téléchargé : ${filename}` });
+      setExportMsg({ type: "success", text: tpl(LABELS.app.exportSuccess, { filename }) });
     } catch (err) {
       console.error(err);
       // "Failed to fetch" = the dev server (or browser SW/proxy) refused
-      // /template-DTAO.docx. Suggest the recovery action so the user
+      // the template fetch. Suggest the recovery action so the user
       // doesn't have to interpret a TypeError name.
       const isFetchFail = err && err.name === 'TypeError' && /fetch/i.test(err.message);
-      const suffix = isFetchFail
-        ? " — recharger la page (Ctrl+F5) puis réessayer ; si l'erreur persiste, vérifier que le serveur dev tourne."
-        : "";
-      setExportMsg({ type: "error", text: `Erreur lors de l'export : ${err.message}${suffix}` });
+      const suffix = isFetchFail ? LABELS.app.exportErrorDevServerSuffix : "";
+      setExportMsg({ type: "error", text: tpl(LABELS.app.exportError, { message: err.message, suffix }) });
     } finally {
       setExporting(false);
       setTimeout(() => setExportMsg(null), 12000);
@@ -145,10 +144,10 @@ export default function App() {
         articlesEsssRows,
         tranchesRows,
       });
-      setExportMsg({ type: "success", text: `✓ Fichier téléchargé : ${filename}` });
+      setExportMsg({ type: "success", text: tpl(LABELS.app.xlsxExportSuccess, { filename }) });
     } catch (err) {
       console.error(err);
-      setExportMsg({ type: "error", text: `Erreur lors de l'export : ${err.message}` });
+      setExportMsg({ type: "error", text: tpl(LABELS.app.xlsxExportError, { message: err.message }) });
     } finally {
       setExporting(false);
       setTimeout(() => setExportMsg(null), 6000);
@@ -163,9 +162,7 @@ export default function App() {
       Object.keys(actorAssignments).length > 0 ||
       Object.keys(fieldComments).length > 0;
     if (hasData) {
-      const ok = window.confirm(
-        "Des données existent déjà. L'import va les écraser pour les champs présents dans le fichier. Continuer ?"
-      );
+      const ok = window.confirm(LABELS.app.importConfirmOverwrite);
       if (!ok) return;
     }
     fileInputRef.current?.click();
@@ -249,22 +246,22 @@ export default function App() {
       const nbFields = Object.keys(importedForm).length;
       const nbComments = Object.keys(importedComments).length;
       const nbAssigns = Object.keys(importedAssigns).length;
-      let text = `✓ Import réussi : ${nbFields} champ(s), ${nbComments} commentaire(s), ${nbAssigns} destinataire(s)`;
-      if (hasPersonnelSection) text += `, ${importedPers.length} personnel`;
-      if (hasMaterielSection) text += `, ${importedMat.length} matériel`;
-      if (hasPropositionSection) text += `, ${importedProp.length} item(s) prop.`;
+      let text = tpl(LABELS.app.importSuccessPrefix, { nbFields, nbComments, nbAssigns });
+      if (hasPersonnelSection) text += tpl(LABELS.app.importPersonnelSuffix, { n: importedPers.length });
+      if (hasMaterielSection) text += tpl(LABELS.app.importMaterielSuffix, { n: importedMat.length });
+      if (hasPropositionSection) text += tpl(LABELS.app.importPropositionSuffix, { n: importedProp.length });
       if (hasEnjeuxEsssSection) {
         const filled = Object.values(importedEnjeux).filter(v => v === 'Oui' || v === 'Non').length;
-        text += `, ${filled}/15 enjeux ESSS`;
+        text += tpl(LABELS.app.importEnjeuxSuffix, { n: `${filled}/15` });
       }
-      if (hasArticlesEsssSection) text += `, ${importedArticles.length} article(s) ESSS`;
-      if (hasTranchesSection) text += `, ${importedTranches.length} tranche(s)`;
-      if (unknown.length) text += ` — ${unknown.length} ID inconnu(s) ignoré(s)`;
+      if (hasArticlesEsssSection) text += tpl(LABELS.app.importArticlesSuffix, { n: importedArticles.length });
+      if (hasTranchesSection) text += tpl(LABELS.app.importTranchesSuffix, { n: importedTranches.length });
+      if (unknown.length) text += tpl(LABELS.app.importUnknownSuffix, { n: unknown.length });
 
       setExportMsg({ type: "success", text });
     } catch (err) {
       console.error(err);
-      setExportMsg({ type: "error", text: `Erreur lors de l'import : ${err.message}` });
+      setExportMsg({ type: "error", text: tpl(LABELS.app.importError, { message: err.message }) });
     } finally {
       setExporting(false);
       setTimeout(() => setExportMsg(null), 8000);
@@ -335,20 +332,8 @@ export default function App() {
             const m = String(ref).match(/(?:SC|CCAP)\s+(\d+)/i);
             return m ? Number(m[1]) : null;
           };
-          // CCAG clause titles, keyed by major SC number.
-          const CCAG_TITLES = {
-            1: "Dispositions générales",
-            2: "Le Maître d'Ouvrage",
-            3: "Le Maître d'Œuvre",
-            4: "L'Entrepreneur",
-            6: "Personnel et main d'œuvre",
-            8: "Commencements, retards, suspensions",
-            13: "Changements et Ajustements",
-            14: "Montant du marché et paiement",
-            17: "Risque et Responsabilité",
-            18: "Assurance",
-            20: "Réclamations, différends et arbitrages",
-          };
+          // CCAG clause titles, keyed by major SC number (from the FR pack).
+          const CCAG_TITLES = LABELS.app.ccagTitles;
           let prevMajor = null;
           return currentSection.fields.map((field) => {
             const major = majorOf(field.ref);
@@ -449,7 +434,7 @@ export default function App() {
           <button
             onClick={() => handleExportDocx(false)}
             disabled={exporting}
-            title="Export complet : tout le contenu est conservé, y compris les passages surlignés en rouge (marqueurs à supprimer manuellement)"
+            title={LABELS.app.exportSafeTooltip}
             style={{
               padding: "7px 18px",
               background: exporting ? "#ccc" : "#1565C0",
@@ -465,14 +450,14 @@ export default function App() {
               gap: 6,
             }}
           >
-            {exporting ? "⏳ Export en cours…" : "Export safe"}
+            {exporting ? LABELS.app.exporting : LABELS.app.exportSafeButton}
           </button>
 
           {/* Export clean — retire automatiquement tous les passages rouges */}
           <button
             onClick={() => handleExportDocx(true)}
             disabled={exporting}
-            title="Export nettoyé : les textes surlignés en rouge sont automatiquement supprimés du document"
+            title={LABELS.app.exportCleanTooltip}
             style={{
               padding: "7px 18px",
               background: exporting ? "#ccc" : "#E30513",
@@ -488,7 +473,7 @@ export default function App() {
               gap: 6,
             }}
           >
-            Export clean
+            {LABELS.app.exportCleanButton}
           </button>
 
           {/* Export .xlsx — récapitulatif tabulaire */}
@@ -510,7 +495,7 @@ export default function App() {
               gap: 6,
             }}
           >
-            📊 Exporter .xlsx
+            {LABELS.app.exportXlsxButton}
           </button>
 
           {/* Import .xlsx — réinjection d'un fichier pré-rempli */}
@@ -532,7 +517,7 @@ export default function App() {
               gap: 6,
             }}
           >
-            📤 Importer .xlsx
+            {LABELS.app.importXlsxButton}
           </button>
           <input
             ref={fileInputRef}
@@ -564,7 +549,7 @@ export default function App() {
           {showReset ? (
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 12, color: "#E30513" }}>
-                Effacer toutes les données ?
+                {LABELS.app.resetConfirmMessage}
               </span>
               <button
                 onClick={handleReset}
@@ -579,7 +564,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                Confirmer
+                {LABELS.app.confirmButton}
               </button>
               <button
                 onClick={() => setShowReset(false)}
@@ -593,7 +578,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                Annuler
+                {LABELS.app.cancelButton}
               </button>
             </div>
           ) : (
@@ -609,7 +594,7 @@ export default function App() {
                 cursor: "pointer",
               }}
             >
-              🔄 Réinitialiser
+              {LABELS.app.resetButton}
             </button>
           )}
         </div>
@@ -651,7 +636,7 @@ function ProjectHeader({ nomProjet, identificationTravaux }) {
           color: "#4D4D4D",
         }}
       >
-        DTAO Travaux PAY — Projet en cours
+        {LABELS.app.projectHeader}
       </div>
       <div
         style={{
@@ -665,7 +650,7 @@ function ProjectHeader({ nomProjet, identificationTravaux }) {
         }}
         title={hasNom ? nomProjet : ""}
       >
-        {hasNom ? nomProjet : "Nom du projet non renseigné"}
+        {hasNom ? nomProjet : LABELS.app.projectNamePlaceholder}
       </div>
       <div
         style={{
@@ -678,7 +663,7 @@ function ProjectHeader({ nomProjet, identificationTravaux }) {
         }}
         title={hasId ? identificationTravaux : ""}
       >
-        {hasId ? identificationTravaux : "Identification des travaux non renseignée"}
+        {hasId ? identificationTravaux : LABELS.app.identificationPlaceholder}
       </div>
     </div>
   );
@@ -757,7 +742,7 @@ function SectionNav({ currentId, onNavigate }) {
             fontWeight: 700,
           }}
         >
-          ✓ Toutes les sections complètes
+          {LABELS.app.allSectionsComplete}
         </button>
       )}
     </div>
