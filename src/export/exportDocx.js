@@ -774,19 +774,16 @@ const FIELD_MAP = [
   { id: 'visite_site' },
 
   // ── Offre ────────────────────────────────────────────────────────────
-  { id: 'type_prix',              ph: "[Rayer la mention inutile]", deleteHint: true },
-  { id: 'documents_additionnels', ph: "[insérer la liste des documents additionnels, le cas échéant]" },
-  { id: 'offres_variantes',       ph: "[sont / ne sont pas]", nth: 1, choice: ["sont", "ne sont pas"] },
-  { id: 'variantes_techniques',   ph: "[sont / ne sont pas]", nth: 2, choice: ["sont", "ne sont pas"] },
-  { id: 'variantes_delais',       ph: "[sont / ne sont pas]", nth: 3, choice: ["sont", "ne sont pas"] },
-  { id: 'ajustement_variante_montant', ph: "[insérer montant et monnaie]" },
-  { id: 'prix_revisables',        ph: "[révisables / fermes]", choice: ["révisables", "fermes"] },
-  // Template: "libellés en ____________" — 12 underscores.
-  { id: 'monnaie_nationale',      ph: "____________", nth: 1 },
-  // Template: "sera de _____________________ [insérer nombre entre 90 et 120] jours."
-  // Strip the leading underscores row that sits in the same paragraph.
-  { id: 'validite_offre',         ph: "[insérer nombre entre 90 et 120]", stripUnderscores: true },
-  { id: 'actualisation_prix',     ph: '[insérer formule ou "selon un coefficient d\'actualisation"]' },
+  { id: 'type_prix' },
+  { id: 'documents_additionnels' },
+  { id: 'offres_variantes' },
+  { id: 'variantes_techniques' },
+  { id: 'variantes_delais' },
+  { id: 'ajustement_variante_montant' },
+  { id: 'prix_revisables' },
+  { id: 'monnaie_nationale' },
+  { id: 'validite_offre' },
+  { id: 'actualisation_prix' },
 
   // ── Garanties ────────────────────────────────────────────────────────
   { id: 'garantie_soumission' },
