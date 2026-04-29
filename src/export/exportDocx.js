@@ -825,39 +825,20 @@ const FIELD_MAP = [
   { id: 'exp_specifique_n' },
   { id: 'exp_specifique_v' },
   { id: 'exp_specifique_annee' },
-  // §4.2(b) — the inline placeholder in the main "Condition Requise" cell ends
-  // with "tel qu'applicable]" in the template (was missing from the previous
-  // ph, so S03-009 was never filling). The "Un membre" column has its own
-  // placeholder ending in "minimum requis]".
-  { id: 'exp_activites_cles',        ph: "[fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]" },
-  { id: 'exp_activites_un_membre',   ph: "[fournir la liste des activités en indiquant le minimum requis]" },
-  // §4.2(b)(ii) — Sous-traitant spécialisé. Filled only when the toggle
-  // `sst_specialise_autorise` is "Oui" (when "Non", the entire row is painted
-  // red downstream — see the dedicated branch in the export pipeline). When
-  // toggle is anything other than "Oui", export an empty value so the yellow
-  // placeholder stays untouched (and gets red-painted by the Non branch).
-  { id: 'sst_specialise_description',
-    ph: "[ajouter le critère suivant si un sous-traitant spécialisé est autorisé et décrire la nature et les caractéristiques des travaux spécialisés]",
-    valueOverrideIf: (fd) => fd.sst_specialise_autorise === 'Oui' ? fd.sst_specialise_description : '' },
+  { id: 'exp_activites_cles' },
+  { id: 'exp_activites_un_membre' },
+  { id: 'sst_specialise_description' },
 
   // ── ESSS ─────────────────────────────────────────────────────────────
-  { id: 'exp_esss_nombre', ph: "[insérer nombre, normalement deux]" },
-  { id: 'exp_esss_annees', ph: "[insérer nombre d'années, entre 5 et 10 ans]" },
+  { id: 'exp_esss_nombre' },
+  { id: 'exp_esss_annees' },
 
   // ── CCAP ─────────────────────────────────────────────────────────────
-  // CCAP-005 (SC 1.1.3.3) — placeholder "_________ jours." (9 underscores) au para 5515.
-  // Le suffixe " jours." disparaît à la substitution; on le rétablit via valueSuffix.
-  // Si CCAP-003 = Non (pas de tranches) on saute le suffixe pour laisser
-  // l'utilisateur mettre une unité libre ("540 jours" ou "18 mois").
-  { id: 'delai_achevement_ouvrages', ph: "_________ jours.", valueSuffix: " jours.",
-    valueSuffixSkipIf: (formData) => formData.tranches_marche_existe === 'Non' },
-  // CCAP-006 (SC 1.1.3.7) — la valeur par défaut "365 jours." apparaît dans la
-  // définition (para 4180 "an signifie 365 jours.") puis dans la Partie A
-  // (para 5519). nth=2 vise le bon paragraphe.
-  { id: 'periode_garantie',          ph: "365 jours.", nth: 2, valueSuffix: " jours." },
-  { id: 'delai_acces',          ph: "__________ jours après la Date de Commencement", underscorePrefix: "__________ jours" },
-  { id: 'garantie_bonne_exec',  ph: "[indiquer un chiffre entre 5 et 10]" },
-  { id: 'heures_travail',       ph: "[Indiquer les heures normales de travail.]" },
+  { id: 'delai_achevement_ouvrages' },
+  { id: 'periode_garantie' },
+  { id: 'delai_acces' },
+  { id: 'garantie_bonne_exec' },
+  { id: 'heures_travail' },
   { id: 'date_commencement',    ph: "[Insérer conditions, date, ou date de signature de l'Acte d'Engagement]" },
   { id: 'penalites_max',        ph: "[Insérer un pourcentage ne dépassant pas 10]" },
   // CCAP-028 (avance_demarrage, SC 14.2) — handled by fillCcap14_2_AvanceDemarrage:

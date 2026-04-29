@@ -375,9 +375,13 @@ export const SECTIONS = [
         context: "exécutés à compter du 1er janvier [insérer l'année, la période à considérer est généralement de 5 à 10 ans]",
         templateBinding: { ph: "[insérer l'année, la période à considérer est généralement de 5 à 10 ans]" } },
       { uid: "S03-009", id: "exp_activites_cles", label: "Activités clés (4.2b)", type: "textarea", placeholder: "Activités, volumes, taux de production...", ref: "III – 4.2(b)",
-        context: "une expérience minimale de construction achevée de manière satisfaisante dans les domaines suivants [fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]" },
+        context: "une expérience minimale de construction achevée de manière satisfaisante dans les domaines suivants [fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]",
+        // §4.2(b) — main "Condition Requise" cell ph ends with "tel qu'applicable]".
+        templateBinding: { ph: "[fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]" } },
       { uid: "S03-009b", id: "exp_activites_un_membre", label: "Activités clés — colonne « Un membre »", type: "textarea", placeholder: "Liste des activités et minima requis...", ref: "III – 4.2(b)",
-        context: "Doit satisfaire à la condition requise dans les domaines mentionnés ci-après : [fournir la liste des activités en indiquant le minimum requis]" },
+        context: "Doit satisfaire à la condition requise dans les domaines mentionnés ci-après : [fournir la liste des activités en indiquant le minimum requis]",
+        // §4.2(b) — "Un membre" column has its own ph ending in "minimum requis]".
+        templateBinding: { ph: "[fournir la liste des activités en indiquant le minimum requis]" } },
       { uid: "S03-009c", id: "sst_specialise_autorise", label: "Sous-traitant spécialisé", type: "toggle", ref: "III – 4.2(b)(ii)",
         context: "Le Maître d'Ouvrage autorise des travaux spécialisés ?",
         notes: [
@@ -385,7 +389,12 @@ export const SECTIONS = [
         ] },
       { uid: "S03-009d", id: "sst_specialise_description", label: "Description des travaux spécialisés", type: "textarea", placeholder: "Nature et caractéristiques des travaux spécialisés autorisés en sous-traitance...", ref: "III – 4.2(b)(ii)",
         context: "[ajouter le critère suivant si un sous-traitant spécialisé est autorisé et décrire la nature et les caractéristiques des travaux spécialisés]",
-        condition: "sst_specialise_autorise=Oui" },
+        condition: "sst_specialise_autorise=Oui",
+        // §4.2(b)(ii) — fill only when the toggle sst_specialise_autorise is
+        // "Oui". When "Non" the entire row is painted red downstream; export
+        // an empty value so the yellow ph stays untouched for the red branch.
+        templateBinding: { ph: "[ajouter le critère suivant si un sous-traitant spécialisé est autorisé et décrire la nature et les caractéristiques des travaux spécialisés]",
+          valueOverrideIf: (fd) => fd.sst_specialise_autorise === 'Oui' ? fd.sst_specialise_description : '' } },
     ],
   },
   {
@@ -496,9 +505,11 @@ export const SECTIONS = [
         recommendation: {
           title: "Critère 5.3 – Expérience ESSS",
           text: "Il convient de préciser le nombre d'expériences similaires attendu et la période durant laquelle ces expériences ont dû avoir lieu. Pour cela, il convient de prendre en compte les références des entreprises connues et jugées qualifiées, afin d'adapter le nombre de référence à demander (1, 2 ou 3)."
-        } },
+        },
+        templateBinding: { ph: "[insérer nombre, normalement deux]" } },
       { uid: "S03-016", id: "exp_esss_annees", label: "Période ESSS (années)", type: "text", placeholder: "5-10", ref: "III – 5.3",
-        context: "réalisés dans les [insérer nombre d'années, entre 5 et 10 ans] dernières années" },
+        context: "réalisés dans les [insérer nombre d'années, entre 5 et 10 ans] dernières années",
+        templateBinding: { ph: "[insérer nombre d'années, entre 5 et 10 ans]" } },
       { uid: "S03-017", id: "transfert_competence", label: "Transfert compétence ESSS", type: "select", options: ["Oui – conserver 5.4", "Non – supprimer 5.4"], ref: "III – 5.4",
         context: "[à supprimer si le transfert de compétence n'est pas un enjeu]",
         recommendation: {
@@ -614,9 +625,18 @@ export const SECTIONS = [
         note: "Ajoutez autant de tranches que nécessaire. Le tableau remplit automatiquement la section « Résumé des Tranches » du CCAP dans le document exporté." },
       { uid: "CCAP-005", id: "delai_achevement_ouvrages", label: "Délai d'Achèvement des Ouvrages", type: "text", placeholder: "Ex : 540 (en jours, ou « 18 mois »)", ref: "SC 1.1.3.3",
         context: "_________ jours. [Si des tranches sont utilisées, se référer au tableau ci-dessous : Résumé des Tranches.]",
-        note: "Si CCAP-003 = Oui : saisir uniquement le nombre de jours (l'unité « jours. » est ajoutée automatiquement). Si CCAP-003 = Non : saisir un texte libre qui remplace toute la cellule (par exemple « 540 jours » ou « 18 mois »)." },
+        note: "Si CCAP-003 = Oui : saisir uniquement le nombre de jours (l'unité « jours. » est ajoutée automatiquement). Si CCAP-003 = Non : saisir un texte libre qui remplace toute la cellule (par exemple « 540 jours » ou « 18 mois »).",
+        // SC 1.1.3.3 — placeholder "_________ jours." (9 underscores). The
+        // " jours." suffix disappears at substitution; valueSuffix re-adds it.
+        // When CCAP-003 = "Non" (no tranches), skip the suffix so the user can
+        // type a free unit ("540 jours" or "18 mois").
+        templateBinding: { ph: "_________ jours.", valueSuffix: " jours.",
+          valueSuffixSkipIf: (formData) => formData.tranches_marche_existe === 'Non' } },
       { uid: "CCAP-006", id: "periode_garantie", label: "Période de Garantie (jours)", type: "text", placeholder: "365", ref: "SC 1.1.3.7",
-        context: "365 jours. [Valeur par défaut du template FIDIC PAY ; à ajuster le cas échéant.]" },
+        context: "365 jours. [Valeur par défaut du template FIDIC PAY ; à ajuster le cas échéant.]",
+        // SC 1.1.3.7 — default "365 jours." appears twice in the template
+        // (definition para 4180 + Partie A para 5519). nth=2 targets Partie A.
+        templateBinding: { ph: "365 jours.", nth: 2, valueSuffix: " jours." } },
       { uid: "CCAP-007", id: "tranches_ref_note", label: "Tranches — renvoi au tableau", type: "readonly", ref: "SC 1.1.5.6",
         context: "[Si des tranches sont utilisées, se référer au tableau ci-dessous : Résumé des Tranches.]",
         note: "Renseignez le tableau « Résumé des Tranches » en haut de cette section (CCAP-004). Le contenu de la sous-clause 1.1.5.6 est rempli automatiquement par ce tableau à l'export." },
@@ -634,7 +654,8 @@ export const SECTIONS = [
       // ── SC 2.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-012", id: "delai_acces", label: "Délai d'accès au Chantier (jours)", type: "text", placeholder: "30", ref: "SC 2.1",
         context: "__________ jours après la Date de Commencement.",
-        note: "Si plusieurs Tranches sont prévues et qu'un seul délai d'accès à toutes les zones n'est pas possible, indiquer ici les différents délais d'accès (un délai par Tranche au maximum est recommandé)." },
+        note: "Si plusieurs Tranches sont prévues et qu'un seul délai d'accès à toutes les zones n'est pas possible, indiquer ici les différents délais d'accès (un délai par Tranche au maximum est recommandé).",
+        templateBinding: { ph: "__________ jours après la Date de Commencement", underscorePrefix: "__________ jours" } },
       // ── SC 3.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-013", id: "obligations_moe", label: "Obligations et Pouvoirs du Maître d'Œuvre", type: "multi_check_extensible", ref: "SC 3.1",
         context: "Le Maître d'Œuvre doit obtenir l'approbation spécifique du Maître d'Ouvrage avant d'entreprendre les actions suivantes. Cocher les actions à conserver ; les actions non cochées seront surlignées en rouge dans le .docx exporté.",
@@ -658,7 +679,8 @@ export const SECTIONS = [
           { id: "manuels-exploitation", label: "Les manuels d'exploitation et de maintenance" },
         ] },
       { uid: "CCAP-015", id: "garantie_bonne_exec", label: "Garantie Bonne Exécution (%)", type: "text", placeholder: "5-10%", ref: "SC 4.2",
-        context: "La Garantie de Bonne Exécution doit être sous la forme d'une garantie bancaire pour le(s) montant(s) de [indiquer un chiffre entre 5 et 10] pour cent du Montant Accepté du Marché" },
+        context: "La Garantie de Bonne Exécution doit être sous la forme d'une garantie bancaire pour le(s) montant(s) de [indiquer un chiffre entre 5 et 10] pour cent du Montant Accepté du Marché",
+        templateBinding: { ph: "[indiquer un chiffre entre 5 et 10]" } },
       { uid: "CCAP-016", id: "sous_traitants_paiement_direct", label: "Sous-Traitants — paiement direct autorisé ?", type: "select", options: ["Oui", "Non"], ref: "SC 4.4",
         context: "Paiement direct des Sous-Traitants autorisé : oui/non [rayer la mention inutile]",
         note: "Le paiement direct par le Maître d'Ouvrage des prestations exécutées par les Sous-Traitants permet à ces derniers d'avoir la certitude d'être payés. Si « Oui », des dispositions complémentaires (SC 14.6) s'appliquent." },
@@ -667,7 +689,8 @@ export const SECTIONS = [
         note: "Laisser vide si la fréquence est mensuelle (valeur par défaut)." },
       // ── SC 6.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-018", id: "heures_travail", label: "Heures de travail", type: "text", placeholder: "Ex : 7h-18h Lun-Sam", ref: "SC 6.5",
-        context: "__________ [Indiquer les heures normales de travail.]" },
+        context: "__________ [Indiquer les heures normales de travail.]",
+        templateBinding: { ph: "[Indiquer les heures normales de travail.]" } },
       // ── SC 8.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-019", id: "date_commencement", label: "Date de Commencement", type: "text", placeholder: "Ex : Signature de l'Acte d'Engagement", ref: "SC 8.1",
         context: "La Date de Commencement doit être : [Insérer la liste des conditions telles que spécifiées dans la SousClause 8.1 des CCAG, ou une date, ou la date de signature de l'Acte d'Engagement (sujette à la fourniture par l'Entrepreneur d'une Garantie de Bonne Exécution).]" },
