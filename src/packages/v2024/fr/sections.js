@@ -661,8 +661,3 @@ export const SECTIONS = [
   },
 ];
 
-export const DEFAULT_ACTORS = [
-  { id: "ugp", label: "UGP", color: "#E65100", bgColor: "#FFF3E0", borderColor: "#FFE0B2", defaultComment: "À remplir par l'UGP" },
-  { id: "moe", label: "MOE", color: "#1565C0", bgColor: "#E3F2FD", borderColor: "#BBDEFB", defaultComment: "À remplir par la MOE" },
-  { id: "afd", label: "AFD", color: "#2E7D32", bgColor: "#E8F5E9", borderColor: "#C8E6C9", defaultComment: "À confirmer avec l'AFD" },
-];

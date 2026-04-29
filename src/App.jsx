@@ -1,5 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { SECTIONS, SECTION_GROUPS, DEFAULT_ACTORS } from "./packages/v2024/fr/sections.js";
+import { SECTIONS, SECTION_GROUPS } from "./packages/v2024/fr/sections.js";
+import {
+  DEFAULT_ACTORS,
+  DEFAULT_PERSONNEL_ROWS,
+  DEFAULT_MATERIEL_ROWS,
+  DEFAULT_PROPOSITION_ITEMS,
+} from "./packages/v2024/fr/defaults.js";
 import { usePersistedState } from "./hooks/usePersistedState.js";
 import { isEnjeuEsssLabel } from "./packages/v2024/fr/enjeux.js";
 import Sidebar from "./components/Sidebar.jsx";
@@ -10,24 +16,6 @@ import ActorChecklist from "./components/ActorChecklist.jsx";
 import { exportDocx } from "./export/exportDocx.js";
 import { exportXlsx } from "./export/exportXlsx.js";
 import { parseXlsxImport } from "./export/importXlsx.js";
-
-// Default values for special field types
-const DEFAULT_PERSONNEL_ROWS = [
-  { id: 1, poste: "Expert Environnemental et Social", exp_generale: "5", exp_comparable: "2", note: "Si risques E&S élevés" },
-  { id: 2, poste: "Expert Santé et Sécurité", exp_generale: "5", exp_comparable: "2", note: "Si risques S&S élevés" },
-];
-
-const DEFAULT_MATERIEL_ROWS = [];
-
-const DEFAULT_PROPOSITION_ITEMS = [
-  { id: 1, label: "Variantes techniques", enabled: true, description: "Proposition pour les éléments des ouvrages pour lesquels des variantes techniques sont autorisées" },
-  { id: 2, label: "Méthodologie ESSS", enabled: true, description: "Version préliminaire du PGES-Travaux conforme aux Spécifications ESSS" },
-  { id: 3, label: "Liste des sous-traitants", enabled: true, description: "Sous-traitants proposés avec formulaire d'engagement ESSS" },
-  { id: 4, label: "Organisation des travaux sur site et Méthode de réalisation", enabled: true, description: "Dispositions et méthodes, gestion coordination accès Site, aspects géotechniques" },
-  { id: 5, label: "Programme / Calendrier de Construction", enabled: true, description: "Programme détaillé, calendrier mobilisation, étapes clés, chemin critique" },
-  { id: 6, label: "Personnel proposé et CV (formulaires PER-1 et PER-2)", enabled: true, description: "Noms et CV du personnel qualifié pour les postes clés" },
-  { id: 7, label: "Matériel (formulaire MAT)", enabled: true, description: "Détails matériel proposé pour les équipements clés" },
-];
 
 const FIRST_SECTION = SECTIONS[0]?.id || "identification";
 
