@@ -839,27 +839,15 @@ const FIELD_MAP = [
   { id: 'delai_acces' },
   { id: 'garantie_bonne_exec' },
   { id: 'heures_travail' },
-  { id: 'date_commencement',    ph: "[Insérer conditions, date, ou date de signature de l'Acte d'Engagement]" },
-  { id: 'penalites_max',        ph: "[Insérer un pourcentage ne dépassant pas 10]" },
-  // CCAP-028 (avance_demarrage, SC 14.2) — handled by fillCcap14_2_AvanceDemarrage:
-  // the template paragraph starts with "______ %" and the placeholder
-  // "[Insérer un nombre entre 10 et 20…]" sits at the END. Replacing the
-  // bracket alone would leave the underscores intact, so we rewrite the
-  // whole paragraph in the pipeline below.
-  { id: 'retenue_garantie',     ph: "[Insérer un pourcentage de retenue entre 5 et 10]" },
-  // CCAP-030 (plafond_retenue, SC 14.3) — same shape as 14.2: rewritten by
-  // fillCcap14_3_PlafondRetenue in the pipeline.
-  // CCAP-035 (delai_paiement, SC 14.7) — the cell reads "dans un délai de
-  // _______ [insérer un nombre s'il est différent de 56] jours.". Replacing
-  // just the bracket leaves the leading underscores; strip them after fill.
-  { id: 'delai_paiement',       ph: "[insérer un nombre s'il est différent de 56]", stripUnderscores: true },
-  // CCAP-036 (taux_interet_etrangere, SC 14.8) — single yellow run at end
-  // of the cell, no underscores around it.
-  { id: 'taux_interet_etrangere', ph: "[insérer EURIBOR + 200 pb]" },
-  // CCAP-037 (multiplicateur_responsabilite, SC 17.6) — yellow placeholder
-  // preceded by "_______ " in the same paragraph; clean up the underscores
-  // after the value lands.
-  { id: 'multiplicateur_responsabilite', ph: "[insérer un multiplicateur égal ou supérieur à un, n'excédant pas trois]", stripUnderscores: true },
+  { id: 'date_commencement' },
+  { id: 'penalites_max' },
+  // CCAP-028 (avance_demarrage, SC 14.2) and CCAP-030 (plafond_retenue,
+  // SC 14.3) are handled by dedicated helpers (fillCcap14_2_AvanceDemarrage,
+  // fillCcap14_3_PlafondRetenue) — they don't appear in FIELD_MAP.
+  { id: 'retenue_garantie' },
+  { id: 'delai_paiement' },
+  { id: 'taux_interet_etrangere' },
+  { id: 'multiplicateur_responsabilite' },
   { id: 'montant_min_decompte', ph: "[Insérer un montant, 10.000 EUR par exemple]" },
   // CCAP-042 (crd_liste, SC 20.2) — template uses straight ASCII quotes
   // around "aucun" and a NBSP before ";". When the user selected

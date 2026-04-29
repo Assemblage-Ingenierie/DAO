@@ -693,13 +693,15 @@ export const SECTIONS = [
         templateBinding: { ph: "[Indiquer les heures normales de travail.]" } },
       // ── SC 8.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-019", id: "date_commencement", label: "Date de Commencement", type: "text", placeholder: "Ex : Signature de l'Acte d'Engagement", ref: "SC 8.1",
-        context: "La Date de Commencement doit être : [Insérer la liste des conditions telles que spécifiées dans la SousClause 8.1 des CCAG, ou une date, ou la date de signature de l'Acte d'Engagement (sujette à la fourniture par l'Entrepreneur d'une Garantie de Bonne Exécution).]" },
+        context: "La Date de Commencement doit être : [Insérer la liste des conditions telles que spécifiées dans la SousClause 8.1 des CCAG, ou une date, ou la date de signature de l'Acte d'Engagement (sujette à la fourniture par l'Entrepreneur d'une Garantie de Bonne Exécution).]",
+        templateBinding: { ph: "[Insérer conditions, date, ou date de signature de l'Acte d'Engagement]" } },
       { uid: "CCAP-020", id: "penalites_retard_ouvrages", label: "Pénalités de retard pour les Ouvrages", type: "text", placeholder: "Ex : 1 (en pour mille du Montant du Marché par jour)", ref: "SC 8.7 & 14.15(b)",
         context: "[Généralement d'environ un pour mille 1‰] % du Montant du Marché par jour. [Si des Tranches sont utilisées, se référer au Tableau « Résumé des Tranches » ci-dessous.]",
         note: "Si CCAP-003 = Oui (tranches utilisées) : le champ est rempli automatiquement avec le renvoi au tableau « Résumé des Tranches » et n'est pas modifiable. Si CCAP-003 = Non : saisir la valeur en pour mille (‰) du Montant du Marché par jour.",
         lockedIf: { condition: "tranches_marche_existe=Oui", value: "Se référer au tableau « Résumé des Tranches » ci-dessous." } },
       { uid: "CCAP-021", id: "penalites_max", label: "Pénalités de retard – plafond (%)", type: "text", placeholder: "≤ 10 %", ref: "SC 8.7",
-        context: "Montant maximum des pénalités de retard : [Insérer un pourcentage ne dépassant pas 10] % du Montant final du Marché." },
+        context: "Montant maximum des pénalités de retard : [Insérer un pourcentage ne dépassant pas 10] % du Montant final du Marché.",
+        templateBinding: { ph: "[Insérer un pourcentage ne dépassant pas 10]" } },
       // ── SC 13.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-022", id: "pourcentage_provisions", label: "Pourcentage pour l'ajustement des Sommes provisionnelles (%)", type: "text", placeholder: "Ex : 5", ref: "SC 13.5(b)(ii)",
         naToggle: true,
@@ -727,7 +729,8 @@ export const SECTIONS = [
       { uid: "CCAP-028", id: "avance_demarrage", label: "Avance de Démarrage (%)", type: "text", placeholder: "10-20 %", ref: "SC 14.2",
         context: "______ % du Montant Accepté du Marché [Insérer un nombre entre 10 et 20]" },
       { uid: "CCAP-029", id: "retenue_garantie", label: "Pourcentage de la Retenue (%)", type: "text", placeholder: "5-10 %", ref: "SC 14.3",
-        context: "[Insérer un pourcentage de retenue entre 5 et 10] %" },
+        context: "[Insérer un pourcentage de retenue entre 5 et 10] %",
+        templateBinding: { ph: "[Insérer un pourcentage de retenue entre 5 et 10]" } },
       { uid: "CCAP-030", id: "plafond_retenue", label: "Plafond de la Retenue de Garantie (%)", type: "text", placeholder: "GBE + retenue ≤ 15 %", ref: "SC 14.3",
         context: "______ % du Montant Accepté du Marché [le cumul de la Garantie de Bonne Exécution et de la Retenue de Garantie ne doit pas dépasser 15%]" },
       { uid: "CCAP-031", id: "equipements_materiaux_applique", label: "La Sous-Clause 14.5 (Equipements et Matériaux) s'applique ?", type: "toggle", ref: "SC 14.5",
@@ -746,16 +749,24 @@ export const SECTIONS = [
       { uid: "CCAP-034", id: "montant_min_decompte", label: "Montant minimum des Décomptes Intermédiaires", type: "text", placeholder: "Ex : 10 000 EUR", ref: "SC 14.6",
         context: "[Insérer un montant, 10.000 EUR par exemple]" },
       { uid: "CCAP-035", id: "delai_paiement", label: "Délai de paiement (jours)", type: "text", placeholder: "56", ref: "SC 14.7",
-        context: "le Maître d'Ouvrage doit payer à l'Entrepreneur le montant certifié dans un délai de _______ [insérer un nombre s'il est différent de 56] jours." },
+        context: "le Maître d'Ouvrage doit payer à l'Entrepreneur le montant certifié dans un délai de _______ [insérer un nombre s'il est différent de 56] jours.",
+        // Cell reads "dans un délai de _______ [insérer un nombre s'il est
+        // différent de 56] jours.". Replacing just the bracket leaves the
+        // leading underscores; strip them after fill.
+        templateBinding: { ph: "[insérer un nombre s'il est différent de 56]", stripUnderscores: true } },
       { uid: "CCAP-036", id: "taux_interet_etrangere", label: "Sources de publication des taux d'intérêts (monnaie étrangère)", type: "text", ref: "SC 14.8",
         placeholder: "Ex : EURIBOR + 200 pb",
         context: "Le taux d'intérêts pour les paiements en monnaie locale est celui de la Sous-Clause 14.8 du CCAG. Le taux d'intérêts pour les paiements en monnaie étrangère est [insérer EURIBOR + 200 pb].",
-        note: "Indiquer la source et la marge applicables aux paiements en monnaie étrangère (ex. « EURIBOR 6 mois + 200 pb »). Le texte saisi remplace le placeholder jaune dans le .docx." },
+        note: "Indiquer la source et la marge applicables aux paiements en monnaie étrangère (ex. « EURIBOR 6 mois + 200 pb »). Le texte saisi remplace le placeholder jaune dans le .docx.",
+        templateBinding: { ph: "[insérer EURIBOR + 200 pb]" } },
       // ── SC 17.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-037", id: "multiplicateur_responsabilite", label: "Multiplicateur de la limitation de la responsabilité", type: "text", ref: "SC 17.6",
         placeholder: "Ex : 1, 1.5, 2, 3",
         context: "La responsabilité totale de l'Entrepreneur envers le Maître d'Ouvrage ne doit pas excéder le Montant Accepté du Marché, multiplié par _______ [insérer un multiplicateur égal ou supérieur à un, n'excédant pas trois].",
-        note: "Saisir un nombre ≥ 1 et ≤ 3. Le texte saisi remplace le placeholder jaune dans le .docx (les underscores qui précèdent sont automatiquement nettoyés)." },
+        note: "Saisir un nombre ≥ 1 et ≤ 3. Le texte saisi remplace le placeholder jaune dans le .docx (les underscores qui précèdent sont automatiquement nettoyés).",
+        // Yellow ph preceded by "_______ " in the same paragraph; clean up the
+        // underscores after the value lands.
+        templateBinding: { ph: "[insérer un multiplicateur égal ou supérieur à un, n'excédant pas trois]", stripUnderscores: true } },
       // ── SC 18.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-038", id: "delai_assurance_attestation", label: "Délai attestation d'assurance (jours)", type: "text", placeholder: "14-28", ref: "SC 18.1",
         context: "Délais de présentation des assurances : a) Attestation d'assurance : __________ jours.",
