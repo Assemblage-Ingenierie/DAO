@@ -113,7 +113,9 @@ export const SECTIONS = [
     description: "Adresses pour les éclaircissements",
     fields: [
       { uid: "S02-003", id: "contact_attention", label: "À l'attention de", type: "text", placeholder: "Nom du responsable", ref: "IS 7.1",
-        context: "Aux seules fins d'obtention d'éclaircissements, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :" },
+        context: "Aux seules fins d'obtention d'éclaircissements, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :",
+        // "A l'attention de" caption — nth=1 of two (remise_attention=2).
+        templateBinding: { captionInline: "A l'attention de", nth: 1 } },
       { uid: "S02-004", id: "contact_adresse", label: "Adresse postale", type: "textarea", placeholder: "Adresse complète", ref: "IS 7.1",
         context: "Adresse :",
         templateBinding: { captionInline: "Adresse" } },
@@ -143,9 +145,15 @@ export const SECTIONS = [
         context: "Lieu :",
         templateBinding: { captionInline: "Lieu" } },
       { uid: "S02-010", id: "reunion_date", label: "Date", type: "date", ref: "IS 7.4", condition: "reunion_prevue=se tiendra",
-        context: "Date : [de préférence à mi-période de préparation des Offres]" },
+        context: "Date : [de préférence à mi-période de préparation des Offres]",
+        // "Date" caption — nth=1 of three (date_limite=2, ouverture_date=3).
+        // The standalone "[de préférence à mi-période …]" guide stays yellow
+        // (handled by STATIC_GUIDE_ANCHORS), MOA deletes it manually.
+        templateBinding: { captionInline: "Date", nth: 1, isDate: true } },
       { uid: "S02-011", id: "reunion_heure", label: "Heure", type: "time", ref: "IS 7.4", condition: "reunion_prevue=se tiendra",
-        context: "Heure :" },
+        context: "Heure :",
+        // "Heure" caption — nth=1 of three (heure_limite=2, ouverture_heure=3).
+        templateBinding: { captionInline: "Heure", isTime: true } },
       { uid: "S02-012", id: "visite_site", label: "Visite du site", type: "select", options: ["sera", "ne sera pas"], ref: "IS 7.4",
         context: "Une visite du Site des Travaux [sera / ne sera pas] organisée par le Maître d'Ouvrage.",
         // sera/ne sera pas — nth=1 of two (marge_preference=2).
@@ -230,19 +238,31 @@ export const SECTIONS = [
       { uid: "S02-031", id: "habilitation", label: "Habilitation du signataire", type: "text", placeholder: "Pouvoir de l'autorité compétente...", ref: "IS 20.2",
         context: "La confirmation écrite de l'habilitation du signataire à engager le Soumissionnaire consistera en : [insérer]" },
       { uid: "S02-032", id: "remise_attention", label: "Remise – À l'attention de", type: "text", ref: "IS 22.1",
-        context: "Aux seules fins de remise des Offres, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :" },
+        context: "Aux seules fins de remise des Offres, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :",
+        // "A l'attention de" caption — nth=2 of two (contact_attention=1).
+        templateBinding: { captionInline: "A l'attention de", nth: 2 } },
       { uid: "S02-033", id: "remise_adresse", label: "Adresse de remise", type: "textarea", ref: "IS 22.1",
-        context: "Adresse complète :" },
+        context: "Adresse complète :",
+        // "Adresse complète" caption — nth=1 of two (ouverture_adresse=2).
+        templateBinding: { captionInline: "Adresse complète", nth: 1 } },
       { uid: "S02-034", id: "date_limite", label: "Date limite de remise", type: "date", ref: "IS 22.1",
-        context: "La date et heure limites de remise des Offres sont les suivantes : Date :" },
+        context: "La date et heure limites de remise des Offres sont les suivantes : Date :",
+        // IS 22.1 template uses separate "Date :" / "Heure :" captions, not a
+        // combined "[insérer la date et l'heure]" placeholder. nth=2 (after
+        // reunion_date=1).
+        templateBinding: { captionInline: "Date", nth: 2, isDate: true } },
       { uid: "S02-035", id: "heure_limite", label: "Heure limite", type: "time", ref: "IS 22.1",
-        context: "Heure :" },
+        context: "Heure :",
+        templateBinding: { captionInline: "Heure", nth: 2, isTime: true } },
       { uid: "S02-036", id: "ouverture_adresse", label: "Adresse d'ouverture des plis", type: "textarea", ref: "IS 25.1",
-        context: "L'ouverture des plis aura lieu à l'adresse suivante : Adresse complète :" },
+        context: "L'ouverture des plis aura lieu à l'adresse suivante : Adresse complète :",
+        templateBinding: { captionInline: "Adresse complète", nth: 2 } },
       { uid: "S02-037", id: "ouverture_date", label: "Date d'ouverture", type: "date", ref: "IS 25.1",
-        context: "Date :" },
+        context: "Date :",
+        templateBinding: { captionInline: "Date", nth: 3, isDate: true } },
       { uid: "S02-038", id: "ouverture_heure", label: "Heure d'ouverture", type: "time", ref: "IS 25.1",
-        context: "Heure :" },
+        context: "Heure :",
+        templateBinding: { captionInline: "Heure", nth: 3, isTime: true } },
     ],
   },
   {

@@ -760,7 +760,7 @@ const FIELD_MAP = [
   { id: 'max_groupement' },
 
   // ── Coordonnées (label captions, pas de placeholder) ─────────────────
-  { id: 'contact_attention', captionInline: "A l'attention de" },
+  { id: 'contact_attention' },
   { id: 'contact_adresse' },
   { id: 'contact_tel' },
   { id: 'contact_email' },
@@ -769,11 +769,8 @@ const FIELD_MAP = [
   // ── Réunion ──────────────────────────────────────────────────────────
   { id: 'reunion_prevue' },
   { id: 'reunion_lieu' },
-  // reunion_date fills the "Date :" caption at IS 7.4 (nth=1 for Date captions).
-  // The standalone guide paragraph "[de préférence à mi-période ...]" stays as
-  // a yellow-highlighted guide for the MOA to delete manually.
-  { id: 'reunion_date',    captionInline: "Date", nth: 1, isDate: true },
-  { id: 'reunion_heure',   captionInline: "Heure", isTime: true },
+  { id: 'reunion_date' },
+  { id: 'reunion_heure' },
   { id: 'visite_site' },
 
   // ── Offre ────────────────────────────────────────────────────────────
@@ -802,16 +799,13 @@ const FIELD_MAP = [
   // ── Remise ───────────────────────────────────────────────────────────
   { id: 'copies_offre' },
   { id: 'habilitation',   ph: '[insérer par exemple "un pouvoir de l\'autorité compétente établi au nom du signataire de l\'Offre".]' },
-  { id: 'remise_attention', captionInline: "A l'attention de", nth: 2 },
-  { id: 'remise_adresse',   captionInline: "Adresse complète", nth: 1 },
-  // IS 22.1 template has separate "Date :" / "Heure :" caption paragraphs,
-  // not a combined "[insérer la date et l'heure]" placeholder. date_limite is
-  // the 2nd "Date :" caption in document order (1st = IS 7.4 réunion).
-  { id: 'date_limite',    captionInline: "Date", nth: 2, isDate: true },
-  { id: 'heure_limite',   captionInline: "Heure", nth: 2, isTime: true },
-  { id: 'ouverture_adresse', captionInline: "Adresse complète", nth: 2 },
-  { id: 'ouverture_date', captionInline: "Date", nth: 3, isDate: true },
-  { id: 'ouverture_heure', captionInline: "Heure", nth: 3, isTime: true },
+  { id: 'remise_attention' },
+  { id: 'remise_adresse' },
+  { id: 'date_limite' },
+  { id: 'heure_limite' },
+  { id: 'ouverture_adresse' },
+  { id: 'ouverture_date' },
+  { id: 'ouverture_heure' },
 
   // ── Évaluation ───────────────────────────────────────────────────────
   // Template placeholders include "du Maître d'Ouvrage" suffix — must match exactly.
