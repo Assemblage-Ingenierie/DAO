@@ -747,7 +747,8 @@ export const SECTIONS = [
         context: "Equipements et Matériaux pour paiement lorsque livrés sur le Chantier [liste].",
         note: "Lister un Equipement / Matériau par ligne." },
       { uid: "CCAP-034", id: "montant_min_decompte", label: "Montant minimum des Décomptes Intermédiaires", type: "text", placeholder: "Ex : 10 000 EUR", ref: "SC 14.6",
-        context: "[Insérer un montant, 10.000 EUR par exemple]" },
+        context: "[Insérer un montant, 10.000 EUR par exemple]",
+        templateBinding: { ph: "[Insérer un montant, 10.000 EUR par exemple]" } },
       { uid: "CCAP-035", id: "delai_paiement", label: "Délai de paiement (jours)", type: "text", placeholder: "56", ref: "SC 14.7",
         context: "le Maître d'Ouvrage doit payer à l'Entrepreneur le montant certifié dans un délai de _______ [insérer un nombre s'il est différent de 56] jours.",
         // Cell reads "dans un délai de _______ [insérer un nombre s'il est
@@ -783,13 +784,22 @@ export const SECTIONS = [
         note: "« un membre unique » : le champ « Liste de membres potentiels » ci-dessous doit être renseigné. « Trois membres » : le champ « Liste de membres potentiels » est automatiquement rempli avec « aucun »." },
       { uid: "CCAP-042", id: "crd_liste", label: "Liste de membres potentiels du CRD", type: "text", placeholder: "Liste si CRD à un membre unique ; sinon « aucun »", ref: "SC 20.2",
         context: "[Insérer la(les) liste(s) de membres potentiels, uniquement lorsque le CRD comprend un membre unique ; sinon, insérer \"aucun\".]",
-        lockedIf: { condition: "crd_composition=Trois membres", value: "aucun" } },
+        lockedIf: { condition: "crd_composition=Trois membres", value: "aucun" },
+        // Template uses straight ASCII quotes around "aucun" and a NBSP (U+00A0)
+        // before ";". When crd_composition = "Trois membres", export "aucun"
+        // regardless of what the user typed (matches the lockedIf above).
+        templateBinding: { ph: '[Insérer la(les) liste(s) de membres potentiels, uniquement lorsque le CRD comprend un membre unique ; sinon, insérer "aucun".]',
+          valueOverrideIf: (formData) => formData.crd_composition === 'Trois membres' ? 'aucun' : null } },
       { uid: "CCAP-043", id: "nomination_crd", label: "Nomination du CRD par (à défaut d'accord)", type: "text", placeholder: "Ex : Président du FIDIC", ref: "SC 20.3",
-        context: "[Insérer le nom de la personne officielle ou de l'entité procédant à la désignation, i.e. Président du FIDIC ou une autre association régionale d'ingénieurs.]" },
+        context: "[Insérer le nom de la personne officielle ou de l'entité procédant à la désignation, i.e. Président du FIDIC ou une autre association régionale d'ingénieurs.]",
+        templateBinding: { ph: "[Insérer le nom de la personne officielle ou de l'entité procédant à la désignation, i.e. Président du FIDIC ou une autre association régionale d'ingénieurs.]" } },
       { uid: "CCAP-044", id: "institution_arbitrage", label: "Institution d'arbitrage", type: "text", placeholder: "CCI par défaut", ref: "SC 20.6",
-        context: "[Insérer le nom de l'institution arbitrale si elle est différente de la Chambre de Commerce Internationale.]" },
+        context: "[Insérer le nom de l'institution arbitrale si elle est différente de la Chambre de Commerce Internationale.]",
+        templateBinding: { ph: "[Insérer le nom de l'institution arbitrale si elle est différente de la Chambre de Commerce Internationale.]" } },
       { uid: "CCAP-045", id: "lieu_arbitrage", label: "Lieu d'arbitrage", type: "text", placeholder: "Lieu neutre", ref: "SC 20.6",
-        context: "[Insérer le lieu de l'arbitrage : il doit être neutre, c'est-à-dire être ni le pays du Maître d'Ouvrage ni le pays du siège de l'Entrepreneur.]" },
+        context: "[Insérer le lieu de l'arbitrage : il doit être neutre, c'est-à-dire être ni le pays du Maître d'Ouvrage ni le pays du siège de l'Entrepreneur.]",
+        // Template uses NBSP (U+00A0) before ":" in "l'arbitrage :".
+        templateBinding: { ph: "[Insérer le lieu de l'arbitrage : il doit être neutre, c'est-à-dire être ni le pays du Maître d'Ouvrage ni le pays du siège de l'Entrepreneur.]" } },
     ],
   },
 ];

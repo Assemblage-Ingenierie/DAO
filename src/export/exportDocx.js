@@ -848,23 +848,11 @@ const FIELD_MAP = [
   { id: 'delai_paiement' },
   { id: 'taux_interet_etrangere' },
   { id: 'multiplicateur_responsabilite' },
-  { id: 'montant_min_decompte', ph: "[Insérer un montant, 10.000 EUR par exemple]" },
-  // CCAP-042 (crd_liste, SC 20.2) — template uses straight ASCII quotes
-  // around "aucun" and a NBSP before ";". When the user selected
-  // crd_composition = "Trois membres", auto-override the value to "aucun"
-  // (matches the lockedIf in the schema).
-  { id: 'crd_liste',
-    ph: '[Insérer la(les) liste(s) de membres potentiels, uniquement lorsque le CRD comprend un membre unique\u00a0; sinon, ins\u00e9rer "aucun".]',
-    valueOverrideIf: (formData) => formData.crd_composition === 'Trois membres' ? 'aucun' : null },
-  // CCAP-043 (nomination_crd, SC 20.3) — template ph ends with "ou une
-  // autre association régionale d'ingénieurs.]" (longer than the previous
-  // approximation that ended with "ou autre]").
-  { id: 'nomination_crd',
-    ph: "[Insérer le nom de la personne officielle ou de l'entité procédant à la désignation, i.e. Président du FIDIC ou une autre association régionale d'ingénieurs.]" },
-  { id: 'institution_arbitrage',
-    ph: "[Insérer le nom de l'institution arbitrale si elle est différente de la Chambre de Commerce Internationale.]" },
-  { id: 'lieu_arbitrage',
-    ph: "[Insérer le lieu de l'arbitrage\u00a0: il doit être neutre, c'est-à-dire être ni le pays du Maître d'Ouvrage ni le pays du siège de l'Entrepreneur.]" },
+  { id: 'montant_min_decompte' },
+  { id: 'crd_liste' },
+  { id: 'nomination_crd' },
+  { id: 'institution_arbitrage' },
+  { id: 'lieu_arbitrage' },
 ];
 
 // ── Inline caption fill (for fields without bracketed placeholders) ──────
