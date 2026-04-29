@@ -4085,9 +4085,9 @@ export async function exportDocx({
     let lastErr;
     for (let i = 0; i < 2; i++) {
       try {
-        const r = await fetch('/template-DTAO.docx', { cache: 'no-store' });
+        const r = await fetch('/templates/v2024/fr/template-DTAO.docx', { cache: 'no-store' });
         if (r.ok) return r;
-        lastErr = new Error(`Template introuvable : /template-DTAO.docx (HTTP ${r.status})`);
+        lastErr = new Error(`Template introuvable : /templates/v2024/fr/template-DTAO.docx (HTTP ${r.status})`);
       } catch (e) {
         lastErr = e;
       }
