@@ -230,14 +230,18 @@ export const SECTIONS = [
       { uid: "S02-026", id: "montant_garantie", label: "Montant de la Garantie", type: "text", placeholder: "50 000 000 XOF", ref: "IS 19.1",
         condition: "garantie_soumission=est",
         context: "Son montant est de : [insérer montant entre 1% et 3% de l'estimation du Montant du Marché et préciser la monnaie].",
-        note: "Inactif si « Garantie de Soumission n'est pas requise » — exporté automatiquement en « non-applicable »." },
+        note: "Inactif si « Garantie de Soumission n'est pas requise » — exporté automatiquement en « non-applicable ».",
+        templateBinding: { ph: "[insérer montant entre 1% et 3% de l'estimation du Montant du Marché et préciser la monnaie]" } },
       { uid: "S02-027", id: "garantie_lots_multi", label: "Garantie par lots (multi-lots)", type: "textarea", placeholder: "Montants et monnaies par lot…", ref: "IS 19.1",
         context: "[Lorsqu'il y a plus d'un lot, insérer le montant et la monnaie de la Garantie de Soumission requise par lot.]",
         note: "À renseigner uniquement si plusieurs lots. Sinon laisser vide (exporté en « non-applicable »)." },
       { uid: "S02-028", id: "autres_garanties", label: "Autres garanties acceptables", type: "text", placeholder: "Néant", ref: "IS 19.3(d)",
-        context: "Autres types de garanties acceptables : [indiquer \"Néant\" si pas applicable]" },
+        context: "Autres types de garanties acceptables : [indiquer \"Néant\" si pas applicable]",
+        templateBinding: { ph: '[indiquer "Néant" si pas applicable]' } },
       { uid: "S02-029", id: "exclusion_annees", label: "Durée d'exclusion (années)", type: "text", placeholder: "2", ref: "IS 19.9", condition: "declaration_garantie=est",
-        context: "le Maître d'Ouvrage l'exclura de toute attribution de marché(s) pour une période de _________________ [insérer le nombre d'années] ans." },
+        context: "le Maître d'Ouvrage l'exclura de toute attribution de marché(s) pour une période de _________________ [insérer le nombre d'années] ans.",
+        // Template: "période de _________________ [insérer le nombre d'années] ans."
+        templateBinding: { ph: "[insérer le nombre d'années]", stripUnderscores: true } },
     ],
   },
   {
@@ -250,7 +254,8 @@ export const SECTIONS = [
         context: "Outre l'original de l'Offre, le nombre de copies demandé est de : [insérer le nombre] copies papier et une (1) copie numérique.",
         templateBinding: { ph: "[insérer le nombre]", nth: 1 } },
       { uid: "S02-031", id: "habilitation", label: "Habilitation du signataire", type: "text", placeholder: "Pouvoir de l'autorité compétente...", ref: "IS 20.2",
-        context: "La confirmation écrite de l'habilitation du signataire à engager le Soumissionnaire consistera en : [insérer]" },
+        context: "La confirmation écrite de l'habilitation du signataire à engager le Soumissionnaire consistera en : [insérer]",
+        templateBinding: { ph: '[insérer par exemple "un pouvoir de l\'autorité compétente établi au nom du signataire de l\'Offre".]' } },
       { uid: "S02-032", id: "remise_attention", label: "Remise – À l'attention de", type: "text", ref: "IS 22.1",
         context: "Aux seules fins de remise des Offres, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :",
         // "A l'attention de" caption — nth=2 of two (contact_attention=1).
@@ -286,19 +291,26 @@ export const SECTIONS = [
     description: "Monnaie d'évaluation, préférence nationale, sous-traitance",
     fields: [
       { uid: "S02-039", id: "monnaie_evaluation", label: "Monnaie d'évaluation", type: "text", placeholder: "Monnaie nationale", ref: "IS 32.1",
-        context: "La monnaie utilisée pour convertir en une seule monnaie est : [Insérer la monnaie, normalement la monnaie nationale]" },
+        context: "La monnaie utilisée pour convertir en une seule monnaie est : [Insérer la monnaie, normalement la monnaie nationale]",
+        // Template placeholders include "du Maître d'Ouvrage" suffix and the
+        // closing bracket has NO leading space at the run level — match the
+        // real <w:t> concatenation, otherwise the yellow placeholder never fills.
+        templateBinding: { ph: "[Insérer la monnaie, normalement la monnaie nationale du Maître d'Ouvrage]" } },
       { uid: "S02-040", id: "source_taux_change", label: "Source taux de change", type: "text", placeholder: "Banque Centrale", ref: "IS 32.1",
-        context: "La source du taux de change à employer est : [habituellement la banque centrale du pays]" },
+        context: "La source du taux de change à employer est : [habituellement la banque centrale du pays]",
+        templateBinding: { ph: "[habituellement on utilisera la banque centrale du pays du Maître d'Ouvrage]" } },
       { uid: "S02-041", id: "option_conversion", label: "Option de conversion (IS 32.1)", type: "select", options: ["A", "B"], ref: "IS 32.1",
         context: "La(es) monnaie(s) sera(ont) convertie(s) conformément à l'Option [A / B]",
-        note: "Le bloc de l'option non retenue sera surligné en rouge dans le document exporté." },
+        note: "Le bloc de l'option non retenue sera surligné en rouge dans le document exporté.",
+        templateBinding: { ph: "[A / B]", choice: ["A", "B"] } },
       { uid: "S02-042", id: "marge_preference", label: "Marge de préférence", type: "select", options: ["sera", "ne sera pas"], ref: "IS 33.1",
         context: "Une marge de préférence [sera / ne sera pas] accordée aux entreprises nationales.",
         note: "Uniquement si réglementation locale l'exige + accord AFD. Les guides AFD seront toujours surlignés en rouge.",
         // sera/ne sera pas — nth=2 of two (visite_site=1).
         templateBinding: { ph: "[sera / ne sera pas]", nth: 2, choice: ["sera", "ne sera pas"] } },
       { uid: "S02-043", id: "sous_traitants_designes", label: "Sous-traitants désignés", type: "select", options: ["prévoit", "ne prévoit pas"], ref: "IS 34.1",
-        context: "Le Maître d'Ouvrage [prévoit / ne prévoit pas] de faire réaliser certaines parties par des sous-traitants désignés." },
+        context: "Le Maître d'Ouvrage [prévoit / ne prévoit pas] de faire réaliser certaines parties par des sous-traitants désignés.",
+        templateBinding: { ph: "[prévoit / ne prévoit pas]", choice: ["prévoit", "ne prévoit pas"] } },
     ],
   },
   {
@@ -313,7 +325,11 @@ export const SECTIONS = [
       { uid: "S03-002", id: "ca_minimum", label: "CA annuel moyen min. (€)", type: "text", placeholder: "1,5-2× facturation annuelle", ref: "III – 3.2",
         context: "Avoir un chiffre d'affaires annuel moyen d'au moins ________ [insérer montant en équivalent € en toutes lettres et en chiffres]" },
       { uid: "S03-003", id: "ca_periode", label: "Années pour le CA", type: "text", placeholder: "5 (min. 3)", ref: "III – 3.2",
-        context: "sur les ______ [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années." },
+        context: "sur les ______ [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années.",
+        // Same ph as exp_generale_annees but distinct nth occurrence:
+        // ca_periode is nth=1, exp_generale_annees is nth=2. Both must travel
+        // together so replacedCountByPh stays consistent.
+        templateBinding: { ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 1, stripUnderscores: true } },
       { uid: "S03-002b", id: "ca_membre_pct_lettres", label: "% Chaque membre — en lettres", type: "text", placeholder: "vingt-cinq", ref: "III – 3.2",
         context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise (colonne « Chaque membre » du Groupement d'entreprises)" },
       { uid: "S03-002c", id: "ca_membre_pct_chiffre", label: "% Chaque membre — en chiffres", type: "text", placeholder: "25", ref: "III – 3.2",
@@ -331,7 +347,9 @@ export const SECTIONS = [
     description: "Expérience générale et spécifique de construction",
     fields: [
       { uid: "S03-004", id: "exp_generale_annees", label: "Expérience générale (années)", type: "text", placeholder: "5 (min 3)", ref: "III – 4.1",
-        context: "Expérience de marchés de construction [...] au cours des [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années" },
+        context: "Expérience de marchés de construction [...] au cours des [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années",
+        // Same ph as ca_periode (nth=1), here nth=2 (§4.1 row vs §3.2 row).
+        templateBinding: { ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 2, stripUnderscores: true } },
       { uid: "S03-005", id: "exp_generale_annee_depart", label: "Année de début", type: "text", placeholder: "2020", ref: "III – 4.1",
         context: "à partir du 1er janvier de l'année _______ [insérer l'année]" },
       { uid: "S03-006", id: "exp_specifique_n", label: "Nombre marchés similaires (N)", type: "text", placeholder: "2", ref: "III – 4.2(a)",

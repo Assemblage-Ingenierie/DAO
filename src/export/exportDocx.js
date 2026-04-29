@@ -788,14 +788,13 @@ const FIELD_MAP = [
   // ── Garanties ────────────────────────────────────────────────────────
   { id: 'garantie_soumission' },
   { id: 'declaration_garantie' },
-  { id: 'montant_garantie',     ph: "[insérer montant entre 1% et 3% de l'estimation du Montant du Marché et préciser la monnaie]" },
-  { id: 'autres_garanties',     ph: '[indiquer "Néant" si pas applicable]' },
-  // Template: "période de _________________ [insérer le nombre d'années] ans."
-  { id: 'exclusion_annees',     ph: "[insérer le nombre d'années]", stripUnderscores: true },
+  { id: 'montant_garantie' },
+  { id: 'autres_garanties' },
+  { id: 'exclusion_annees' },
 
   // ── Remise ───────────────────────────────────────────────────────────
   { id: 'copies_offre' },
-  { id: 'habilitation',   ph: '[insérer par exemple "un pouvoir de l\'autorité compétente établi au nom du signataire de l\'Offre".]' },
+  { id: 'habilitation' },
   { id: 'remise_attention' },
   { id: 'remise_adresse' },
   { id: 'date_limite' },
@@ -805,16 +804,11 @@ const FIELD_MAP = [
   { id: 'ouverture_heure' },
 
   // ── Évaluation ───────────────────────────────────────────────────────
-  // Template placeholders include "du Maître d'Ouvrage" suffix — must match exactly.
-  // Template visually shows a trailing space before the closing bracket, but
-  // the actual <w:t> runs concatenate to `… du Maître d'Ouvrage]` with NO
-  // space. Match the real run text — otherwise the yellow placeholder never
-  // fills in IS 32.1.
-  { id: 'monnaie_evaluation',      ph: "[Insérer la monnaie, normalement la monnaie nationale du Maître d'Ouvrage]" },
-  { id: 'source_taux_change',      ph: "[habituellement on utilisera la banque centrale du pays du Maître d'Ouvrage]" },
-  { id: 'option_conversion',       ph: "[A / B]", choice: ["A", "B"] },
+  { id: 'monnaie_evaluation' },
+  { id: 'source_taux_change' },
+  { id: 'option_conversion' },
   { id: 'marge_preference' },
-  { id: 'sous_traitants_designes', ph: "[prévoit / ne prévoit pas]", choice: ["prévoit", "ne prévoit pas"] },
+  { id: 'sous_traitants_designes' },
 
   // ── Qualification financière ──────────────────────────────────────────
   // S03-001 — fills the long bracket in 3.1 row of the Section III table; the
@@ -827,7 +821,7 @@ const FIELD_MAP = [
   // template row. Without this flag the underscores remained visible next to
   // the green-filled value.
   { id: 'ca_minimum',          ph: "[insérer montant en équivalent € en toutes lettres et en chiffres]", stripUnderscores: true },
-  { id: 'ca_periode',          ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 1, stripUnderscores: true },
+  { id: 'ca_periode' },
   // 3.2 row — Groupement d'entreprises columns. Two yellow placeholders per
   // column ([letters] + [digits%]). Each cell appears once in the template.
   { id: 'ca_membre_pct_lettres', ph: "[vingt-cinq]" },
@@ -839,7 +833,7 @@ const FIELD_MAP = [
   // §4.1 row — `stripUnderscores` cleans the leading `____` runs around each
   // bracket ("au cours des ______ [insérer le nombre d'années…]" and
   // "à partir du 1er janvier de l'année _______ [insérer l'année]").
-  { id: 'exp_generale_annees',       ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 2, stripUnderscores: true },
+  { id: 'exp_generale_annees' },
   { id: 'exp_generale_annee_depart', ph: "[insérer l'année]", nth: 1, stripUnderscores: true },
   { id: 'exp_specifique_n',          ph: "[insérer des valeurs pour N, normalement deux, et V]" },
   { id: 'exp_specifique_v',          ph: "[insérer la valeur de V]" },
