@@ -13,6 +13,18 @@ import {
 } from '../packages/v2024/fr/anchors.js';
 import { isFilled } from '../utils/fieldStatus.js';
 import { isEnjeuEsssLabel } from '../packages/v2024/fr/enjeux.js';
+import { SECTIONS } from '../packages/v2024/fr/sections.js';
+
+// Index sections.fields by id for the dual-lookup pass below: when a field
+// declares its own `templateBinding` in sections.js, it overrides the entry
+// from FIELD_MAP at the SAME canonical position. This lets phase 1.6 migrate
+// FIELD_MAP entries to sections.js incrementally without disturbing the nth
+// sequence (replacedCountByPh relies on the FIELD_MAP iteration order).
+const FIELDS_BY_ID = (() => {
+  const m = new Map();
+  for (const sec of SECTIONS) for (const f of (sec.fields || [])) m.set(f.id, f);
+  return m;
+})();
 
 // ── CCAP Partie A — Notes jaunes "draft" à rougir si le champ est rempli ────
 // Règle : chaque note bracketée jaune devient rouge si le champ relié a une
@@ -4481,8 +4493,15 @@ export async function exportDocx({
   // `[sont / ne sont pas]` with nth=1,2,3. After replacing nth=1 the
   // occurrence is gone, so the 2nd field's effective nth becomes 2-1=1.
   const replacedCountByPh = new Map();
-  for (const field of FIELD_MAP) {
-    const { id, ph, nth = 1, isDate = false, isTime = false, global = false, captions, captionInline, stripUnderscores, valueSuffix, valueSuffixSkipIf, valueOverrideIf } = field;
+  for (const fieldFromMap of FIELD_MAP) {
+    // Phase 1.6 dual-lookup: a field migrated to sections.js carries its own
+    // `templateBinding` (id, ph, nth, etc.). When present it overrides the
+    // FIELD_MAP entry at the same canonical position. Iterate FIELD_MAP so
+    // the order — and therefore replacedCountByPh — stays stable while the
+    // migration is in progress.
+    const sectionField = FIELDS_BY_ID.get(fieldFromMap.id);
+    const binding = sectionField?.templateBinding ?? fieldFromMap;
+    const { id = fieldFromMap.id, ph, nth = 1, isDate = false, isTime = false, global = false, captions, captionInline, stripUnderscores, valueSuffix, valueSuffixSkipIf, valueOverrideIf } = binding;
     // `valueOverrideIf(formData)` returns a string to use INSTEAD of the
     // raw form value (or null to fall back to formData[id]). Used by
     // crd_liste, which must export "aucun" when crd_composition = "Trois
