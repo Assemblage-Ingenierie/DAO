@@ -79,3 +79,85 @@ export const NO_PREQUAL_GUIDE_ANCHORS = [
 // Le template contient un artefact Word : « Pré qualification » avec espace
 // au lieu de trait d'union — on tolère les deux.
 export const NO_PREQUAL_HEADER_ANCHOR = /^Qualification si une Pr[eé][\s-]?qualification n'a pas [eé]t[eé] effectu[eé]e\s*:?\s*$/i;
+
+// ── Section IV — Modèle de Garantie de Soumission ──────────────────────────
+// S02-024 « n'est pas » → toute la lettre type "Modèle de Garantie de
+// Soumission" (Garantie bancaire) devient inapplicable et est surlignée rouge
+// du titre jusqu'au titre suivant ("Modèle de Déclaration de Garantie de
+// Soumission") exclusif.
+export const MODELE_GARANTIE_SOUMISSION_START_RE = /^Modèle de Garantie de Soumission\s*$/i;
+export const MODELE_GARANTIE_SOUMISSION_END_RE = /^Modèle de Déclaration de Garantie de Soumission\s*$/i;
+
+// ── Section IV — Modèle de Déclaration de Garantie de Soumission ──────────
+// S02-025 « n'est pas » → la déclaration de garantie de soumission est
+// inapplicable. Range : du titre jusqu'à la Section V (« Critères
+// d'éligibilité »). L'apostrophe peut être courbe ou droite dans le template.
+export const MODELE_DECL_GARANTIE_START_RE = /^Modèle de Déclaration de Garantie de Soumission\s*$/i;
+export const MODELE_DECL_GARANTIE_END_RE = /^Section V\b|Critères d[’']éligibilité/i;
+
+// ── Sections V & VI — guides jaunes Convention AFD ─────────────────────────
+// Toujours convertir jaune→rouge les paragraphes de guidage entre les titres
+// de Section V (Critères d'éligibilité) et Section VII (Spécifications des
+// Travaux). Helper à utiliser : convertYellowToRedInRange (variant qui exige
+// que les anchors soient sur des paragraphes Heading-styled, pour ne pas
+// matcher accidentellement un item de liste numéroté).
+export const SECTIONS_V_VI_START_RE = /^Section V\b.*Critères d[’']éligibilité/i;
+export const SECTIONS_V_VI_END_RE = /^Section VII\b.*Spécifications des Travaux/i;
+
+// ── Convention AFD — marqueurs OPTION A/B (toujours rouges) ────────────────
+// Cinq alternatives compound-regex pour rougir tous les guides "draft"
+// associés au choix de Convention AFD (avant/à partir du 1er février 2024).
+// Le MOA doit toujours nettoyer ces marqueurs avant remise du DAO aux
+// soumissionnaires, indépendamment de date_convention.
+export const AFD_CONVENTION_OPTION_MARKERS_RE = new RegExp([
+  // Guide paragraph introducing each OPTION A/B block (Annexe X, Section X,
+  // ou Déclaration d'Intégrité — Annexe 3 à la Soumission)
+  "^\\s*\\[Le contenu de (?:l'(?:Annexe|annexe)|la\\s+Section\\s+[A-Z]+|la\\s+Déclaration d'Intégrité)",
+  // Explanation bullets
+  "^Pour tout March[ée] financ[ée] par l'AFD via une Convention de Financement sign[ée]e\\s+(?:avant|[àa]\\s+partir)",
+  // OPTION A/B opening marker (also matches "Version de Déclaration d'Intégrité")
+  "^\\s*\\[OPTION\\s+[AB]\\s*[\\u2013\\u2014\\-]\\s*Version",
+  // "(Sinon supprimer cette partie...)" sub-line
+  "^\\s*\\(Sinon supprimer cette partie",
+  // "Fin de l'OPTION X]" closing marker
+  "^\\s*Fin de l'OPTION\\s+[AB]\\]",
+].join('|'), 'i');
+
+// ── IS 7.4 — bloc Réunion préparatoire ────────────────────────────────────
+// reunion_prevue === "n'est pas prévue" → surligner rouge les lignes
+// Lieu/Date/Heure entre le paragraphe "Une réunion préparatoire" (start
+// inclusif) et "Une visite du Site" (end inclusif — le helper d'origine
+// surlignait jusqu'à et compris cette ligne). Strings simples (pas
+// d'anchorage `^…$`) car le texte cible apparaît au milieu d'autres mots.
+export const REUNION_START_RE = /Une réunion préparatoire/;
+export const REUNION_END_RE = /Une visite du Site/;
+
+// ── Marqueurs littéraux de suppression — toujours surlignés rouge ──────────
+// Le template contient des marqueurs "[Rayer la mention inutile]" / "[à
+// supprimer si …]" etc. Le MOA doit toujours les rougir pour les supprimer
+// avant remise. Un prefilter rapide (`SUPPRIMER_RAYER_PREFILTER`) évite de
+// scanner tous les paragraphes — la majorité ne contiennent pas ces mots.
+export const DELETION_MARKER_PATTERNS = [
+  /\[Rayer la mention inutile\s*:?\s*\]/gi,
+  /\[Supprimer la mention inutile\s*:?\s*\]/gi,
+  /\[à supprimer si [^\]]+\]/gi,
+  /\[Section à supprimer si [^\]]+\]/gi,
+  /Supprimer la mention inutile/g,
+  /rayer la mention inutile/g,
+];
+export const SUPPRIMER_RAYER_PREFILTER = /[Ss]upprimer|[Rr]ayer/;
+
+// ── Section III §3.2 — note "Le montant devrait se situer…" (toujours red) ─
+// Note éditoriale au MOA jouxtant le titre "Chiffre d'affaires annuel
+// minimum". Toujours convertie jaune→rouge pour suppression — n'est jamais
+// conservée dans le DAO final.
+export const CHIFFRE_AFFAIRES_NOTE_RE = /Le montant devrait se situer entre 1\.5 et 2 fois l['’]estimation du montant annuel facturé/i;
+
+// ── Section III §4.2(b)(ii) — Sous-traitant spécialisé ─────────────────────
+// sst_specialise_autorise === "Non" → la ligne (ii) du tableau de
+// qualification est inapplicable. Range : du placeholder draft "[ajouter le
+// critère suivant…]" jusqu'au heading "Qualification Environnementale,
+// Sociale, Santé et Sécurité (ESSS)" exclusif (qui démarre la sous-section
+// suivante).
+export const SST_SPECIALISE_START_RE = /^\[ajouter le critère suivant si un sous-traitant spécialisé est autorisé/i;
+export const SST_SPECIALISE_END_RE = /^Qualification Environnementale,\s*Sociale,\s*Santé et Sécurité\s*\(ESSS\)\s*$/i;

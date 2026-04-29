@@ -859,14 +859,8 @@ function buildPartPositions(parts) {
   return positions;
 }
 
-const DELETION_MARKER_PATTERNS = [
-  /\[Rayer la mention inutile\s*:?\s*\]/gi,
-  /\[Supprimer la mention inutile\s*:?\s*\]/gi,
-  /\[à supprimer si [^\]]+\]/gi,
-  /\[Section à supprimer si [^\]]+\]/gi,
-  /Supprimer la mention inutile/g,
-  /rayer la mention inutile/g,
-];
+// DELETION_MARKER_PATTERNS lives in src/packages/v2024/fr/anchors.js
+// (consumed by HIGHLIGHTING_RULES rule 'deletion-markers-always').
 
 // Generic inline-marker red-highlighter: for every paragraph (outside
 // Section I), scan run-text for any of the supplied global regex patterns
@@ -3398,7 +3392,14 @@ function applyRuleOp(op, docXml, footnotesXml, ctx) {
     }
     case 'highlight-matching': {
       if (op.matchAnchor) {
-        const r = highlightParagraphsMatching(docXml, resolveAnchor(op.matchAnchor, ctx));
+        // Array-valued anchor (e.g. STATIC_GUIDE_ANCHORS) → OR-of-patterns
+        // via highlightParagraphsByAnchors. Single regex → single match.
+        const value = resolveAnchor(op.matchAnchor, ctx);
+        if (Array.isArray(value)) {
+          const r = highlightParagraphsByAnchors(docXml, value);
+          return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+        }
+        const r = highlightParagraphsMatching(docXml, value);
         return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
       }
       if (Array.isArray(op.matchAnchors)) {
@@ -3412,7 +3413,10 @@ function applyRuleOp(op, docXml, footnotesXml, ctx) {
       throw new Error('[applyHighlightingRules] highlight-matching requires matchAnchor or matchAnchors');
     }
     case 'yellow-to-red-range': {
-      const r = convertYellowToRedInParaRange(docXml, resolveAnchor(op.startAnchor, ctx), resolveAnchor(op.endAnchor, ctx));
+      // requireHeading: true → use the heading-aware variant (TITLESECTION /
+      // Formulaire / Titre / Heading styles only), used e.g. for Sections V&VI.
+      const fn = op.requireHeading ? convertYellowToRedInRange : convertYellowToRedInParaRange;
+      const r = fn(docXml, resolveAnchor(op.startAnchor, ctx), resolveAnchor(op.endAnchor, ctx));
       return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
     }
     case 'yellow-to-red-matching': {
@@ -3435,7 +3439,8 @@ function applyRuleOp(op, docXml, footnotesXml, ctx) {
     }
     case 'highlight-inline-markers': {
       const patterns = resolveAnchor(op.patternsAnchor, ctx);
-      const r = highlightInlineMarkers(docXml, patterns, op.prefilter);
+      const prefilter = op.prefilterAnchor ? resolveAnchor(op.prefilterAnchor, ctx) : op.prefilter;
+      const r = highlightInlineMarkers(docXml, patterns, prefilter);
       return { docXml: r.xml, count: r.count };
     }
     case 'delete-block': {
@@ -3452,28 +3457,38 @@ function applyHighlightingRules(docXml, footnotesXml, ctx) {
   let fnXml = footnotesXml;
   for (const rule of HIGHLIGHTING_RULES) {
     if (!shouldFireRule(rule, ctx.formData)) continue;
-    let result;
     try {
       if (typeof rule.apply === 'function') {
-        result = rule.apply(xml, ctx.formData, { ...ctx, footnotesXml: fnXml });
+        // Custom apply: rule returns { docXml?, footnotesXml?, message? }.
+        const result = rule.apply(xml, ctx.formData, { ...ctx, footnotesXml: fnXml });
+        if (result?.docXml !== undefined) xml = result.docXml;
+        if (result?.footnotesXml !== undefined) fnXml = result.footnotesXml;
+        if (result?.message) console.log(result.message);
       } else if (Array.isArray(rule.ops)) {
+        // Declarative ops: dispatch each op, aggregate counts, then call
+        // optional rule.log(aggregate, formData) → string | null.
+        const agg = { paraCount: 0, runCount: 0, count: 0, footnoteCount: 0, replaced: false, removed: 0 };
         for (const op of rule.ops) {
-          const opResult = applyRuleOp(op, xml, fnXml, ctx);
-          if (opResult?.docXml !== undefined) xml = opResult.docXml;
-          if (opResult?.footnotesXml !== undefined) fnXml = opResult.footnotesXml;
+          const r = applyRuleOp(op, xml, fnXml, ctx);
+          if (r?.docXml !== undefined) xml = r.docXml;
+          if (r?.footnotesXml !== undefined) fnXml = r.footnotesXml;
+          if (typeof r?.paraCount === 'number') agg.paraCount += r.paraCount;
+          if (typeof r?.runCount === 'number') agg.runCount += r.runCount;
+          if (typeof r?.count === 'number') agg.count += r.count;
+          if (typeof r?.footnoteCount === 'number') agg.footnoteCount += r.footnoteCount;
+          if (r?.replaced) agg.replaced = true;
+          if (typeof r?.removed === 'number') agg.removed += r.removed;
         }
-        result = undefined;
+        if (typeof rule.log === 'function') {
+          const message = rule.log(agg, ctx.formData);
+          if (message) console.log(message);
+        }
       } else {
         console.warn(`[applyHighlightingRules] rule "${rule.id}" has neither apply nor ops — skipped`);
-        continue;
       }
     } catch (err) {
       console.error(`[applyHighlightingRules] rule "${rule.id}" failed:`, err);
-      continue;
     }
-    if (result?.docXml !== undefined) xml = result.docXml;
-    if (result?.footnotesXml !== undefined) fnXml = result.footnotesXml;
-    if (result?.message) console.log(result.message);
   }
   return { docXml: xml, footnotesXml: fnXml };
 }
@@ -4532,29 +4547,32 @@ export async function exportDocx({
     if (docXml !== before) console.log(`[exportDocx] Liste « ${fieldId} » rebâtie (${items.length} item(s))`);
   }
 
-  // 3b-zero. Run declarative highlighting rules (FR pack). Empty in 1.7.0,
-  // populated incrementally in 1.7.1 → 1.7.4. Each migrated rule replaces a
+  // 3b-zero. Run declarative highlighting rules (FR pack). Populated
+  // incrementally during phase 1.7 lots. Each migrated rule replaces a
   // corresponding inline block below in the same commit.
   {
-    const r = applyHighlightingRules(docXml, footnotesXml, { formData, anchors });
+    // Engine helpers exposed to rule.apply functions (used for cases that
+    // can't be expressed as a simple op — dynamic regex, multi-branch, etc).
+    const helpers = {
+      highlightParagraphRange,
+      highlightParagraphsMatching,
+      highlightParagraphsByAnchors,
+      convertYellowToRedInRange,
+      convertYellowToRedInParaRange,
+      convertYellowToRedInMatchingParagraphs,
+      convertYellowToRedInFootnoteIds,
+      replaceYellowGuideParagraph,
+      replaceInlinePhrase,
+      highlightInlineMarkers,
+      highlightUnselectedOption,
+      highlightMargePreferenceBlock,
+    };
+    const r = applyHighlightingRules(docXml, footnotesXml, { formData, anchors, helpers });
     docXml = r.docXml;
     if (r.footnotesXml !== undefined) footnotesXml = r.footnotesXml;
   }
 
-  // 3c. Red-highlight the non-selected OPTION block for date_convention
-  const dateConv = formData.date_convention;
-  if (dateConv) {
-    const selected = /A/i.test(dateConv) && /avant|OPTION A/i.test(dateConv) ? 'A'
-                    : /B/i.test(dateConv) && /après|apres|OPTION B/i.test(dateConv) ? 'B'
-                    : /^A$/.test(dateConv) ? 'A'
-                    : /^B$/.test(dateConv) ? 'B'
-                    : null;
-    if (selected) {
-      const { xml: out, count } = highlightUnselectedOption(docXml, selected);
-      docXml = out;
-      if (count > 0) console.log(`[exportDocx] OPTION ${selected === 'A' ? 'B' : 'A'} surlignée rouge (${count} run(s))`);
-    }
-  }
+  // 3c. → migré dans HIGHLIGHTING_RULES (id: 'option-non-retenue').
 
   // 3b-ter. IS 11.1(b) — red-highlight the two price formats NOT picked.
   if (formData.type_prix) {
@@ -4585,21 +4603,8 @@ export async function exportDocx({
     if (count > 0) console.log(`[exportDocx] IS 32.1 option de conversion non retenue surlignée rouge (${count} run(s))`);
   }
 
-  // 3b-sexies. IS 13.5 — red-highlight the "si variantes autorisées" block
-  // when variantes délais are NOT authorized.
-  if (formData.variantes_delais === "ne sont pas") {
-    const { xml: out, paraCount, runCount } = highlightVariantesDelaisBlock(docXml);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] IS 13.5 bloc ajustement variantes délais surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis. IS 34.1 — red-highlight the "lister les sous-traitants"
-  // guide when the MOA does NOT plan designated subcontractors.
-  if (formData.sous_traitants_designes === "ne prévoit pas") {
-    const { xml: out, paraCount, runCount } = highlightSousTraitantsBlock(docXml);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] IS 34.1 guide sous-traitants désignés surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
+  // 3b-sexies, 3b-sexies-bis → migrés dans HIGHLIGHTING_RULES
+  // (ids: 'is-13-5-variantes-delais', 'is-34-1-sous-traitants').
 
   // 3b-sexies-bis-II. Section IV Annexe 1 — red-highlight the whole
   // "Annexe 1 à la Soumission — Données relatives à la révision des prix"
@@ -4626,31 +4631,8 @@ export async function exportDocx({
     if (paraCount > 0) console.log(`[exportDocx] Section IV formulaire "Variantes techniques" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
   }
 
-  // 3b-sexies-bis-V. Section IV "Modèle de Garantie de Soumission" block —
-  // red-highlight the whole block (Garantie bancaire letter) when S02-024
-  // garantie_soumission = "n'est pas", since no bid security is required.
-  if (formData.garantie_soumission === "n'est pas") {
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(
-      docXml,
-      /^Modèle de Garantie de Soumission\s*$/i,
-      /^Modèle de Déclaration de Garantie de Soumission\s*$/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Modèle de Garantie de Soumission surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-VI. Section IV "Modèle de Déclaration de Garantie" block —
-  // red-highlight the whole block when S02-025 declaration_garantie = "n'est
-  // pas", since no bid-security declaration is required.
-  if (formData.declaration_garantie === "n'est pas") {
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(
-      docXml,
-      /^Modèle de Déclaration de Garantie de Soumission\s*$/i,
-      /^Section V\b|Critères d[’']éligibilité/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Modèle de Déclaration de Garantie surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
+  // 3b-sexies-bis-V, 3b-sexies-bis-VI → migrés dans HIGHLIGHTING_RULES
+  // (ids: 'garantie-soumission-non', 'declaration-garantie-non').
 
   // 3b-sexies-bis-VI-bis. ESSS — when S-ESSS-01 esss_applicable = "Non", the
   // entire ESSS block is inapplicable. Two regions must be red-highlighted:
@@ -5011,19 +4993,8 @@ export async function exportDocx({
     }
   }
 
-  // 3b-sexies-bis-VII-bis. Section V & VI — convert yellow-highlighted guide
-  // paragraphs (e.g. "[Le contenu de la Section V dépend…]" and the two
-  // OPTION-selection instructions) to red highlight so the MOA notices them
-  // as decisions to resolve before signing.
-  {
-    const { xml: out, paraCount, runCount } = convertYellowToRedInRange(
-      docXml,
-      /^Section V\b.*Critères d[’']éligibilité/i,
-      /^Section VII\b.*Spécifications des Travaux/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Sections V & VI: ${paraCount} paragraphe(s) jaunes convertis en rouge (${runCount} run(s))`);
-  }
+  // 3b-sexies-bis-VII-bis → migré dans HIGHLIGHTING_RULES
+  // (id: 'sections-v-vi-yellow-to-red').
 
   // 3b-sexies-bis-VII. Section III "2. Documents financiers" — the two
   // "[indiquer le nombre] années" phrases are yellow placeholder fragments
@@ -5039,22 +5010,8 @@ export async function exportDocx({
     if (r2.replaced) console.log('[exportDocx] Documents financiers: "[indiquer le nombre] années telles que requises" remplacé');
   }
 
-  // 3b-sexies-ter. IS 33.1 — red-highlight the whole "Marge de préférence"
-  // block (Section III) when no preference margin is granted.
-  if (formData.marge_preference === "ne sera pas") {
-    const { xml: out, paraCount, runCount } = highlightMargePreferenceBlock(docXml, formData.marge_preference);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] IS 33.1 bloc marge de préférence surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-quater. IS 4.5 "n'est pas" — red-highlight the yellow guide
-  // "[sinon supprimer toute cette section]" above the 3.3 qualification
-  // block (Section III) so the MO can clean it up.
-  if (formData.prequalification === "n'est pas") {
-    const { xml: out, paraCount, runCount } = highlightNoPrequalGuide(docXml);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] IS 4.5 guide "sinon supprimer toute cette section" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
+  // 3b-sexies-ter, 3b-sexies-quater → migrés dans HIGHLIGHTING_RULES
+  // (ids: 'marge-preference-non-accordee', 'prequalification-no-prequal-guide').
 
   // 3b-sexies-quinquies. IS 4.5 "est" — remove the entire 3.3 qualification
   // block (Section III) since pre-qualification already evaluated these
@@ -5066,47 +5023,8 @@ export async function exportDocx({
     if (removed > 0) console.log(`[exportDocx] IS 4.5 bloc 3.3 qualification sans préqualif supprimé (${removed} paragraphe(s) retirés${preservedSectPr ? ', sectPr portrait préservé' : ''})`);
   }
 
-  // 3b-septies. Static template guides that are always red-highlighted
-  // regardless of user data: IS 7.4 mi-période hint, IS 14.5 AFD price
-  // revision recommendation, IS 22.1 & 25.1 electronic submission guides.
-  {
-    const { xml: out, paraCount, runCount } = highlightStaticGuides(docXml);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] ${paraCount} guide(s) statique(s) surligné(s) rouge (${runCount} run(s))`);
-  }
-
-  // 3b-septies-bis. Convention AFD OPTION A/B draft markers — ALWAYS red.
-  // The template scatters yellow drafting notes around every "OPTION A vs
-  // OPTION B (Convention AFD signed before / on or after 1st Feb 2024)"
-  // block (Section V Critères, Section VI Pratiques prohibées, Section IV
-  // Déclaration d'Intégrité, Annexe B, Annexe C). These notes are instructions
-  // to the Maître d'Ouvrage on which OPTION to keep — they must NEVER appear
-  // in the final DAO handed to bidders, regardless of whether `date_convention`
-  // is set. Convert every matching yellow paragraph to red so clean mode
-  // (`stripRedContent`) removes them too. Patterns cover:
-  //   - `[Le contenu de l'Annexe X / la Section X … dépend … de signature]` guide
-  //   - `Pour tout Marché financé par l'AFD via une Convention … (avant|à partir)` bullets
-  //   - `[OPTION A|B – Version … à insérer …]` opening markers
-  //   - `(Sinon supprimer cette partie …)` sub-lines
-  //   - `Fin de l'OPTION A|B]` closing markers
-  {
-    const afdOptionMarkersRe = new RegExp([
-      // Guide paragraph introducing each OPTION A/B block (Annexe X, Section X,
-      // ou Déclaration d'Intégrité — Annexe 3 à la Soumission)
-      "^\\s*\\[Le contenu de (?:l'(?:Annexe|annexe)|la\\s+Section\\s+[A-Z]+|la\\s+Déclaration d'Intégrité)",
-      // Explanation bullets
-      "^Pour tout March[ée] financ[ée] par l'AFD via une Convention de Financement sign[ée]e\\s+(?:avant|[àa]\\s+partir)",
-      // OPTION A/B opening marker (also matches "Version de Déclaration d'Intégrité")
-      "^\\s*\\[OPTION\\s+[AB]\\s*[\\u2013\\u2014\\-]\\s*Version",
-      // "(Sinon supprimer cette partie...)" sub-line
-      "^\\s*\\(Sinon supprimer cette partie",
-      // "Fin de l'OPTION X]" closing marker
-      "^\\s*Fin de l'OPTION\\s+[AB]\\]",
-    ].join('|'), 'i');
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(docXml, afdOptionMarkersRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] ${paraCount} marqueur(s) OPTION A/B Convention AFD → rouge (${runCount} surlignage(s))`);
-  }
+  // 3b-septies, 3b-septies-bis → migrés dans HIGHLIGHTING_RULES
+  // (ids: 'static-guides-always-red', 'afd-convention-option-markers').
 
   // 3b-bis. Fill AAO letter placeholders (Modèle d'Avis d'Appel d'Offres)
   {
@@ -5115,14 +5033,7 @@ export async function exportDocx({
     if (count > 0) console.log(`[exportDocx] ${count} placeholder(s) AAO remplis`);
   }
 
-  // 3c-ter. Red-highlight IS 7.4 reunion block when no meeting is scheduled
-  if (formData.reunion_prevue === "n'est pas prévue") {
-    const { xml: out, paraCount, runCount } = highlightReunionBlock(docXml);
-    docXml = out;
-    if (paraCount > 0) {
-      console.log(`[exportDocx] IS 7.4 bloc réunion surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-  }
+  // 3c-ter → migré dans HIGHLIGHTING_RULES (id: 'is-7-4-reunion-block').
 
   // 3c-bis. Red-highlight prequalification references when IS 4.5 = "n'est pas"
   if (formData.prequalification === "n'est pas") {
@@ -5139,44 +5050,9 @@ export async function exportDocx({
     }
   }
 
-  // 3d. Red-highlight deletion markers ("[Rayer la mention inutile]" etc.)
-  {
-    const { xml: out, count } = highlightInlineMarkers(docXml, DELETION_MARKER_PATTERNS, /[Ss]upprimer|[Rr]ayer/);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] ${count} marqueur(s) de suppression surligné(s) rouge`);
-  }
-
-  // 3d-bis. Section III §3.2 — toujours convertir jaune→rouge la note draft
-  // "[Le montant devrait se situer entre 1.5 et 2 fois l'estimation du montant
-  // annuel facturé pour les Travaux objet du Marché]" qui jouxte le titre
-  // "Chiffre d'affaires annuel minimum". Rendu inconditionnel : c'est une
-  // note éditoriale au MOA, jamais conservée dans le DAO final.
-  {
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(
-      docXml,
-      /Le montant devrait se situer entre 1\.5 et 2 fois l['']estimation du montant annuel facturé/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] §3.2 note "Le montant devrait se situer…" jaune→rouge (${paraCount} para, ${runCount} run)`);
-  }
-
-  // 3d-ter. Section III §4.2(b)(ii) — Sous-traitant spécialisé.
-  //   • Oui → la description (S03-009d / sst_specialise_description) remplace
-  //     le placeholder jaune via son templateBinding (avec valueOverrideIf
-  //     qui n'exporte la valeur que si le toggle est sur "Oui").
-  //   • Non → la ligne (ii) est inapplicable : surligner rouge tout son
-  //     contenu, du placeholder draft "[ajouter le critère suivant…]" jusqu'à
-  //     la cellule "Formulaire EXP-4.2(b)" inclusive (anchor de fin = heading
-  //     suivant "Qualification Environnementale…(ESSS)" exclusif).
-  if (formData.sst_specialise_autorise === 'Non') {
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(
-      docXml,
-      /^\[ajouter le critère suivant si un sous-traitant spécialisé est autorisé/i,
-      /^Qualification Environnementale,\s*Sociale,\s*Santé et Sécurité\s*\(ESSS\)\s*$/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] §4.2(b)(ii) Sous-traitant spécialisé (Non): ligne complète surlignée rouge (${paraCount} para, ${runCount} run)`);
-  }
+  // 3d, 3d-bis, 3d-ter → migrés dans HIGHLIGHTING_RULES
+  // (ids: 'deletion-markers-always', 'chiffre-affaires-note-yellow-to-red',
+  // 'sst-specialise-non').
 
   // 3d-bis. CCAP Partie A — règle "yellow draft → red si champ rempli".
   // Pour chaque entrée du registre, si la prédicat de remplissage est vrai,
