@@ -15,17 +15,6 @@ import { isFilled } from '../utils/fieldStatus.js';
 import { isEnjeuEsssLabel } from '../packages/v2024/fr/enjeux.js';
 import { SECTIONS } from '../packages/v2024/fr/sections.js';
 
-// Index sections.fields by id for the dual-lookup pass below: when a field
-// declares its own `templateBinding` in sections.js, it overrides the entry
-// from FIELD_MAP at the SAME canonical position. This lets phase 1.6 migrate
-// FIELD_MAP entries to sections.js incrementally without disturbing the nth
-// sequence (replacedCountByPh relies on the FIELD_MAP iteration order).
-const FIELDS_BY_ID = (() => {
-  const m = new Map();
-  for (const sec of SECTIONS) for (const f of (sec.fields || [])) m.set(f.id, f);
-  return m;
-})();
-
 // ── CCAP Partie A — Notes jaunes "draft" à rougir si le champ est rempli ────
 // Règle : chaque note bracketée jaune devient rouge si le champ relié a une
 // valeur (= la décision est prise, la note guide n'est plus utile). Sinon le
@@ -611,7 +600,7 @@ function replaceUnderscoreBeforeLabels(xml, search, value) {
 // line must remain visible (it's the label telling the reader what the line is).
 // Nom du Marché value = "Travaux de " + PREA-003 (identification_travaux),
 // unless PREA-003 already starts with "Travaux de ".
-// Called BEFORE the FIELD_MAP generic pass so the generic `[Nom du Maître
+// Called BEFORE the templateBinding generic pass so the generic `[Nom du Maître
 // d'Ouvrage]` replacement no longer touches the caption paragraph 3932.
 function fillCcagPageGarde(xml, nomMaitre, identTravaux) {
   const nomMarche = identTravaux
@@ -741,119 +730,23 @@ function replaceField(xml, search, nth, value, commentIds, global) {
   return r;
 }
 
-// ── Field map ─────────────────────────────────────────────────────────────
-
-// `ph` may be a string or an array of strings (multiple placeholder variants
-// that all map to the same field). Each variant is replaced independently.
-const FIELD_MAP = [
-  // ── Identification (migrated to sections.js templateBinding) ─────────
-  { id: 'nom_projet' },
-  { id: 'identification_travaux' },
-  { id: 'nom_maitrise_ouvrage' },
-  { id: 'pays' },
-  { id: 'ref_aoi' },
-  { id: 'date_emission' },
-  { id: 'nombre_lots' },
-
-  // ── Préqualification ─────────────────────────────────────────────────
-  { id: 'prequalification' },
-  { id: 'max_groupement' },
-
-  // ── Coordonnées (label captions, pas de placeholder) ─────────────────
-  { id: 'contact_attention' },
-  { id: 'contact_adresse' },
-  { id: 'contact_tel' },
-  { id: 'contact_email' },
-  { id: 'contact_web' },
-
-  // ── Réunion ──────────────────────────────────────────────────────────
-  { id: 'reunion_prevue' },
-  { id: 'reunion_lieu' },
-  { id: 'reunion_date' },
-  { id: 'reunion_heure' },
-  { id: 'visite_site' },
-
-  // ── Offre ────────────────────────────────────────────────────────────
-  { id: 'type_prix' },
-  { id: 'documents_additionnels' },
-  { id: 'offres_variantes' },
-  { id: 'variantes_techniques' },
-  { id: 'variantes_delais' },
-  { id: 'ajustement_variante_montant' },
-  { id: 'prix_revisables' },
-  { id: 'monnaie_nationale' },
-  { id: 'validite_offre' },
-  { id: 'actualisation_prix' },
-
-  // ── Garanties ────────────────────────────────────────────────────────
-  { id: 'garantie_soumission' },
-  { id: 'declaration_garantie' },
-  { id: 'montant_garantie' },
-  { id: 'autres_garanties' },
-  { id: 'exclusion_annees' },
-
-  // ── Remise ───────────────────────────────────────────────────────────
-  { id: 'copies_offre' },
-  { id: 'habilitation' },
-  { id: 'remise_attention' },
-  { id: 'remise_adresse' },
-  { id: 'date_limite' },
-  { id: 'heure_limite' },
-  { id: 'ouverture_adresse' },
-  { id: 'ouverture_date' },
-  { id: 'ouverture_heure' },
-
-  // ── Évaluation ───────────────────────────────────────────────────────
-  { id: 'monnaie_evaluation' },
-  { id: 'source_taux_change' },
-  { id: 'option_conversion' },
-  { id: 'marge_preference' },
-  { id: 'sous_traitants_designes' },
-
-  // ── Qualification financière ──────────────────────────────────────────
-  { id: 'capacite_financiere' },
-  { id: 'ca_minimum' },
-  { id: 'ca_periode' },
-  { id: 'ca_membre_pct_lettres' },
-  { id: 'ca_membre_pct_chiffre' },
-  { id: 'ca_unique_pct_lettres' },
-  { id: 'ca_unique_pct_chiffre' },
-
-  // ── Qualification expérience ──────────────────────────────────────────
-  { id: 'exp_generale_annees' },
-  { id: 'exp_generale_annee_depart' },
-  { id: 'exp_specifique_n' },
-  { id: 'exp_specifique_v' },
-  { id: 'exp_specifique_annee' },
-  { id: 'exp_activites_cles' },
-  { id: 'exp_activites_un_membre' },
-  { id: 'sst_specialise_description' },
-
-  // ── ESSS ─────────────────────────────────────────────────────────────
-  { id: 'exp_esss_nombre' },
-  { id: 'exp_esss_annees' },
-
-  // ── CCAP ─────────────────────────────────────────────────────────────
-  { id: 'delai_achevement_ouvrages' },
-  { id: 'periode_garantie' },
-  { id: 'delai_acces' },
-  { id: 'garantie_bonne_exec' },
-  { id: 'heures_travail' },
-  { id: 'date_commencement' },
-  { id: 'penalites_max' },
-  // CCAP-028 (avance_demarrage, SC 14.2) and CCAP-030 (plafond_retenue,
-  // SC 14.3) are handled by dedicated helpers (fillCcap14_2_AvanceDemarrage,
-  // fillCcap14_3_PlafondRetenue) — they don't appear in FIELD_MAP.
-  { id: 'retenue_garantie' },
-  { id: 'delai_paiement' },
-  { id: 'taux_interet_etrangere' },
-  { id: 'multiplicateur_responsabilite' },
-  { id: 'montant_min_decompte' },
-  { id: 'crd_liste' },
-  { id: 'nomination_crd' },
-  { id: 'institution_arbitrage' },
-  { id: 'lieu_arbitrage' },
-];
+// ── Field bindings ─────────────────────────────────────────────────────────
+//
+// Phase 1.6 finished: every exportable field now carries its own
+// `templateBinding` directly on its sections.js entry. The export loop
+// iterates the flattened sections list (sections.flatMap(s => s.fields))
+// and operates on each field that has a templateBinding — order is the
+// file order in sections.js, which the phase 1.6 batches were composed to
+// preserve nth-share groups (cf. plans/reprends-le-refactor-du-tidy-quilt.md).
+//
+// CCAP §14.1, §14.1(b)/(e), §14.2, §14.3, §14.5, §18.1, §18.3, §20.2,
+// §1.1.6.11 (ESSS checkboxes), §1.1.6.15 (Conditions Climatiques), §13.5(b)(ii)
+// (Pourcentage Provisions) and the Tranches table are handled by dedicated
+// helpers that run BEFORE this loop. They never appear here. Phase 1.8 will
+// parametrize those helpers via the pack.
+const ORDERED_BINDING_FIELDS = SECTIONS
+  .flatMap(sec => (sec.fields || []))
+  .filter(f => f.templateBinding);
 
 // ── Inline caption fill (for fields without bracketed placeholders) ──────
 // Finds a paragraph whose content starts with "<caption>" (optionally followed
@@ -4120,7 +4013,7 @@ export async function exportDocx({
   // 2b. CCAG page de garde (Section VIII) — fill the two centered italic
   // placeholders in bold / centered / size 14 / green-highlight, with
   // `[Nom du Marché]` populated as "Travaux de " + PREA-003. Runs BEFORE
-  // the generic FIELD_MAP pass so the literal placeholders still exist.
+  // the generic templateBinding pass so the literal placeholders still exist.
   {
     const { xml: out, filled } = fillCcagPageGarde(
       docXml,
@@ -4406,15 +4299,10 @@ export async function exportDocx({
   // `[sont / ne sont pas]` with nth=1,2,3. After replacing nth=1 the
   // occurrence is gone, so the 2nd field's effective nth becomes 2-1=1.
   const replacedCountByPh = new Map();
-  for (const fieldFromMap of FIELD_MAP) {
-    // Phase 1.6 dual-lookup: a field migrated to sections.js carries its own
-    // `templateBinding` (id, ph, nth, etc.). When present it overrides the
-    // FIELD_MAP entry at the same canonical position. Iterate FIELD_MAP so
-    // the order — and therefore replacedCountByPh — stays stable while the
-    // migration is in progress.
-    const sectionField = FIELDS_BY_ID.get(fieldFromMap.id);
-    const binding = sectionField?.templateBinding ?? fieldFromMap;
-    const { id = fieldFromMap.id, ph, nth = 1, isDate = false, isTime = false, global = false, captions, captionInline, stripUnderscores, valueSuffix, valueSuffixSkipIf, valueOverrideIf } = binding;
+  for (const field of ORDERED_BINDING_FIELDS) {
+    const binding = field.templateBinding;
+    const { ph, nth = 1, isDate = false, isTime = false, global = false, captions, captionInline, stripUnderscores, valueSuffix, valueSuffixSkipIf, valueOverrideIf } = binding;
+    const id = field.id;
     // `valueOverrideIf(formData)` returns a string to use INSTEAD of the
     // raw form value (or null to fall back to formData[id]). Used by
     // crd_liste, which must export "aucun" when crd_composition = "Trois
@@ -5139,8 +5027,8 @@ export async function exportDocx({
 
   // 3d-ter. Section III §4.2(b)(ii) — Sous-traitant spécialisé.
   //   • Oui → la description (S03-009d / sst_specialise_description) remplace
-  //     le placeholder jaune via FIELD_MAP (avec valueOverrideIf qui n'exporte
-  //     la valeur que si le toggle est sur "Oui").
+  //     le placeholder jaune via son templateBinding (avec valueOverrideIf
+  //     qui n'exporte la valeur que si le toggle est sur "Oui").
   //   • Non → la ligne (ii) est inapplicable : surligner rouge tout son
   //     contenu, du placeholder draft "[ajouter le critère suivant…]" jusqu'à
   //     la cellule "Formulaire EXP-4.2(b)" inclusive (anchor de fin = heading
