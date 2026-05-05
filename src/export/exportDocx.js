@@ -1305,58 +1305,9 @@ function stripSpecsGuideBlock(xml) {
   };
 }
 
-// ── IS 7.4 reunion block when "n'est pas prévue" ─────────────────────────
-// IS 7.4 sits inside Section I. Per règle d'or, Section I must not receive
-// any red-highlight intervention, so this function is now a no-op whenever
-// the "Une réunion préparatoire" anchor falls inside Section I bounds. If
-// the user later wants the Lieu/Date/Heure lines removed in the
-// "n'est pas prévue" case, they should be physically stripped rather than
-// surligned.
-function highlightReunionBlock(xml) {
-  const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
-  const sectI = findSectionIBounds(xml);
-  const positions = buildPartPositions(parts);
-  let startIdx = -1;
-  for (let i = 1; i < parts.length; i += 2) {
-    if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
-    const combined = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (/Une réunion préparatoire/.test(combined)) { startIdx = i; break; }
-  }
-  if (startIdx === -1) return { xml, paraCount: 0, runCount: 0 };
-
-  let paraCount = 0;
-  let runCount = 0;
-  for (let j = startIdx + 2; j < parts.length; j += 2) {
-    const para = parts[j];
-    const runs = extractRunNodes(para);
-    if (runs.length === 0) continue;
-    const combined = normApos(runs.map(r => r.text).join(''));
-    if (/Une visite du Site/.test(combined)) break;
-    // Safety: don't walk past the reunion block indefinitely.
-    if (paraCount >= 8) break;
-
-    let out = '';
-    let lastEnd = 0;
-    let changed = false;
-    for (const r of runs) {
-      out += para.slice(lastEnd, r.start);
-      lastEnd = r.end;
-      if (r.text) {
-        out += makeRedRun(r.rPr, r.text);
-        runCount++;
-        changed = true;
-      } else {
-        out += r.xml;
-      }
-    }
-    out += para.slice(lastEnd);
-    if (changed) {
-      parts[j] = out;
-      paraCount++;
-    }
-  }
-  return { xml: parts.join(''), paraCount, runCount };
-}
+// (highlightReunionBlock supprimé en 1.7.5 — remplacé par l'op déclaratif
+// `highlight-range` de la rule 'is-7-4-reunion-block' qui appelle
+// directement highlightParagraphRange avec REUNION_START_RE/END_RE.)
 
 // ── IS 11.1(b) — red-highlight unselected price-format alternatives ──────
 // The Section II DPAO cell for IS 11.1(b) lists three price schedule
@@ -1647,16 +1598,13 @@ function highlightUnselectedConversionOption(xml, optionConversion) {
   return { xml: parts.join(''), count };
 }
 
-// ── Static template guides that are always red-highlighted ──────────────
-// Paragraphs the MOA should delete once the DPAO cell is finalized. We paint
-// them red (not strip) so the MOA can read the instruction, confirm the
-// underlying info is captured elsewhere, and then delete them manually.
-//
-// Matching uses normalized whitespace so Word's stray spaces (e.g. "mi
-// période" with a space instead of the expected hyphen) still match.
-function highlightStaticGuides(xml) {
-  return highlightParagraphsByAnchors(xml, STATIC_GUIDE_ANCHORS);
-}
+// (Wrappers orphelins supprimés en 1.7.5 — leurs rules respectives utilisent
+// désormais l'op `highlight-matching` du dispatcher qui appelle
+// highlightParagraphsByAnchors directement avec l'anchor array nommé :
+//   - highlightStaticGuides (STATIC_GUIDE_ANCHORS) → rule #25 'static-guides-always-red'
+//   - highlightVariantesDelaisBlock (IS_13_5_VARIANTES_DELAIS_ANCHORS) → rule #6
+//   - highlightSousTraitantsBlock (IS_34_1_SOUS_TRAITANTS_ANCHORS) → rule #7
+//   - highlightNoPrequalGuide (NO_PREQUAL_GUIDE_ANCHORS) → rule #23)
 
 // ── Generic helper — red-highlight every paragraph whose text matches any
 //    of the supplied anchor regexes (scoped to Section II+). Used for blocks
@@ -1685,23 +1633,6 @@ function highlightParagraphsByAnchors(xml, anchors) {
     if (changed) { parts[i] = out; paraCount++; }
   }
   return { xml: parts.join(''), paraCount, runCount };
-}
-
-// ── IS 13.5 variantes délais — red-highlight ajustement block ──────────
-// When time-schedule variants are NOT authorized (variantes_delais === "ne
-// sont pas"), the two following paragraphs become inapplicable:
-//   "Si les variantes sont autorisées, le montant d'ajustement … : [insérer montant et monnaie] par [insérer jour ou semaine]"
-//   "[Le Marché devra mentionner une pénalité de retard (voir Sous-Clause 8.7 du CCAP) …]"
-function highlightVariantesDelaisBlock(xml) {
-  return highlightParagraphsByAnchors(xml, IS_13_5_VARIANTES_DELAIS_ANCHORS);
-}
-
-// ── IS 34.1 sous-traitants désignés — red-highlight listing guide ──────
-// When sous_traitants_designes === "ne prévoit pas", the follow-up guide
-// "[si la mention retenue ci-dessus est "prévoit", alors lister …]" is
-// inapplicable. Red it so the MOA can delete it.
-function highlightSousTraitantsBlock(xml) {
-  return highlightParagraphsByAnchors(xml, IS_34_1_SOUS_TRAITANTS_ANCHORS);
 }
 
 // ── IS 33.1 marge de préférence — red-highlight the entire block ──────
@@ -1756,16 +1687,6 @@ function highlightMargePreferenceBlock(xml, margePreference) {
     if (changed) { parts[i] = out; paraCount++; }
   }
   return { xml: parts.join(''), paraCount, runCount };
-}
-
-// ── IS 4.5 pré-qualification — red-highlight the "supprimer" guide ────
-// When prequalification === "n'est pas", the yellow guide
-// "[sinon supprimer toute cette section]" that sits between the
-// "3.3 Qualification si une Pré-qualification n'a pas été effectuée" heading
-// and the detailed criteria is no longer actionable (the section applies),
-// so we paint it red for the MO to clean up.
-function highlightNoPrequalGuide(xml) {
-  return highlightParagraphsByAnchors(xml, NO_PREQUAL_GUIDE_ANCHORS);
 }
 
 // ── Generic helper: paint every paragraph in [startRe .. endRe) red ────
