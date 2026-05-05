@@ -4556,51 +4556,15 @@ export async function exportDocx({
   // 3b-sexies-bis-V, 3b-sexies-bis-VI → migrés dans HIGHLIGHTING_RULES
   // (ids: 'garantie-soumission-non', 'declaration-garantie-non').
 
-  // 3b-sexies-bis-VI-bis. ESSS — when S-ESSS-01 esss_applicable = "Non", the
-  // entire ESSS block is inapplicable. Two regions must be red-highlighted:
-  //   (1) The "Contenu" reference line listing the ESSS specs chapter.
-  //       Note: template has a typo — singular "Environnementale" on this line.
-  //   (2) The full ESSS chapter introduction down to and including the closing
-  //       sentence "…énumérées ci-avant." (last paragraph of the hazardous-
-  //       substances enumeration). The next paragraph (starting "[A insérer
-  //       en cas de Travaux en zone classée orange…") is the start of the
-  //       following block and must NOT be highlighted.
-  if (formData.esss_applicable === "Non") {
-    // (1) Contenu reference line — single paragraph; tolerate both the typo
-    // singular form "Environnementale" and the correct plural.
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Spécifications Environnementales?,\s+Sociales?,\s+Santé et Sécurité \(ESSS\) de gestion des travaux\s*$/i,
-        /^Spécifications s[ûu]ret[ée]\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] ESSS: ligne Contenu surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // (2) Full ESSS chapter — from the guide intro "[Dans le cas de travaux…"
-    // (which sits right above "Table des matières" of the ESSS sub-TOC) down
-    // to and including the paragraph ending "…énumérées ci-avant." The range
-    // is inclusive of that last paragraph, so we anchor the end on the NEXT
-    // paragraph "[A insérer en cas de Travaux en zone classée orange…".
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^\[Dans le cas de travaux pour lesquels la gestion du Chantier/i,
-        /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] ESSS: chapitre complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-  }
-
-  // 3b-sexies-bis-VI-ter. ESSS — when S-ESSS-01 esss_applicable = "Oui", the
-  // ESSS chapter remains applicable but the template's yellow drafting notes
-  // (guide paragraphs, "[faire un choix]" row markers, table placeholder
-  // phrases, "[Un exemple est donné ci-dessous…]") must be flagged for the
-  // MOA to resolve/remove. In addition, the example block "Exemple de
-  // situation de travaux et suppression de certaines clauses…" (rendered in
-  // a blue rectangle in the reference doc) is purely illustrative and must
-  // be red-highlighted in its entirety so the MOA deletes it.
+  // 3b-sexies-bis-VI-bis, VI-ter, VI-quinquies, VI-septies → migrés dans
+  // HIGHLIGHTING_RULES (ids: 'esss-non-contenu-line', 'esss-non-chapter-block',
+  // 'esss-oui-chapter-yellow-to-red', 'esss-oui-exemple-situation',
+  // 'esss-prix-form-conditional', 'esss-non-methodologie-form',
+  // 'esss-non-engagement-intro', 'esss-non-formulaire-engagement').
+  // Les fills ESSS (Enjeux + Articles tables) NE sont PAS du highlighting —
+  // ils restent ici, exécutés inline après le dispatcher. Vérifié : ces fills
+  // n'écrivent jamais de jaune, donc l'inversion d'ordre yellow-to-red →
+  // fills introduite par la migration ne change pas le résultat final.
   if (formData.esss_applicable === "Oui") {
     // (0a) Fill the 15-row Enjeux table from S-ESSS-02 (formData.enjeux_esss):
     //      per row, keep the chosen OUI/NON and red-highlight the other.
@@ -4616,49 +4580,6 @@ export async function exportDocx({
       docXml = out;
       if (rowCount > 0) console.log(`[exportDocx] ESSS (Oui): tableau Articles non applicables rempli (${rowCount} ligne(s))`);
     }
-    // (1) Convert yellow → red inside the ESSS chapter range (paras 2868..3728).
-    {
-      const { xml: out, paraCount, runCount } = convertYellowToRedInParaRange(
-        docXml,
-        /^\[Dans le cas de travaux pour lesquels la gestion du Chantier/i,
-        /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] ESSS (Oui): ${paraCount} paragraphe(s) jaunes convertis en rouge (${runCount} run(s))`);
-    }
-    // (2) Red-highlight the full "Exemple de situation" example block
-    //     (para 2919 → para 2945 "Dans les présentes Spécifications ESSS" exclusive).
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Exemple de situation de travaux et suppression de certaines clauses/i,
-        /^Dans les présentes Spécifications ESSS/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] ESSS (Oui): bloc "Exemple de situation" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-  }
-
-  // 3b-sexies-bis-VI-quinquies. Section IV — "Prix Environnemental, Social,
-  // Santé et Sécurité (ESSS)" form (page 61-62) selon S-ESSS-01 :
-  //   • Oui → rougir les 2 notes draft jaunes du haut (le bordereau reste
-  //     applicable mais ces paragraphes guides doivent être nettoyés).
-  //   • Non → rougir TOUT le bloc Prix ESSS (titre + drafts + tableau + textes
-  //     de clôture) pour suppression complète.
-  if (formData.esss_applicable === 'Oui') {
-    const matchRe = /^\[(?:Ce bordereau de prix unitaires est à insérer|Si des Spécifications ESSS ne sont pas incluses dans les Documents d'Appel d'Offres, ce prix ESSS doit être supprimé)/i;
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(docXml, matchRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Prix ESSS (Oui): ${paraCount} note(s) draft jaune→rouge (${runCount} run(s))`);
-  } else if (formData.esss_applicable === 'Non') {
-    // Le titre puis end anchor sur le titre suivant ("Bordereau de Prix
-    // Unitaires Sûreté") qui sera exclusif — tout le bloc ESSS prix devient
-    // rouge (titre, 2 drafts jaunes, table complète, textes de clôture).
-    const startRe = /^Prix Environnemental,?\s*Social,?\s*Santé et Sécurité\s*\(ESSS\)\s*$/i;
-    const endRe = /^Bordereau de Prix Unitaires S[ûu]ret[ée]\s*$/i;
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(docXml, startRe, endRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Prix ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
   }
 
   // 3b-sexies-bis-VI-sexies. Section IV — "Bordereau de Prix Unitaires Sûreté"
@@ -4679,54 +4600,9 @@ export async function exportDocx({
     if (paraCount > 0) console.log(`[exportDocx] Section IV Bordereau Sûreté (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
   }
 
-  // 3b-sexies-bis-VI-septies. Section IV — formulaires "Méthodologie ESSS" et
-  // "Engagement ESSS du sous-traitant" (pages 66 à 68) selon S-ESSS-01.
-  // Quand `esss_applicable === "Non"`, trois zones doivent être surlignées rouge :
-  //   (1) Tout le formulaire "Méthodologie environnementale, sociale, santé et
-  //       sécurité (ESSS)" (page 66) — du titre jusqu'à la "Liste des Sous-
-  //       traitants" (exclusive).
-  //   (2) Le paragraphe d'introduction au formulaire d'engagement ("Les
-  //       Soumissionnaires devront fournir, pour chaque sous-traitant
-  //       proposé…") situé sous le tableau Liste des Sous-traitants (page 67).
-  //   (3) Tout le formulaire "Formulaire d'engagement ESSS du sous-traitant"
-  //       (pages 67-68) — du titre jusqu'au formulaire suivant "Organisation
-  //       des travaux sur site et Méthode de réalisation" (exclusive).
-  // Note : le template peut rendre "Sous-traitants"/"sous-traitant" sans trait
-  // d'union dans certains paragraphes (artéfact d'édition Word, similaire à
-  // "mi-période" → "mipériode"). Les regex tolèrent les deux formes via
-  // `Sous-?traitants` / `sous-?traitant`. De même, le titre Méthodologie peut
-  // ne pas avoir d'espace avant "(ESSS)" — `\s*` couvre les deux cas.
-  if (formData.esss_applicable === 'Non') {
-    // (1) Méthodologie ESSS — formulaire complet (page 66).
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Méthodologie environnementale,\s*sociale,\s*santé et sécurité\s*\(ESSS\)\s*$/i,
-        /^Liste des Sous-?traitants\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Section IV Méthodologie ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // (2) Paragraphe d'intro du formulaire d'engagement (page 67).
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphsMatching(
-        docXml,
-        /^Les Soumissionnaires devront fournir, pour chaque sous-?traitant proposé, l'engagement que ce dernier a lu, compris et se conformera aux exigences ESSS/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Section IV Engagement ESSS (Non): paragraphe d'intro surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // (3) Formulaire d'engagement ESSS du sous-traitant — bloc complet (pages 67-68).
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Formulaire d'engagement ESSS du sous-?traitant\s*$/i,
-        /^Organisation des travaux sur site et Méthode de réalisation\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Section IV Formulaire engagement ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-  }
+  // 3b-sexies-bis-VI-septies → migré dans HIGHLIGHTING_RULES (ids:
+  // 'esss-non-methodologie-form', 'esss-non-engagement-intro',
+  // 'esss-non-formulaire-engagement'). Voir 1.7.2.
 
   // 3b-sexies-bis-VI-quater-pre. Spécifications Sûreté — when S07-001
   // (surete_applicable) is "Oui – inclure sûreté":

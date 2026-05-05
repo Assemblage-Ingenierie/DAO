@@ -241,6 +241,147 @@ export const HIGHLIGHTING_RULES = [
       paraCount > 0 ? `[exportDocx] Modèle de Déclaration de Garantie surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
   },
 
+  // ────────────────────────────────────────────────────────────────────────
+  // ESSS rules (phase 1.7.2). Mappent les blocs inline anciennement à
+  // exportDocx.js sections 3b-sexies-bis-VI-bis (call site L4568, Non),
+  // VI-ter (L4604, Oui — minus the fillEnjeuxTable / fillArticlesTable
+  // calls which stay inline car ce ne sont PAS du highlighting), VI-quinquies
+  // (L4648, Prix ESSS, branched Oui/Non), VI-septies (L4699, formulaires
+  // Méthodologie + Engagement, Non). Rule 16 (Bordereau Sûreté) reste à
+  // 1.7.3. Order matters — insert in source-call-site order.
+  // ────────────────────────────────────────────────────────────────────────
+
+  // ── Rule #13a — ESSS Non : ligne "Contenu" du sommaire Section VII ──────
+  {
+    id: 'esss-non-contenu-line',
+    description: "Sommaire Section VII — ligne 'Contenu ESSS' rouge si esss_applicable === 'Non'",
+    trigger: { field: 'esss_applicable', equals: 'Non' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'ESSS_CONTENU_LINE_START_RE',
+      endAnchor: 'SPECIFICATIONS_SURETE_TOC_LINE_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] ESSS: ligne Contenu surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #13b — ESSS Non : chapitre complet ─────────────────────────────
+  {
+    id: 'esss-non-chapter-block',
+    description: "Section VII — chapitre ESSS complet rouge si esss_applicable === 'Non'",
+    trigger: { field: 'esss_applicable', equals: 'Non' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'ESSS_CHAPTER_START_RE',
+      endAnchor: 'ESSS_CHAPTER_END_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] ESSS: chapitre complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #14a — ESSS Oui : conversion jaune→rouge dans le chapitre ──────
+  // Les fills Enjeux / Articles restent inline (pas du highlighting) ; ils
+  // tournent APRÈS le dispatcher. Vérifié : ils n'écrivent rien en jaune,
+  // donc l'ordre yellow→red puis fills ne change pas le résultat final.
+  {
+    id: 'esss-oui-chapter-yellow-to-red',
+    description: "Chapitre ESSS — paragraphes jaunes → rouge si esss_applicable === 'Oui'",
+    trigger: { field: 'esss_applicable', equals: 'Oui' },
+    ops: [{
+      type: 'yellow-to-red-range',
+      startAnchor: 'ESSS_CHAPTER_START_RE',
+      endAnchor: 'ESSS_CHAPTER_END_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] ESSS (Oui): ${paraCount} paragraphe(s) jaunes convertis en rouge (${runCount} run(s))` : null,
+  },
+
+  // ── Rule #14b — ESSS Oui : bloc "Exemple de situation" (illustratif) ────
+  {
+    id: 'esss-oui-exemple-situation',
+    description: "Chapitre ESSS — bloc 'Exemple de situation' rouge si esss_applicable === 'Oui'",
+    trigger: { field: 'esss_applicable', equals: 'Oui' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'ESSS_EXEMPLE_SITUATION_START_RE',
+      endAnchor: 'ESSS_EXEMPLE_SITUATION_END_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] ESSS (Oui): bloc "Exemple de situation" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #15 — Section IV Prix ESSS (branché Oui/Non) ───────────────────
+  // Apply custom car 2 branches mutuellement exclusives :
+  //   'Oui' → yellow-to-red sur 2 notes draft (matching).
+  //   'Non' → highlight-range tout le bloc (titre → titre Bordereau Sûreté).
+  {
+    id: 'esss-prix-form-conditional',
+    description: 'Section IV Prix ESSS — Oui : 2 notes draft jaune→rouge ; Non : bloc complet rouge',
+    trigger: { fieldExists: 'esss_applicable' },
+    apply: (docXml, formData, ctx) => {
+      if (formData.esss_applicable === 'Oui') {
+        const r = ctx.helpers.convertYellowToRedInMatchingParagraphs(docXml, ctx.anchors.ESSS_PRIX_DRAFT_NOTES_RE);
+        return {
+          docXml: r.xml,
+          message: r.paraCount > 0
+            ? `[exportDocx] Section IV Prix ESSS (Oui): ${r.paraCount} note(s) draft jaune→rouge (${r.runCount} run(s))`
+            : null,
+        };
+      }
+      if (formData.esss_applicable === 'Non') {
+        const r = ctx.helpers.highlightParagraphRange(docXml, ctx.anchors.ESSS_PRIX_TITLE_RE, ctx.anchors.BORDEREAU_SURETE_TITLE_RE);
+        return {
+          docXml: r.xml,
+          message: r.paraCount > 0
+            ? `[exportDocx] Section IV Prix ESSS (Non): bloc complet surligné rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
+            : null,
+        };
+      }
+      return {};
+    },
+  },
+
+  // ── Rule #17a — ESSS Non : formulaire Méthodologie ESSS (page 66) ───────
+  {
+    id: 'esss-non-methodologie-form',
+    description: "Section IV — formulaire Méthodologie ESSS rouge si esss_applicable === 'Non'",
+    trigger: { field: 'esss_applicable', equals: 'Non' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'ESSS_METHODOLOGIE_TITLE_RE',
+      endAnchor: 'LISTE_SOUS_TRAITANTS_TITLE_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Section IV Méthodologie ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #17b — ESSS Non : paragraphe d'intro Engagement ESSS (page 67) ─
+  {
+    id: 'esss-non-engagement-intro',
+    description: "Section IV — paragraphe d'intro Engagement ESSS rouge si esss_applicable === 'Non'",
+    trigger: { field: 'esss_applicable', equals: 'Non' },
+    ops: [{
+      type: 'highlight-matching',
+      matchAnchor: 'ESSS_ENGAGEMENT_INTRO_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Section IV Engagement ESSS (Non): paragraphe d'intro surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #17c — ESSS Non : Formulaire d'engagement ESSS (pages 67-68) ───
+  {
+    id: 'esss-non-formulaire-engagement',
+    description: "Section IV — Formulaire d'engagement ESSS rouge si esss_applicable === 'Non'",
+    trigger: { field: 'esss_applicable', equals: 'Non' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'ESSS_FORMULAIRE_ENGAGEMENT_TITLE_RE',
+      endAnchor: 'ORGANISATION_TRAVAUX_HEADER_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Section IV Formulaire engagement ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
   // ── Rule #20 — Sections V & VI — guides jaunes Convention AFD ───────────
   // Toujours convertir jaune→rouge dans le range Section V → Section VII
   // (helper heading-aware : ne matche que sur paragraphes Heading-styled).

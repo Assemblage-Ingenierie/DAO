@@ -231,3 +231,46 @@ export const ANNEXE_3_HEADER_RE = /^Annexe 3 [aà] la Soumission\b/i;
 export const VARIANTES_TECH_INTRO_RE = /^Proposition pour les [eé]l[eé]ments d\s*es ouvrages pour lesquels des variantes technique\s*s sont autoris[eé]es/i;
 export const VARIANTES_TECH_TITLE_RE = /^Variantes techniques\s*$/i;
 export const METHODOLOGIE_ESSS_HEADER_RE = /M[eé]thodologie\s+environnementale/i;
+
+// ── ESSS — chapitre complet (Section VII) ──────────────────────────────────
+// Démarre au guide draft "[Dans le cas de travaux pour lesquels la gestion
+// du Chantier…]" (qui sit juste au-dessus de la Table des matières du
+// chapitre ESSS) et se termine juste AVANT le paragraphe "[A insérer en
+// cas de Travaux en zone classée orange…]" qui démarre le bloc Sûreté
+// suivant. Range partagé par 2 rules :
+//   - 'esss-non-chapter-block'           : highlight-range si Non
+//   - 'esss-oui-chapter-yellow-to-red'   : yellow-to-red-range si Oui
+export const ESSS_CHAPTER_START_RE = /^\[Dans le cas de travaux pour lesquels la gestion du Chantier/i;
+export const ESSS_CHAPTER_END_RE = /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i;
+
+// ── ESSS — ligne "Contenu" du sommaire Section VII ─────────────────────────
+// Tolère le typo singulier "Environnementale" du template. End anchor =
+// la ligne suivante du sommaire ("Spécifications sûreté", basse-casse pour
+// éviter de matcher le heading "Spécifications Sûreté" du chapitre).
+export const ESSS_CONTENU_LINE_START_RE = /^Spécifications Environnementales?,\s+Sociales?,\s+Santé et Sécurité \(ESSS\) de gestion des travaux\s*$/i;
+export const SPECIFICATIONS_SURETE_TOC_LINE_RE = /^Spécifications s[ûu]ret[ée]\s*$/i;
+
+// ── ESSS — bloc "Exemple de situation" (illustratif, à supprimer si Oui) ───
+export const ESSS_EXEMPLE_SITUATION_START_RE = /^Exemple de situation de travaux et suppression de certaines clauses/i;
+export const ESSS_EXEMPLE_SITUATION_END_RE = /^Dans les présentes Spécifications ESSS/i;
+
+// ── Section IV — formulaire "Prix ESSS" ────────────────────────────────────
+// 'Oui'  → yellow-to-red sur 2 notes draft (matching).
+// 'Non'  → highlight-range tout le bloc Prix ESSS du titre au titre suivant
+//          (Bordereau de Prix Unitaires Sûreté, exclusif).
+// `BORDEREAU_SURETE_TITLE_RE` est aussi utilisé en 1.7.3 (rule Bordereau Sûreté).
+export const ESSS_PRIX_DRAFT_NOTES_RE = /^\[(?:Ce bordereau de prix unitaires est à insérer|Si des Spécifications ESSS ne sont pas incluses dans les Documents d'Appel d'Offres, ce prix ESSS doit être supprimé)/i;
+export const ESSS_PRIX_TITLE_RE = /^Prix Environnemental,?\s*Social,?\s*Santé et Sécurité\s*\(ESSS\)\s*$/i;
+export const BORDEREAU_SURETE_TITLE_RE = /^Bordereau de Prix Unitaires S[ûu]ret[ée]\s*$/i;
+
+// ── Section IV — formulaires "Méthodologie ESSS" et "Engagement ESSS" ──────
+// Si esss_applicable=Non : 3 zones rougies (Méthodologie page 66, intro
+// engagement page 67, Formulaire d'engagement pages 67-68). Tolérance Word :
+//   - "Sous-traitants" peut perdre son trait d'union (`Sous-?traitants`)
+//   - le titre Méthodologie peut ne pas avoir d'espace avant "(ESSS)"
+//     (`\s*` couvre les deux cas)
+export const ESSS_METHODOLOGIE_TITLE_RE = /^Méthodologie environnementale,\s*sociale,\s*santé et sécurité\s*\(ESSS\)\s*$/i;
+export const LISTE_SOUS_TRAITANTS_TITLE_RE = /^Liste des Sous-?traitants\s*$/i;
+export const ESSS_ENGAGEMENT_INTRO_RE = /^Les Soumissionnaires devront fournir, pour chaque sous-?traitant proposé, l'engagement que ce dernier a lu, compris et se conformera aux exigences ESSS/i;
+export const ESSS_FORMULAIRE_ENGAGEMENT_TITLE_RE = /^Formulaire d'engagement ESSS du sous-?traitant\s*$/i;
+export const ORGANISATION_TRAVAUX_HEADER_RE = /^Organisation des travaux sur site et Méthode de réalisation\s*$/i;
