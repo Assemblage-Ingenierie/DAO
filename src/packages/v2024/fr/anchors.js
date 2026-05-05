@@ -344,3 +344,20 @@ export const SECTION_IV_FORMULAIRES_HEADING_RE = /^Section IV\s+Formulaires de S
 // passés directement comme array littéral dans la rule via `footnoteIds:
 // ['26', '27', '28']`, pas via une ancre. Le dispatcher (op
 // 'yellow-to-red-footnotes') prend `op.footnoteIds` tel quel.
+
+// ── CCAP Partie A — notes jaunes "draft" à rougir si le champ est rempli ───
+// 7 paragraphes de guidage du CCAP (ex: "[Si des tranches sont utilisées…]",
+// "[cocher la / les case(s) correspondante(s)]") qui doivent être convertis
+// jaune→rouge dès que le champ associé est rempli (la décision est prise,
+// la note guide n'est plus utile). Sinon le jaune est conservé. Chaque rule
+// a son trigger `fieldFilled: <field>` distinct. Tolérances Word :
+//   - "Sous-Clause" peut perdre son trait d'union → `Sous-?Clause`
+//   - NBSP autour des numéros (8.1, 8.4) → `\s*`
+//   - "Œ"/"œ" peut être encodé séparément → `(?:Œ|œ)`
+export const CCAP_DRAFT_TRANCHES_REFS_RE = /Si des [Tt]ranches sont utilisées, se référer au [Tt]ableau/;
+export const CCAP_DRAFT_1_1_6_15_CLIMAT_RE = /Conditions Climatiques Exceptionnellement Défavorables visées à l'alinéa c\) de la Sous-?Clause\s*8\.4/;
+export const CCAP_DRAFT_2_1_DELAI_ACCES_RE = /Si plusieurs Tranches sont prévues, et si un seul délai d'accès/;
+export const CCAP_DRAFT_3_1_POUVOIRS_MOE_RE = /Le Maître d'Ouvrage peut décider de limiter davantage les pouvoirs du Maître d'(?:Œ|œ)uvre/;
+export const CCAP_DRAFT_4_1_DOCS_ENTREPRENEUR_RE = /Le Maître d'Ouvrage peut décider de demander la fourniture de documents/;
+export const CCAP_DRAFT_4_1_COCHER_CASES_RE = /cocher la \/ les case\(s\) correspondante\(s\)/;
+export const CCAP_DRAFT_8_1_COMMENCEMENT_RE = /Insérer la liste des conditions telles que spécifiées dans le Sous-?Clause\s*8\.1 des CCAG/;

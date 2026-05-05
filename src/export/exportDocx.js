@@ -29,35 +29,6 @@ import { isFilled } from '../utils/fieldStatus.js';
 import { isEnjeuEsssLabel } from '../packages/v2024/fr/enjeux.js';
 import { SECTIONS } from '../packages/v2024/fr/sections.js';
 
-// ── CCAP Partie A — Notes jaunes "draft" à rougir si le champ est rempli ────
-// Règle : chaque note bracketée jaune devient rouge si le champ relié a une
-// valeur (= la décision est prise, la note guide n'est plus utile). Sinon le
-// jaune est conservé. Les regex sont appliquées au texte concaténé du
-// paragraphe (après normalisation NFC + apostrophes droites).
-const CCAP_YELLOW_DRAFTS = [
-  // SC 1.1.3.3 / 1.1.5.6 / 8.7&14.15(b) — "[Si des tranches sont utilisées...]"
-  { paraTextRe: /Si des [Tt]ranches sont utilisées, se référer au [Tt]ableau/,
-    isFilled: (fd) => isFilled(fd?.tranches_marche_existe), name: 'SC tranches refs' },
-  // SC 1.1.6.15 — Conditions Climatiques (long guide). Template: "SousClause" + NBSP.
-  { paraTextRe: /Conditions Climatiques Exceptionnellement Défavorables visées à l'alinéa c\) de la Sous-?Clause\s*8\.4/,
-    isFilled: (fd) => isFilled(fd?.conditions_climatiques_defavorables), name: 'SC 1.1.6.15 climat guide' },
-  // SC 2.1 — délai d'accès tranches
-  { paraTextRe: /Si plusieurs Tranches sont prévues, et si un seul délai d'accès/,
-    isFilled: (fd) => isFilled(fd?.delai_acces), name: 'SC 2.1 délai accès' },
-  // SC 3.1 — pouvoirs MOE
-  { paraTextRe: /Le Maître d'Ouvrage peut décider de limiter davantage les pouvoirs du Maître d'(?:Œ|œ)uvre/,
-    isFilled: (fd) => isFilled(fd?.obligations_moe), name: 'SC 3.1 pouvoirs MOE' },
-  // SC 4.1 — fourniture documents entrepreneur (paragraphe principal)
-  { paraTextRe: /Le Maître d'Ouvrage peut décider de demander la fourniture de documents/,
-    isFilled: (fd) => isFilled(fd?.obligations_entrepreneur), name: 'SC 4.1 docs entrepreneur' },
-  // SC 4.1 — "[cocher la / les case(s) correspondante(s)]" (marqueur court)
-  { paraTextRe: /cocher la \/ les case\(s\) correspondante\(s\)/,
-    isFilled: (fd) => isFilled(fd?.obligations_entrepreneur), name: 'SC 4.1 cocher cases' },
-  // SC 8.1 — Date de Commencement (3 lignes possibles dans le bracket). Template: "SousClause" + NBSP.
-  { paraTextRe: /Insérer la liste des conditions telles que spécifiées dans le Sous-?Clause\s*8\.1 des CCAG/,
-    isFilled: (fd) => isFilled(fd?.date_commencement), name: 'SC 8.1 commencement' },
-];
-
 // ── Utilities ──────────────────────────────────────────────────────────────
 
 function escapeXml(s) {
@@ -4539,6 +4510,9 @@ export async function exportDocx({
       highlightUnselectedMonnaieOption,
       highlightUnselectedConversionOption,
       highlightVariantesTechniquesForm,
+      removeNoPrequalQualificationBlock,
+      highlightPrequalificationReferences,
+      highlightUtilitySection,
     };
     const r = applyHighlightingRules(docXml, footnotesXml, { formData, anchors, helpers });
     docXml = r.docXml;
@@ -4601,77 +4575,23 @@ export async function exportDocx({
   // 'surete-non-tableau-section-iii', 'surete-non-footnotes-26-27-28').
   // Voir 1.7.3.
 
-  // 3b-sexies-bis-VII-bis → migré dans HIGHLIGHTING_RULES
-  // (id: 'sections-v-vi-yellow-to-red').
-
-  // 3b-sexies-bis-VII. Section III "2. Documents financiers" — the two
-  // "[indiquer le nombre] années" phrases are yellow placeholder fragments
-  // the MOA would have to manually fill with a count. Replace them with a
-  // plain-text phrase that points the soumissionnaire to the Section III
-  // criteria table instead, dropping the yellow highlight.
-  {
-    const r1 = replaceInlinePhrase(docXml, 'les [indiquer le nombre] années', "le nombre d'années requis");
-    docXml = r1.xml;
-    if (r1.replaced) console.log('[exportDocx] Documents financiers: "les [indiquer le nombre] années" remplacé');
-    const r2 = replaceInlinePhrase(docXml, '[indiquer le nombre] années telles que requises', "le nombre d'années requis");
-    docXml = r2.xml;
-    if (r2.replaced) console.log('[exportDocx] Documents financiers: "[indiquer le nombre] années telles que requises" remplacé');
-  }
-
-  // 3b-sexies-ter, 3b-sexies-quater → migrés dans HIGHLIGHTING_RULES
-  // (ids: 'marge-preference-non-accordee', 'prequalification-no-prequal-guide').
-
-  // 3b-sexies-quinquies. IS 4.5 "est" — remove the entire 3.3 qualification
-  // block (Section III) since pre-qualification already evaluated these
-  // criteria. Preserves the portrait sectPr so the remaining Section III
-  // paragraphs keep their header/footer.
-  if (formData.prequalification === "est") {
-    const { xml: out, removed, preservedSectPr } = removeNoPrequalQualificationBlock(docXml, formData.prequalification);
-    docXml = out;
-    if (removed > 0) console.log(`[exportDocx] IS 4.5 bloc 3.3 qualification sans préqualif supprimé (${removed} paragraphe(s) retirés${preservedSectPr ? ', sectPr portrait préservé' : ''})`);
-  }
-
-  // 3b-septies, 3b-septies-bis → migrés dans HIGHLIGHTING_RULES
-  // (ids: 'static-guides-always-red', 'afd-convention-option-markers').
+  // 3b-sexies-bis-VII-bis, 3b-sexies-bis-VII, 3b-sexies-ter, 3b-sexies-quater,
+  // 3b-sexies-quinquies, 3b-septies, 3b-septies-bis, 3c-ter, 3c-bis, 3d, 3d-bis,
+  // 3d-ter → migrés dans HIGHLIGHTING_RULES (ids 'sections-v-vi-yellow-to-red',
+  // 'documents-financiers-replace-phrase-1', 'documents-financiers-replace-phrase-2',
+  // 'marge-preference-non-accordee', 'prequalification-no-prequal-guide',
+  // 'prequalification-est-delete-block-3-3', 'static-guides-always-red',
+  // 'afd-convention-option-markers', 'is-7-4-reunion-block',
+  // 'prequalification-n-est-pas-references', 'prequalification-n-est-pas-utility-section',
+  // 'deletion-markers-always', 'chiffre-affaires-note-yellow-to-red',
+  // 'sst-specialise-non'). Le registre CCAP_YELLOW_DRAFTS (anciennement L25-47
+  // de ce fichier) a aussi été migré en 7 sub-rules `ccap-draft-*`.
 
   // 3b-bis. Fill AAO letter placeholders (Modèle d'Avis d'Appel d'Offres)
   {
     const { xml: out, count } = fillAaoLetterPlaceholders(docXml, formData);
     docXml = out;
     if (count > 0) console.log(`[exportDocx] ${count} placeholder(s) AAO remplis`);
-  }
-
-  // 3c-ter → migré dans HIGHLIGHTING_RULES (id: 'is-7-4-reunion-block').
-
-  // 3c-bis. Red-highlight prequalification references when IS 4.5 = "n'est pas"
-  if (formData.prequalification === "n'est pas") {
-    const { xml: out, paraCount, runCount } = highlightPrequalificationReferences(docXml);
-    docXml = out;
-    if (paraCount > 0) {
-      console.log(`[exportDocx] ${paraCount} paragraphe(s) pré-qualification surligné(s) rouge (${runCount} run(s))`);
-    }
-    // Full "Quelle est l'utilité de la Préqualification ?" guide section
-    const u = highlightUtilitySection(docXml);
-    docXml = u.xml;
-    if (u.paraCount > 0) {
-      console.log(`[exportDocx] Section "utilité de la préqualification" : ${u.paraCount} paragraphe(s) surligné(s) rouge (${u.runCount} run(s))`);
-    }
-  }
-
-  // 3d, 3d-bis, 3d-ter → migrés dans HIGHLIGHTING_RULES
-  // (ids: 'deletion-markers-always', 'chiffre-affaires-note-yellow-to-red',
-  // 'sst-specialise-non').
-
-  // 3d-bis. CCAP Partie A — règle "yellow draft → red si champ rempli".
-  // Pour chaque entrée du registre, si la prédicat de remplissage est vrai,
-  // convertir tous les paragraphes correspondants jaune→rouge.
-  for (const entry of CCAP_YELLOW_DRAFTS) {
-    if (!entry.isFilled(formData)) continue;
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(docXml, entry.paraTextRe);
-    docXml = out;
-    if (paraCount > 0) {
-      console.log(`[exportDocx] CCAP draft "${entry.name}" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))`);
-    }
   }
 
   // 3e. Clean mode — strip all red-highlighted content (paragraphs fully red

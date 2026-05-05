@@ -653,6 +653,36 @@ export const HIGHLIGHTING_RULES = [
       paraCount > 0 ? `[exportDocx] Sections V & VI: ${paraCount} paragraphe(s) jaunes convertis en rouge (${runCount} run(s))` : null,
   },
 
+  // ── Rule #21a — Section III "Documents financiers" — phrase 1 ───────────
+  // Always-on : la phrase jaune "[indiquer le nombre] années" est remplacée
+  // par "le nombre d'années requis" (renvoi à la grille de critères Section
+  // III). Le placeholder jaune disparaît. Package-specific (les phrases
+  // sources changent en EN/ES) → reste dans highlightingRules.js du pack FR.
+  {
+    id: 'documents-financiers-replace-phrase-1',
+    description: 'Section III Documents financiers — remplace "les [indiquer le nombre] années"',
+    trigger: { always: true },
+    ops: [{
+      type: 'replace',
+      find: 'les [indiquer le nombre] années',
+      replace: "le nombre d'années requis",
+    }],
+    log: ({ replaced }) => replaced ? '[exportDocx] Documents financiers: "les [indiquer le nombre] années" remplacé' : null,
+  },
+
+  // ── Rule #21b — Section III "Documents financiers" — phrase 2 ───────────
+  {
+    id: 'documents-financiers-replace-phrase-2',
+    description: 'Section III Documents financiers — remplace "[indiquer le nombre] années telles que requises"',
+    trigger: { always: true },
+    ops: [{
+      type: 'replace',
+      find: '[indiquer le nombre] années telles que requises',
+      replace: "le nombre d'années requis",
+    }],
+    log: ({ replaced }) => replaced ? '[exportDocx] Documents financiers: "[indiquer le nombre] années telles que requises" remplacé' : null,
+  },
+
   // ── Rule #22 — IS 33.1 « pas de marge de préférence » ───────────────────
   // Helper highlightMargePreferenceBlock fait un Heading1→Heading1 scan
   // (logique trop spécifique pour un op déclaratif). Apply custom.
@@ -679,6 +709,25 @@ export const HIGHLIGHTING_RULES = [
     ops: [{ type: 'highlight-matching', matchAnchor: 'NO_PREQUAL_GUIDE_ANCHORS' }],
     log: ({ paraCount, runCount }) =>
       paraCount > 0 ? `[exportDocx] IS 4.5 guide "sinon supprimer toute cette section" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #24 — IS 4.5 « est » : suppression bloc 3.3 qualification ──────
+  // Apply custom : le helper retourne `removed` (count) et `preservedSectPr`
+  // (bool). Le log original concatène les deux ; on conserve ce contrat via
+  // apply.
+  {
+    id: 'prequalification-est-delete-block-3-3',
+    description: 'IS 4.5 — supprime le bloc 3.3 "Qualification si une Pré-qualification n\'a pas été effectuée" si prequalification === "est"',
+    trigger: { field: 'prequalification', equals: 'est' },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.removeNoPrequalQualificationBlock(docXml, formData.prequalification);
+      return {
+        docXml: r.xml,
+        message: r.removed > 0
+          ? `[exportDocx] IS 4.5 bloc 3.3 qualification sans préqualif supprimé (${r.removed} paragraphe(s) retirés${r.preservedSectPr ? ', sectPr portrait préservé' : ''})`
+          : null,
+      };
+    },
   },
 
   // ── Rule #25 — Static guide markers — toujours rouges ───────────────────
@@ -713,6 +762,45 @@ export const HIGHLIGHTING_RULES = [
     }],
     log: ({ paraCount, runCount }) =>
       paraCount > 0 ? `[exportDocx] IS 7.4 bloc réunion surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #28 — Préqualif « n'est pas » — références "pré-qualif" ────────
+  // Apply : le helper highlightPrequalificationReferences scanne tous les
+  // "pré-qualif" du document et les rougit, sauf une liste d'exclusions
+  // (cas SANS pré-qualif, ligne IS 4.5 elle-même). Logique trop spécifique
+  // pour un op déclaratif → apply custom.
+  {
+    id: 'prequalification-n-est-pas-references',
+    description: 'Préqualif "n\'est pas" — surligne rouge les références "pré-qualif" sauf exclusions',
+    trigger: { field: 'prequalification', equals: "n'est pas" },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.highlightPrequalificationReferences(docXml);
+      return {
+        docXml: r.xml,
+        message: r.paraCount > 0
+          ? `[exportDocx] ${r.paraCount} paragraphe(s) pré-qualification surligné(s) rouge (${r.runCount} run(s))`
+          : null,
+      };
+    },
+  },
+
+  // ── Rule #29 — Préqualif « n'est pas » — section "utilité de la Préqualification" ─
+  // Apply : helper highlightUtilitySection cible un scan par pStyle
+  // (TITLEINTRO) sur la section "Quelle est l'utilité de la Préqualification ?"
+  // → trop spécifique pour un op déclaratif.
+  {
+    id: 'prequalification-n-est-pas-utility-section',
+    description: 'Préqualif "n\'est pas" — section "utilité de la Préqualification" (pStyle TITLEINTRO) rouge',
+    trigger: { field: 'prequalification', equals: "n'est pas" },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.highlightUtilitySection(docXml);
+      return {
+        docXml: r.xml,
+        message: r.paraCount > 0
+          ? `[exportDocx] Section "utilité de la préqualification" : ${r.paraCount} paragraphe(s) surligné(s) rouge (${r.runCount} run(s))`
+          : null,
+      };
+    },
   },
 
   // ── Rule #30 — Marqueurs littéraux de suppression — toujours rouges ─────
@@ -751,5 +839,76 @@ export const HIGHLIGHTING_RULES = [
     }],
     log: ({ paraCount, runCount }) =>
       paraCount > 0 ? `[exportDocx] §4.2(b)(ii) Sous-traitant spécialisé (Non): ligne complète surlignée rouge (${paraCount} para, ${runCount} run)` : null,
+  },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // Rule #33 — CCAP Partie A "yellow drafts" — 7 sous-règles déclaratives.
+  // Pour chaque champ rempli, le paragraphe de guidage jaune correspondant
+  // (qui n'est plus utile une fois la décision prise) bascule jaune→rouge.
+  // Trigger `fieldFilled` = isFilled(formData[field]) (cf. dispatcher).
+  // L'array CCAP_YELLOW_DRAFTS a été remplacé par ces 7 entrées.
+  // ────────────────────────────────────────────────────────────────────────
+
+  {
+    id: 'ccap-draft-tranches-refs',
+    description: 'CCAP draft "SC tranches refs" jaune→rouge si tranches_marche_existe rempli',
+    trigger: { fieldFilled: 'tranches_marche_existe' },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CCAP_DRAFT_TRANCHES_REFS_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] CCAP draft "SC tranches refs" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))` : null,
+  },
+
+  {
+    id: 'ccap-draft-1-1-6-15-climat-guide',
+    description: 'CCAP draft "SC 1.1.6.15 climat guide" jaune→rouge si conditions_climatiques_defavorables rempli',
+    trigger: { fieldFilled: 'conditions_climatiques_defavorables' },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CCAP_DRAFT_1_1_6_15_CLIMAT_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] CCAP draft "SC 1.1.6.15 climat guide" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))` : null,
+  },
+
+  {
+    id: 'ccap-draft-2-1-delai-acces',
+    description: 'CCAP draft "SC 2.1 délai accès" jaune→rouge si delai_acces rempli',
+    trigger: { fieldFilled: 'delai_acces' },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CCAP_DRAFT_2_1_DELAI_ACCES_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] CCAP draft "SC 2.1 délai accès" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))` : null,
+  },
+
+  {
+    id: 'ccap-draft-3-1-pouvoirs-moe',
+    description: 'CCAP draft "SC 3.1 pouvoirs MOE" jaune→rouge si obligations_moe rempli',
+    trigger: { fieldFilled: 'obligations_moe' },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CCAP_DRAFT_3_1_POUVOIRS_MOE_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] CCAP draft "SC 3.1 pouvoirs MOE" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))` : null,
+  },
+
+  {
+    id: 'ccap-draft-4-1-docs-entrepreneur',
+    description: 'CCAP draft "SC 4.1 docs entrepreneur" jaune→rouge si obligations_entrepreneur rempli',
+    trigger: { fieldFilled: 'obligations_entrepreneur' },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CCAP_DRAFT_4_1_DOCS_ENTREPRENEUR_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] CCAP draft "SC 4.1 docs entrepreneur" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))` : null,
+  },
+
+  {
+    id: 'ccap-draft-4-1-cocher-cases',
+    description: 'CCAP draft "SC 4.1 cocher cases" jaune→rouge si obligations_entrepreneur rempli (paragraphe court "[cocher la / les case(s) correspondante(s)]")',
+    trigger: { fieldFilled: 'obligations_entrepreneur' },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CCAP_DRAFT_4_1_COCHER_CASES_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] CCAP draft "SC 4.1 cocher cases" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))` : null,
+  },
+
+  {
+    id: 'ccap-draft-8-1-commencement',
+    description: 'CCAP draft "SC 8.1 commencement" jaune→rouge si date_commencement rempli',
+    trigger: { fieldFilled: 'date_commencement' },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CCAP_DRAFT_8_1_COMMENCEMENT_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] CCAP draft "SC 8.1 commencement" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))` : null,
   },
 ];
