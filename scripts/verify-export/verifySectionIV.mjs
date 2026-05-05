@@ -1,12 +1,15 @@
-// Vérifie que les 3 fonctions de surlignage rouge de la Section IV ciblent
-// les bons paragraphes du template (template-DTAO.docx) :
-//   - highlightAnnexe1Revisions    (si prix fermes)
-//   - highlightAnnexe2Alternative  (alternative non retenue)
-//   - highlightVariantesTechniquesForm (si variantes non autorisées)
+// Vérifie que les 3 règles de surlignage rouge de la Section IV ciblent les
+// bons paragraphes du template (template-DTAO.docx) :
+//   - 'annexe-1-revisions-prix-fermes'         (si prix fermes)
+//   - 'annexe-2-alternative-non-retenue'       (alternative non retenue)
+//   - 'variantes-techniques-form-non-autorisees' (si variantes non autorisées)
+// Toutes trois sont déclarées dans
+// src/packages/v2024/fr/highlightingRules.js et utilisent les anchors de
+// src/packages/v2024/fr/anchors.js (ANNEXE_1_REVISIONS_*, ANNEXE_2_ALT_*,
+// ANNEXE_3_HEADER_RE, VARIANTES_TECH_*, METHODOLOGIE_ESSS_HEADER_RE).
 //
-// Le script ré-implémente la logique des fonctions (copiée depuis
-// src/export/exportDocx.js) pour rester autonome — même contraintes que les
-// autres scripts verify*.mjs.
+// Le script ré-implémente la logique de localisation pour rester autonome —
+// même contraintes que les autres scripts verify*.mjs.
 
 import {
   loadTemplateXml,

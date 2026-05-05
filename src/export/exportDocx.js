@@ -1842,44 +1842,12 @@ function highlightParagraphRange(xml, startRe, endRe) {
   return { xml: parts.join(''), paraCount, runCount };
 }
 
-// ── Annexe 1 (Révision des prix) — red if prix fermes ──────────────────
-// If the user chose "fermes" for S02-019 (nature des prix), the entire
-// "Annexe 1 à la Soumission — Données relatives à la révision des prix"
-// becomes inapplicable and must be deleted by the MOA. Paint the whole
-// block red from the Annexe 1 title to just before Annexe 2.
-function highlightAnnexe1Revisions(xml, natureDesPrix) {
-  if (natureDesPrix !== 'fermes') return { xml, paraCount: 0, runCount: 0 };
-  return highlightParagraphRange(
-    xml,
-    /^Annexe 1 [aà] la Soumission\b.*r[eé]vision des prix/i,
-    /^Annexe 2 [aà] la Soumission\b/i,
-  );
-}
-
-// ── Annexe 2 (Libellé du prix) — red the non-retained Alternative ──────
-// S02-020 picks either Option A (monnaie nationale) or Option B (monnaies
-// nationale + étrangères). The template carries both Alternative A and
-// Alternative B sub-tables; the non-retained one must be deleted.
-//   Option A → red Alternative B
-//   Option B → red Alternative A
-function highlightAnnexe2Alternative(xml, optionMonnaie) {
-  if (!optionMonnaie) return { xml, paraCount: 0, runCount: 0 };
-  const isA = /Option\s*A/i.test(optionMonnaie);
-  const isB = /Option\s*B/i.test(optionMonnaie);
-  if (!isA && !isB) return { xml, paraCount: 0, runCount: 0 };
-  if (isA) {
-    return highlightParagraphRange(
-      xml,
-      /Tableau\s*:\s*Alternative\s*B/i,
-      /^Annexe 3 [aà] la Soumission\b/i,
-    );
-  }
-  return highlightParagraphRange(
-    xml,
-    /Tableau\s*:\s*Alternative\s*A/i,
-    /Tableau\s*:\s*Alternative\s*B/i,
-  );
-}
+// Annexe 1 / Annexe 2 (rules 'annexe-1-revisions-prix-fermes' /
+// 'annexe-2-alternative-non-retenue') sont désormais déclarées dans
+// HIGHLIGHTING_RULES — voir src/packages/v2024/fr/highlightingRules.js.
+// Annexe 1 utilise un op `highlight-range` déclaratif ; Annexe 2 utilise un
+// `apply` court qui sélectionne le range A/B avant d'appeler
+// highlightParagraphRange.
 
 // ── Variantes techniques form — red if variantes not authorized ────────
 // S02-016 controls whether technical variants are authorized. When set to
@@ -4566,70 +4534,24 @@ export async function exportDocx({
       highlightInlineMarkers,
       highlightUnselectedOption,
       highlightMargePreferenceBlock,
+      highlightUnselectedPriceFormats,
+      highlightUnselectedTableauxDePrixGuide,
+      highlightUnselectedMonnaieOption,
+      highlightUnselectedConversionOption,
+      highlightVariantesTechniquesForm,
     };
     const r = applyHighlightingRules(docXml, footnotesXml, { formData, anchors, helpers });
     docXml = r.docXml;
     if (r.footnotesXml !== undefined) footnotesXml = r.footnotesXml;
   }
 
-  // 3c. → migré dans HIGHLIGHTING_RULES (id: 'option-non-retenue').
-
-  // 3b-ter. IS 11.1(b) — red-highlight the two price formats NOT picked.
-  if (formData.type_prix) {
-    const { xml: out, count } = highlightUnselectedPriceFormats(docXml, formData.type_prix);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] IS 11.1(b) formats non retenus surlignés rouge (${count} run(s))`);
-  }
-
-  // 3b-ter-bis. Section IV "Tableaux de prix" — red on the 5 paragraphes non
-  // retenus du guide jaune (page 60), selon le choix `type_prix`.
-  if (formData.type_prix) {
-    const { xml: out, count } = highlightUnselectedTableauxDePrixGuide(docXml, formData.type_prix);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] Section IV "Tableaux de prix" : ${count} run(s) jaune→rouge selon type_prix`);
-  }
-
-  // 3b-quater. IS 15.1 — red-highlight the unselected monnaie option block.
-  if (formData.option_monnaie) {
-    const { xml: out, count } = highlightUnselectedMonnaieOption(docXml, formData.option_monnaie);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] IS 15.1 option monnaie non retenue surlignée rouge (${count} run(s))`);
-  }
-
-  // 3b-quinquies. IS 32.1 — red-highlight the unselected conversion option block.
-  if (formData.option_conversion) {
-    const { xml: out, count } = highlightUnselectedConversionOption(docXml, formData.option_conversion);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] IS 32.1 option de conversion non retenue surlignée rouge (${count} run(s))`);
-  }
-
-  // 3b-sexies, 3b-sexies-bis → migrés dans HIGHLIGHTING_RULES
-  // (ids: 'is-13-5-variantes-delais', 'is-34-1-sous-traitants').
-
-  // 3b-sexies-bis-II. Section IV Annexe 1 — red-highlight the whole
-  // "Annexe 1 à la Soumission — Données relatives à la révision des prix"
-  // block when the MOA chose prix fermes (S02-019 = "fermes").
-  if (formData.prix_revisables === "fermes") {
-    const { xml: out, paraCount, runCount } = highlightAnnexe1Revisions(docXml, formData.prix_revisables);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Annexe 1 (révision des prix) surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-III. Section IV Annexe 2 — red-highlight the Alternative
-  // (A or B) that was NOT retained, based on S02-020 option_monnaie.
-  if (formData.option_monnaie) {
-    const { xml: out, paraCount, runCount } = highlightAnnexe2Alternative(docXml, formData.option_monnaie);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Annexe 2 alternative non retenue surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-IV. Section IV "Variantes techniques" form — red-highlight
-  // the whole form page when S02-016 = "ne sont pas".
-  if (formData.variantes_techniques === "ne sont pas") {
-    const { xml: out, paraCount, runCount } = highlightVariantesTechniquesForm(docXml, formData.variantes_techniques);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV formulaire "Variantes techniques" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
+  // 3c, 3b-ter, 3b-ter-bis, 3b-quater, 3b-quinquies, 3b-sexies, 3b-sexies-bis,
+  // 3b-sexies-bis-II/III/IV → migrés dans HIGHLIGHTING_RULES (ids:
+  // 'option-non-retenue', 'is-11-1-b-formats-prix-non-retenus',
+  // 'tableaux-de-prix-guide-yellow-to-red', 'is-15-1-monnaie-option-non-retenue',
+  // 'is-32-1-conversion-option-non-retenue', 'is-13-5-variantes-delais',
+  // 'is-34-1-sous-traitants', 'annexe-1-revisions-prix-fermes',
+  // 'annexe-2-alternative-non-retenue', 'variantes-techniques-form-non-autorisees').
 
   // 3b-sexies-bis-V, 3b-sexies-bis-VI → migrés dans HIGHLIGHTING_RULES
   // (ids: 'garantie-soumission-non', 'declaration-garantie-non').

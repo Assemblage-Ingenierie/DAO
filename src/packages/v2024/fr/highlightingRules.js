@@ -68,6 +68,131 @@ export const HIGHLIGHTING_RULES = [
     },
   },
 
+  // ────────────────────────────────────────────────────────────────────────
+  // ORDER MATTERS — Rules #2-#5, #8a-#8c map directly to the inline blocks
+  // formerly at exportDocx.js L4577-L4632 (call sites L4579/L4587/L4594/
+  // L4601/L4613/L4621/L4629). Their order in this array reflects the
+  // execution order in the original orchestration. Do not reorder.
+  // ────────────────────────────────────────────────────────────────────────
+
+  // ── Rule #2 — IS 11.1(b) formats de prix non retenus ────────────────────
+  {
+    id: 'is-11-1-b-formats-prix-non-retenus',
+    description: 'IS 11.1(b) — surligne rouge les 2 formats de prix non choisis (selon type_prix)',
+    trigger: { fieldExists: 'type_prix' },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.highlightUnselectedPriceFormats(docXml, formData.type_prix);
+      return {
+        docXml: r.xml,
+        message: r.count > 0 ? `[exportDocx] IS 11.1(b) formats non retenus surlignés rouge (${r.count} run(s))` : null,
+      };
+    },
+  },
+
+  // ── Rule #3 — Section IV "Tableaux de prix" guide ───────────────────────
+  {
+    id: 'tableaux-de-prix-guide-yellow-to-red',
+    description: 'Section IV "Tableaux de prix" — convertit jaune→rouge les paragraphes non retenus selon type_prix',
+    trigger: { fieldExists: 'type_prix' },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.highlightUnselectedTableauxDePrixGuide(docXml, formData.type_prix);
+      return {
+        docXml: r.xml,
+        message: r.count > 0 ? `[exportDocx] Section IV "Tableaux de prix" : ${r.count} run(s) jaune→rouge selon type_prix` : null,
+      };
+    },
+  },
+
+  // ── Rule #4 — IS 15.1 monnaie option non retenue ────────────────────────
+  {
+    id: 'is-15-1-monnaie-option-non-retenue',
+    description: 'IS 15.1 — bloc monnaie non retenu rouge selon option_monnaie',
+    trigger: { fieldExists: 'option_monnaie' },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.highlightUnselectedMonnaieOption(docXml, formData.option_monnaie);
+      return {
+        docXml: r.xml,
+        message: r.count > 0 ? `[exportDocx] IS 15.1 option monnaie non retenue surlignée rouge (${r.count} run(s))` : null,
+      };
+    },
+  },
+
+  // ── Rule #5 — IS 32.1 conversion option non retenue ─────────────────────
+  {
+    id: 'is-32-1-conversion-option-non-retenue',
+    description: 'IS 32.1 — bloc conversion non retenu rouge selon option_conversion',
+    trigger: { fieldExists: 'option_conversion' },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.highlightUnselectedConversionOption(docXml, formData.option_conversion);
+      return {
+        docXml: r.xml,
+        message: r.count > 0 ? `[exportDocx] IS 32.1 option de conversion non retenue surlignée rouge (${r.count} run(s))` : null,
+      };
+    },
+  },
+
+  // ── Rule #8a — Annexe 1 (révision des prix) prix fermes ─────────────────
+  // Helper highlightAnnexe1Revisions résorbé : c'était un délégué pur à
+  // highlightParagraphRange(start, end), donc op déclaratif suffit.
+  {
+    id: 'annexe-1-revisions-prix-fermes',
+    description: "Section IV Annexe 1 — bloc complet rouge si prix_revisables === 'fermes'",
+    trigger: { field: 'prix_revisables', equals: 'fermes' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'ANNEXE_1_REVISIONS_START_RE',
+      endAnchor: 'ANNEXE_1_REVISIONS_END_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Section IV Annexe 1 (révision des prix) surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #8b — Annexe 2 alternative non retenue ─────────────────────────
+  // Helper highlightAnnexe2Alternative résorbé : la branche A/B sélectionne
+  // dynamiquement le range à passer à highlightParagraphRange. Pattern
+  // identique à Rule #1 (option-non-retenue).
+  // Mapping (cf. ancien helper) :
+  //   isA → range(AltB_start, Annexe3_start)
+  //   isB → range(AltA_start, AltB_start)
+  {
+    id: 'annexe-2-alternative-non-retenue',
+    description: 'Section IV Annexe 2 — Alternative A ou B rouge selon option_monnaie',
+    trigger: { fieldExists: 'option_monnaie' },
+    apply: (docXml, formData, ctx) => {
+      const v = formData.option_monnaie;
+      const isA = /Option\s*A/i.test(v);
+      const isB = /Option\s*B/i.test(v);
+      if (!isA && !isB) return {};
+      const { ANNEXE_2_ALT_A_RE, ANNEXE_2_ALT_B_RE, ANNEXE_3_HEADER_RE } = ctx.anchors;
+      const [startRe, endRe] = isA
+        ? [ANNEXE_2_ALT_B_RE, ANNEXE_3_HEADER_RE]
+        : [ANNEXE_2_ALT_A_RE, ANNEXE_2_ALT_B_RE];
+      const r = ctx.helpers.highlightParagraphRange(docXml, startRe, endRe);
+      return {
+        docXml: r.xml,
+        message: r.paraCount > 0
+          ? `[exportDocx] Section IV Annexe 2 alternative non retenue surlignée rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
+          : null,
+      };
+    },
+  },
+
+  // ── Rule #8c — Variantes techniques form (non autorisées) ───────────────
+  {
+    id: 'variantes-techniques-form-non-autorisees',
+    description: "Section IV formulaire \"Variantes techniques\" — bloc complet rouge si variantes_techniques === 'ne sont pas'",
+    trigger: { field: 'variantes_techniques', equals: 'ne sont pas' },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.highlightVariantesTechniquesForm(docXml, formData.variantes_techniques);
+      return {
+        docXml: r.xml,
+        message: r.paraCount > 0
+          ? `[exportDocx] Section IV formulaire "Variantes techniques" surligné rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
+          : null,
+      };
+    },
+  },
+
   // ── Rule #6 — IS 13.5 « variantes ne sont pas autorisées » ──────────────
   {
     id: 'is-13-5-variantes-delais',
