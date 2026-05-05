@@ -382,6 +382,260 @@ export const HIGHLIGHTING_RULES = [
       paraCount > 0 ? `[exportDocx] Section IV Formulaire engagement ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
   },
 
+  // ────────────────────────────────────────────────────────────────────────
+  // Sûreté rules (phase 1.7.3). Cover 3 logical rules from inventory:
+  //   #16 Bordereau Sûreté Section IV (1 sub-rule, branched apply).
+  //   #18 Sûreté Oui compound (8 sub-rules: opening + 3 replace-yellow-guide
+  //       + Cocher Option guide + Options N°1/N°2 branched + 4 bullets
+  //       branched + escortes branched).
+  //   #19 Sûreté Non (4 sub-rules: chapter + sommaire ligne + Section III
+  //       tableau + footnotes 26/27/28 yellow-to-red).
+  // Insert after rule #17c and before rule #20, preserving source-call-site
+  // order (L4585-L4790 in the pre-1.7.3 exportDocx.js).
+  // ────────────────────────────────────────────────────────────────────────
+
+  // ── Rule #16 — Section IV Bordereau Sûreté (branché Oui/Non) ────────────
+  {
+    id: 'bordereau-surete-form-conditional',
+    description: "Section IV Bordereau Sûreté — 'Oui' : 2 notes draft jaune→rouge ; 'Non' : bloc complet rouge",
+    trigger: { fieldExists: 'surete_applicable' },
+    apply: (docXml, formData, ctx) => {
+      if (formData.surete_applicable === 'Oui – inclure sûreté') {
+        const r = ctx.helpers.convertYellowToRedInMatchingParagraphs(docXml, ctx.anchors.BORDEREAU_SURETE_DRAFT_NOTES_RE);
+        return {
+          docXml: r.xml,
+          message: r.paraCount > 0
+            ? `[exportDocx] Section IV Bordereau Sûreté (Oui): ${r.paraCount} note(s) draft jaune→rouge (${r.runCount} run(s))`
+            : null,
+        };
+      }
+      if (formData.surete_applicable === 'Non') {
+        const r = ctx.helpers.highlightParagraphRange(docXml, ctx.anchors.BORDEREAU_SURETE_TITLE_RE, ctx.anchors.FORMULAIRES_PROPOSITION_TECHNIQUE_TITLE_RE);
+        return {
+          docXml: r.xml,
+          message: r.paraCount > 0
+            ? `[exportDocx] Section IV Bordereau Sûreté (Non): bloc complet surligné rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
+            : null,
+        };
+      }
+      return {};
+    },
+  },
+
+  // ── Rule #18a — Sûreté Oui : bloc d'ouverture (2 paragraphes) ───────────
+  {
+    id: 'surete-oui-bloc-ouverture',
+    description: "Sûreté — bloc d'ouverture (2 paragraphes au-dessus du heading 'Spécifications Sûreté') rouge si surete_applicable === 'Oui – inclure sûreté'",
+    trigger: { field: 'surete_applicable', equals: 'Oui – inclure sûreté' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'SURETE_OPENING_GUIDE_RE',
+      endAnchor: 'SPECIFICATIONS_SURETE_HEADING_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Sûreté (Oui): bloc d'ouverture surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #18b1 — Sûreté Oui : remplacement guide S07-002 ────────────────
+  {
+    id: 'surete-oui-s07-002-contexte-securitaire',
+    description: 'Sûreté Oui — remplace le guide jaune S07-002 par le contexte sécuritaire utilisateur',
+    trigger: { field: 'surete_applicable', equals: 'Oui – inclure sûreté' },
+    ops: [{
+      type: 'replace-yellow-guide',
+      matchAnchor: 'SURETE_S07_002_GUIDE_RE',
+      fieldId: 'contexte_securitaire',
+    }],
+    log: ({ replaced }) => replaced ? '[exportDocx] Sûreté (Oui): S07-002 contexte sécuritaire inséré' : null,
+  },
+
+  // ── Rule #18b2 — Sûreté Oui : remplacement guide S07-003 ────────────────
+  {
+    id: 'surete-oui-s07-003-roles-mo',
+    description: 'Sûreté Oui — remplace le guide jaune S07-003 par les rôles MOA utilisateur',
+    trigger: { field: 'surete_applicable', equals: 'Oui – inclure sûreté' },
+    ops: [{
+      type: 'replace-yellow-guide',
+      matchAnchor: 'SURETE_S07_003_GUIDE_RE',
+      fieldId: 'roles_moa_surete',
+    }],
+    log: ({ replaced }) => replaced ? '[exportDocx] Sûreté (Oui): S07-003 rôles MO inséré' : null,
+  },
+
+  // ── Rule #18b3 — Sûreté Oui : remplacement guide S07-004 ────────────────
+  {
+    id: 'surete-oui-s07-004-pilotage-entreprise',
+    description: 'Sûreté Oui — remplace le guide jaune S07-004 par le pilotage entreprise principale utilisateur',
+    trigger: { field: 'surete_applicable', equals: 'Oui – inclure sûreté' },
+    ops: [{
+      type: 'replace-yellow-guide',
+      matchAnchor: 'SURETE_S07_004_GUIDE_RE',
+      fieldId: 'roles_pilotage_surete_entreprise',
+    }],
+    log: ({ replaced }) => replaced ? '[exportDocx] Sûreté (Oui): S07-004 pilotage entreprise principale inséré' : null,
+  },
+
+  // ── Rule #18c — Sûreté Oui : guide "[Cocher l'Option N°1...]" ───────────
+  // Toujours rougit quand Sûreté Oui, indépendamment de conditions_tres_degradees.
+  {
+    id: 'surete-oui-cocher-option-guide',
+    description: "Sûreté Oui — guide '[Cocher l'Option N°1...]' toujours rouge",
+    trigger: { field: 'surete_applicable', equals: 'Oui – inclure sûreté' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'SURETE_COCHER_OPTION_GUIDE_RE',
+      endAnchor: 'SURETE_OPTION_N1_HEADING_RE',
+    }],
+    log: ({ paraCount }) =>
+      paraCount > 0 ? `[exportDocx] Sûreté (Oui) 4.1: guide Option cochée surligné rouge (${paraCount} para)` : null,
+  },
+
+  // ── Rule #18d — Sûreté Oui : Options N°1/N°2 mutuellement exclusives ────
+  // Apply : trigger primaire = surete_applicable Oui ; secondaire = conditions_tres_degradees.
+  //   'Oui' (contexte très dégradé) → N°1 retenue, N°2 rouge (range : Option N°2 → §4.2)
+  //   'Non' → N°2 retenue, N°1 rouge (range : Option N°1 → Option N°2)
+  {
+    id: 'surete-oui-options-n1-n2-non-retenue',
+    description: 'Sûreté Oui — Option N°1 ou N°2 (4.1) rouge selon conditions_tres_degradees',
+    trigger: { field: 'surete_applicable', equals: 'Oui – inclure sûreté' },
+    apply: (docXml, formData, ctx) => {
+      const v = formData.conditions_tres_degradees;
+      if (v !== 'Oui' && v !== 'Non') return {};
+      const { SURETE_OPTION_N1_HEADING_RE, SURETE_OPTION_N2_HEADING_RE, SURETE_4_2_DEPLACEMENT_HEADING_RE } = ctx.anchors;
+      const isOui = v === 'Oui';
+      const [startRe, endRe] = isOui
+        ? [SURETE_OPTION_N2_HEADING_RE, SURETE_4_2_DEPLACEMENT_HEADING_RE]
+        : [SURETE_OPTION_N1_HEADING_RE, SURETE_OPTION_N2_HEADING_RE];
+      const r = ctx.helpers.highlightParagraphRange(docXml, startRe, endRe);
+      const optName = isOui ? 'Option N°2' : 'Option N°1';
+      return {
+        docXml: r.xml,
+        message: r.paraCount > 0
+          ? `[exportDocx] Sûreté (Oui) 4.1: ${optName} surlignée rouge (${r.paraCount} para, ${r.runCount} run)`
+          : null,
+      };
+    },
+  },
+
+  // ── Rule #18e — Sûreté Oui : 4 bullets S07-005 (§4.2/§4.3/§4.4/§5) ──────
+  // Apply : trigger primaire = surete_applicable Oui ; secondaire = conditions_tres_degradees.
+  //   'Oui' → seul le marqueur jauni→rouge (contenu pertinent reste).
+  //   'Non' → tout le paragraphe rougit (bullet inapplicable).
+  {
+    id: 'surete-oui-4-bullets-s07-005',
+    description: "Sûreté Oui — 4 bullets §4.2/§4.3/§4.4/§5 selon conditions_tres_degradees",
+    trigger: { field: 'surete_applicable', equals: 'Oui – inclure sûreté' },
+    apply: (docXml, formData, ctx) => {
+      const v = formData.conditions_tres_degradees;
+      if (v !== 'Oui' && v !== 'Non') return {};
+      const markerRe = ctx.anchors.SURETE_DEGRADE_BULLETS_MARKER_RE;
+      if (v === 'Oui') {
+        const r = ctx.helpers.convertYellowToRedInMatchingParagraphs(docXml, markerRe);
+        return {
+          docXml: r.xml,
+          message: r.paraCount > 0
+            ? `[exportDocx] Sûreté (Oui) contexte très dégradé: ${r.paraCount} marqueur(s) jauni→rouge (${r.runCount} run)`
+            : null,
+        };
+      }
+      const r = ctx.helpers.highlightParagraphsMatching(docXml, markerRe);
+      return {
+        docXml: r.xml,
+        message: r.paraCount > 0
+          ? `[exportDocx] Sûreté (Oui) contexte très dégradé: ${r.paraCount} bullet(s) surlignés rouge (${r.runCount} run)`
+          : null,
+      };
+    },
+  },
+
+  // ── Rule #18f — Sûreté Oui : bullet escortes S07-006 (§4.2) ─────────────
+  // Apply : trigger primaire = surete_applicable Oui ; secondaire = escortes_non_prises_en_charge.
+  //   'Oui' → marqueur jauni→rouge dans range (texte reste applicable).
+  //   'Non' → tout le paragraphe range rougit (escortes inutiles).
+  {
+    id: 'surete-oui-bullet-escortes-s07-006',
+    description: 'Sûreté Oui — bullet escortes §4.2 selon escortes_non_prises_en_charge',
+    trigger: { field: 'surete_applicable', equals: 'Oui – inclure sûreté' },
+    apply: (docXml, formData, ctx) => {
+      const v = formData.escortes_non_prises_en_charge;
+      if (v !== 'Oui' && v !== 'Non') return {};
+      const { SURETE_ESCORTES_MARKER_RE, SURETE_HEBERGEMENT_HEADING_RE } = ctx.anchors;
+      if (v === 'Oui') {
+        const r = ctx.helpers.convertYellowToRedInParaRange(docXml, SURETE_ESCORTES_MARKER_RE, SURETE_HEBERGEMENT_HEADING_RE);
+        return {
+          docXml: r.xml,
+          message: r.paraCount > 0
+            ? `[exportDocx] Sûreté (Oui) 4.2: marqueur escortes jauni→rouge (${r.paraCount} para, ${r.runCount} run)`
+            : null,
+        };
+      }
+      const r = ctx.helpers.highlightParagraphRange(docXml, SURETE_ESCORTES_MARKER_RE, SURETE_HEBERGEMENT_HEADING_RE);
+      return {
+        docXml: r.xml,
+        message: r.paraCount > 0
+          ? `[exportDocx] Sûreté (Oui) 4.2: ligne escortes surlignée rouge (${r.paraCount} para, ${r.runCount} run)`
+          : null,
+      };
+    },
+  },
+
+  // ── Rule #19a — Sûreté Non : chapitre complet Section VII ───────────────
+  {
+    id: 'surete-non-chapitre-complet',
+    description: "Section VII — chapitre Sûreté complet rouge si surete_applicable === 'Non'",
+    trigger: { field: 'surete_applicable', equals: 'Non' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'SURETE_OPENING_GUIDE_RE',
+      endAnchor: 'TROISIEME_PARTIE_HEADING_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Sûreté (Non): chapitre complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #19b — Sûreté Non : ligne sommaire "Spécifications sûreté" ─────
+  {
+    id: 'surete-non-sommaire-ligne',
+    description: "Sommaire Section VII — ligne basse-casse 'Spécifications sûreté' rouge si surete_applicable === 'Non'",
+    trigger: { field: 'surete_applicable', equals: 'Non' },
+    ops: [{
+      type: 'highlight-matching',
+      matchAnchor: 'SURETE_SOMMAIRE_LIGNE_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Sûreté (Non): ligne "Spécifications sûreté" du sommaire Contenu surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #19c — Sûreté Non : tableau Section III "6. Sûreté" ────────────
+  {
+    id: 'surete-non-tableau-section-iii',
+    description: "Section III — tableau '6. Sûreté' (critères 6.1 à 6.5) rouge si surete_applicable === 'Non'",
+    trigger: { field: 'surete_applicable', equals: 'Non' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'SURETE_SECTION_III_TITLE_RE',
+      endAnchor: 'SECTION_IV_FORMULAIRES_HEADING_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Sûreté (Non): tableau Section III "6. Sûreté" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #19d — Sûreté Non : footnotes 26/27/28 jaune→rouge ─────────────
+  // IDs de footnote stables dans le template AFD PAY (attachées au tableau
+  // 6. Sûreté). Le dispatcher applique la conversion sur footnotesXml (chargé
+  // une fois au début de l'export et réécrit à la fin si modifié).
+  {
+    id: 'surete-non-footnotes-26-27-28',
+    description: "Sûreté Non — footnotes 26/27/28 (notes de bas de page tableau '6. Sûreté') jaune→rouge",
+    trigger: { field: 'surete_applicable', equals: 'Non' },
+    ops: [{
+      type: 'yellow-to-red-footnotes',
+      footnoteIds: ['26', '27', '28'],
+    }],
+    log: ({ footnoteCount, runCount }) =>
+      footnoteCount > 0 ? `[exportDocx] Sûreté (Non): notes de bas de page 26/27/28 jaune→rouge (${footnoteCount} note(s), ${runCount} run(s))` : null,
+  },
+
   // ── Rule #20 — Sections V & VI — guides jaunes Convention AFD ───────────
   // Toujours convertir jaune→rouge dans le range Section V → Section VII
   // (helper heading-aware : ne matche que sur paragraphes Heading-styled).

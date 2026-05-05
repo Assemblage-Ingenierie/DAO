@@ -274,3 +274,73 @@ export const LISTE_SOUS_TRAITANTS_TITLE_RE = /^Liste des Sous-?traitants\s*$/i;
 export const ESSS_ENGAGEMENT_INTRO_RE = /^Les Soumissionnaires devront fournir, pour chaque sous-?traitant proposé, l'engagement que ce dernier a lu, compris et se conformera aux exigences ESSS/i;
 export const ESSS_FORMULAIRE_ENGAGEMENT_TITLE_RE = /^Formulaire d'engagement ESSS du sous-?traitant\s*$/i;
 export const ORGANISATION_TRAVAUX_HEADER_RE = /^Organisation des travaux sur site et Méthode de réalisation\s*$/i;
+
+// ── Section IV — Bordereau de Prix Unitaires Sûreté (rule #16) ─────────────
+// 'Oui – inclure sûreté' → yellow-to-red sur 2 notes draft.
+// 'Non' → highlight-range tout le bloc (titre → Formulaires de la Proposition
+// Technique exclusif). `BORDEREAU_SURETE_TITLE_RE` est défini plus haut
+// (réutilisé : endRe en 1.7.2 Prix ESSS Non, startRe ici).
+export const BORDEREAU_SURETE_DRAFT_NOTES_RE = /^\[(?:Ce bordereau de prix unitaires est à insérer dans le Bordereau des Prix|Si des spécifications sûreté ne sont pas incluses dans les Documents d'Appel d'Offres, ce bordereau)/i;
+export const FORMULAIRES_PROPOSITION_TECHNIQUE_TITLE_RE = /^Formulaires de la Proposition Technique\s*$/i;
+
+// ── Spécifications Sûreté — bloc d'ouverture (rule #18a) ───────────────────
+// Le paragraphe "[A insérer en cas de Travaux en zone classée orange…]"
+// sert de double-anchor : end-exclusif du chapitre ESSS (1.7.2) ET début
+// inclusif des chapitres Sûreté Oui (rules 18a, range jusqu'à
+// "Spécifications Sûreté" exclu) et Sûreté Non (rule 19a, range jusqu'à
+// "TROISIEME PARTIE" exclu).
+export const SURETE_OPENING_GUIDE_RE = /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i;
+export const SPECIFICATIONS_SURETE_HEADING_RE = /^Sp[ée]cifications\s+S[ûu]ret[ée]\s*$/i;
+
+// ── S07-002 / S07-003 / S07-004 — guides à remplacer par les valeurs UI ────
+// 3 paragraphes jaunes du Préambule Sûreté qui se réécrivent avec le contenu
+// utilisateur (textareas) via replaceYellowGuideParagraph.
+export const SURETE_S07_002_GUIDE_RE = /^\[Ins[ée]rer une description du contexte s[ée]curitaire\b/i;
+export const SURETE_S07_003_GUIDE_RE = /^\[D[ée]crire les r[ôo]les et responsabilit[ée]s, t[âa]ches et mise [àa] disposition de moyens par le Ma[îi]tre d'Ouvrage\b/i;
+export const SURETE_S07_004_GUIDE_RE = /^\[Il conviendra le cas [ée]ch[ée]ant de pr[ée]ciser les r[ôo]les\b/i;
+
+// ── S07-005 (rules #18c, #18d, #18e) ───────────────────────────────────────
+// Le guide "[Cocher l'Option N°1...]" est toujours rougi quand Sûreté Oui.
+// Les options N°1 et N°2 sont mutuellement exclusives selon
+// `conditions_tres_degradees` (Oui → N°1 retenue, N°2 rouge ; Non → N°2
+// retenue, N°1 rouge).
+export const SURETE_COCHER_OPTION_GUIDE_RE = /^\[Cocher l'Option N°1 en cas de contexte s[ée]curitaire tr[èe]s d[ée]grad[ée]/i;
+export const SURETE_OPTION_N1_HEADING_RE = /^Option N°1\s*:?\s*$/i;
+export const SURETE_OPTION_N2_HEADING_RE = /^Option N°2\s*:?\s*$/i;
+export const SURETE_4_2_DEPLACEMENT_HEADING_RE = /^4\.2\s*D[ée]placement\b/i;
+// Marqueur jaune des 4 bullets dispersés dans §4.2/§4.3/§4.4/§5.
+//   Oui → seule la marque jaunit→rouge (contenu pertinent reste).
+//   Non → tout le paragraphe est rougit (bullet inapplicable).
+export const SURETE_DEGRADE_BULLETS_MARKER_RE = /^\[[àa]\s+ins[ée]rer en cas de contexte s[ée]curitaire tr[èe]s d[ée]grad[ée]\s*;\s*sinon supprimer\]/i;
+
+// ── S07-006 — bullet escortes (rule #18f) ──────────────────────────────────
+// Le bullet mélange un marqueur jaune "[à insérer en cas d'escortes…]" avec
+// du texte pertinent ("Identification du prestataire chargé…"). Range borné
+// par le heading suivant "Hébergement lors des missions".
+export const SURETE_ESCORTES_MARKER_RE = /^\[[àa]\s+ins[ée]rer en cas d'escortes jug[ée]es n[ée]cessaires/i;
+export const SURETE_HEBERGEMENT_HEADING_RE = /^H[ée]bergement lors des missions\s*$/i;
+
+// ── Spécifications Sûreté — chapitre complet Section VII (rule #19a) ───────
+// Range : SURETE_OPENING_GUIDE_RE (start) → "TROISIEME PARTIE - Marché"
+// (end exclusif).
+export const TROISIEME_PARTIE_HEADING_RE = /^TROISIEME\s+PARTIE\b/i;
+
+// ── Section VII sommaire — ligne basse-casse (rule #19b) ───────────────────
+// Match strict casse pour cibler la ligne du sommaire "Spécifications sûreté"
+// SANS toucher le heading "Spécifications Sûreté" (capitalisé) qui apparaît
+// plus loin dans le chapitre. Distincte de SPECIFICATIONS_SURETE_TOC_LINE_RE
+// (1.7.2 — flag /i, utilisée comme endRe non-strict).
+export const SURETE_SOMMAIRE_LIGNE_RE = /^Spécifications sûreté\s*$/;
+
+// ── Section III — tableau "6. Sûreté" (rule #19c) ──────────────────────────
+// Le titre du groupe est rendu comme un paragraphe contenant uniquement
+// "Sûreté" (l'auto-numérotation "6." est portée par le style de liste).
+// Match strict casse pour éviter d'autres "Sûreté" du document. End anchor
+// = heading suivant "Section IV Formulaires de Soumission".
+export const SURETE_SECTION_III_TITLE_RE = /^Sûreté\s*$/;
+export const SECTION_IV_FORMULAIRES_HEADING_RE = /^Section IV\s+Formulaires de Soumission\s*$/i;
+
+// Note rule #19d (Sûreté Non — footnotes 26/27/28) : les IDs de footnote sont
+// passés directement comme array littéral dans la rule via `footnoteIds:
+// ['26', '27', '28']`, pas via une ancre. Le dispatcher (op
+// 'yellow-to-red-footnotes') prend `op.footnoteIds` tel quel.

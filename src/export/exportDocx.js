@@ -4582,214 +4582,24 @@ export async function exportDocx({
     }
   }
 
-  // 3b-sexies-bis-VI-sexies. Section IV — "Bordereau de Prix Unitaires Sûreté"
-  // (page 63) selon S07-001 (`surete_applicable`) :
-  //   • "Oui – inclure sûreté" → rougir les 2 notes draft jaunes du haut.
-  //   • "Non" → rougir TOUT le bloc Bordereau Sûreté (titre + drafts + tableau
-  //     + textes de clôture) pour suppression complète.
-  if (formData.surete_applicable === 'Oui – inclure sûreté') {
-    const matchRe = /^\[(?:Ce bordereau de prix unitaires est à insérer dans le Bordereau des Prix|Si des spécifications sûreté ne sont pas incluses dans les Documents d'Appel d'Offres, ce bordereau)/i;
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(docXml, matchRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Bordereau Sûreté (Oui): ${paraCount} note(s) draft jaune→rouge (${runCount} run(s))`);
-  } else if (formData.surete_applicable === 'Non') {
-    const startRe = /^Bordereau de Prix Unitaires S[ûu]ret[ée]\s*$/i;
-    const endRe = /^Formulaires de la Proposition Technique\s*$/i;
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(docXml, startRe, endRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Bordereau Sûreté (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
+  // 3b-sexies-bis-VI-sexies → migré dans HIGHLIGHTING_RULES (id:
+  // 'bordereau-surete-form-conditional'). Voir 1.7.3.
 
   // 3b-sexies-bis-VI-septies → migré dans HIGHLIGHTING_RULES (ids:
   // 'esss-non-methodologie-form', 'esss-non-engagement-intro',
   // 'esss-non-formulaire-engagement'). Voir 1.7.2.
 
-  // 3b-sexies-bis-VI-quater-pre. Spécifications Sûreté — when S07-001
-  // (surete_applicable) is "Oui – inclure sûreté":
-  //   (a) Red-highlight the two opening drafting-note paragraphs
-  //       "[A insérer en cas de Travaux en zone classée orange…" and
-  //       "Pour finaliser ces spécifications, le Maître d'Ouvrage…" (the
-  //       blue-circled range in the reference doc). End anchor is the
-  //       "Spécifications Sûreté" heading (exclusive), so only the two
-  //       guide paragraphs above the title are painted.
-  //   (b) Replace each of the three yellow guide paragraphs in the
-  //       Préambule with the user's textarea value (S07-002 / S07-003 /
-  //       S07-004). If the user left a field blank the yellow guide
-  //       stays in place as an unfilled reminder.
-  if (formData.surete_applicable === "Oui – inclure sûreté") {
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i,
-        /^Sp[ée]cifications\s+S[ûu]ret[ée]\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Sûreté (Oui): bloc d'ouverture surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // S07-002 → "[Insérer une description du contexte sécuritaire…]"
-    {
-      const r = replaceYellowGuideParagraph(
-        docXml,
-        /^\[Ins[ée]rer une description du contexte s[ée]curitaire\b/i,
-        formData.contexte_securitaire,
-      );
-      docXml = r.xml;
-      if (r.replaced) console.log('[exportDocx] Sûreté (Oui): S07-002 contexte sécuritaire inséré');
-    }
-    // S07-003 → "[Décrire les rôles et responsabilités, tâches et mise à disposition de moyens par le Maître d'Ouvrage…]"
-    {
-      const r = replaceYellowGuideParagraph(
-        docXml,
-        /^\[D[ée]crire les r[ôo]les et responsabilit[ée]s, t[âa]ches et mise [àa] disposition de moyens par le Ma[îi]tre d'Ouvrage\b/i,
-        formData.roles_moa_surete,
-      );
-      docXml = r.xml;
-      if (r.replaced) console.log('[exportDocx] Sûreté (Oui): S07-003 rôles MO inséré');
-    }
-    // S07-004 → "[Il conviendra le cas échéant de préciser les rôles… en cas de marchés par lots.]"
-    {
-      const r = replaceYellowGuideParagraph(
-        docXml,
-        /^\[Il conviendra le cas [ée]ch[ée]ant de pr[ée]ciser les r[ôo]les\b/i,
-        formData.roles_pilotage_surete_entreprise,
-      );
-      docXml = r.xml;
-      if (r.replaced) console.log('[exportDocx] Sûreté (Oui): S07-004 pilotage entreprise principale inséré');
-    }
-    // S07-005 Option N°1 vs N°2 (section 4.1 Organisation Sûreté).
-    //   Always paint the yellow "[Cocher l'Option N°1 en cas de contexte
-    //   sécuritaire très dégradé ; sinon cocher l'Option N°2]" guide red.
-    //   Then red-highlight the non-retained option block:
-    //     Oui (contexte très dégradé)  → Option N°1 is picked → paint Option N°2
-    //     Non                          → Option N°2 is picked → paint Option N°1
-    {
-      const r = highlightParagraphRange(
-        docXml,
-        /^\[Cocher l'Option N°1 en cas de contexte s[ée]curitaire tr[èe]s d[ée]grad[ée]/i,
-        /^Option N°1\s*:?\s*$/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.1: guide Option cochée surligné rouge (${r.paraCount} para)`);
-    }
-    if (formData.conditions_tres_degradees === 'Oui') {
-      const r = highlightParagraphRange(
-        docXml,
-        /^Option N°2\s*:?\s*$/i,
-        /^4\.2\s*D[ée]placement\b/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.1: Option N°2 surlignée rouge (${r.paraCount} para, ${r.runCount} run)`);
-    } else if (formData.conditions_tres_degradees === 'Non') {
-      const r = highlightParagraphRange(
-        docXml,
-        /^Option N°1\s*:?\s*$/i,
-        /^Option N°2\s*:?\s*$/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.1: Option N°1 surlignée rouge (${r.paraCount} para, ${r.runCount} run)`);
-    }
-    // S07-005 also governs the four scattered bullets prefixed by the yellow
-    // guide "[à insérer en cas de contexte sécuritaire très dégradé ; sinon
-    // supprimer]" across §4.2-satellitaire, §4.3 Hébergement, §4.4 Sites de
-    // chantier and §5 Information/Sensibilisation.
-    //   Oui (contexte très dégradé) → these bullets apply → keep content,
-    //       only the yellow marker flips red so the MOA notices it.
-    //   Non (contexte normal)       → these bullets are inapplicable → paint
-    //       the whole paragraph red so the MOA deletes it.
-    {
-      const markerRe = /^\[[àa]\s+ins[ée]rer en cas de contexte s[ée]curitaire tr[èe]s d[ée]grad[ée]\s*;\s*sinon supprimer\]/i;
-      if (formData.conditions_tres_degradees === 'Oui') {
-        const r = convertYellowToRedInMatchingParagraphs(docXml, markerRe);
-        docXml = r.xml;
-        if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) contexte très dégradé: ${r.paraCount} marqueur(s) jauni→rouge (${r.runCount} run)`);
-      } else if (formData.conditions_tres_degradees === 'Non') {
-        const r = highlightParagraphsMatching(docXml, markerRe);
-        docXml = r.xml;
-        if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) contexte très dégradé: ${r.paraCount} bullet(s) surlignés rouge (${r.runCount} run)`);
-      }
-    }
-    // S07-006 Escortes (section 4.2 Déplacement). The bullet mixes a yellow
-    // "[à insérer en cas d'escortes…]" marker with plain text "Identification
-    // du prestataire chargé…" in a single paragraph.
-    //   Oui → only the yellow marker becomes red (rest of the sentence stays
-    //         applicable since escortes ARE needed and the prestataire ID is
-    //         relevant).
-    //   Non → the whole paragraph becomes red (escortes not needed → the
-    //         whole requirement is inapplicable).
-    if (formData.escortes_non_prises_en_charge === 'Oui') {
-      const r = convertYellowToRedInParaRange(
-        docXml,
-        /^\[[àa]\s+ins[ée]rer en cas d'escortes jug[ée]es n[ée]cessaires/i,
-        /^H[ée]bergement lors des missions\s*$/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.2: marqueur escortes jauni→rouge (${r.paraCount} para, ${r.runCount} run)`);
-    } else if (formData.escortes_non_prises_en_charge === 'Non') {
-      const r = highlightParagraphRange(
-        docXml,
-        /^\[[àa]\s+ins[ée]rer en cas d'escortes jug[ée]es n[ée]cessaires/i,
-        /^H[ée]bergement lors des missions\s*$/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.2: ligne escortes surlignée rouge (${r.paraCount} para, ${r.runCount} run)`);
-    }
-  }
+  // 3b-sexies-bis-VI-quater-pre → migré dans HIGHLIGHTING_RULES (ids :
+  // 'surete-oui-bloc-ouverture', 'surete-oui-s07-002-contexte-securitaire',
+  // 'surete-oui-s07-003-roles-mo', 'surete-oui-s07-004-pilotage-entreprise',
+  // 'surete-oui-cocher-option-guide', 'surete-oui-options-n1-n2-non-retenue',
+  // 'surete-oui-4-bullets-s07-005', 'surete-oui-bullet-escortes-s07-006').
+  // Voir 1.7.3.
 
-  // 3b-sexies-bis-VI-quater. Spécifications Sûreté — when S07-001
-  // (surete_applicable) is "Non", the whole Sûreté chapter of Section VII
-  // is inapplicable. Red-highlight the range from the chapter's opening
-  // guide "[A insérer en cas de Travaux en zone classée orange…" through
-  // the very last bullet of section 6 "Gestion des alertes et gestion de
-  // crise" ("…identification des éléments déclencheurs, des rôles et
-  // responsabilités."). End anchor is the next non-empty paragraph
-  // "TROISIEME PARTIE – Marché" (exclusive), so everything up to and
-  // including the last Sûreté bullet is painted.
-  if (formData.surete_applicable === "Non") {
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i,
-        /^TROISIEME\s+PARTIE\b/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Sûreté (Non): chapitre complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // Section VII — sommaire "Contenu" : ligne `Spécifications sûreté` (ligne
-    // basse-casse, distincte du heading `Spécifications Sûreté` qui apparaît
-    // plus loin). Match strict casse pour éviter de toucher le heading.
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphsMatching(
-        docXml,
-        /^Spécifications sûreté\s*$/,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Sûreté (Non): ligne "Spécifications sûreté" du sommaire Contenu surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // Section III — tableau "6. Sûreté" (critères 6.1 à 6.5). Le titre du
-    // groupe est rendu comme un paragraphe contenant uniquement "Sûreté"
-    // (l'auto-numérotation "6." est portée par le style de liste). Anchor de
-    // fin = heading suivant "Section IV Formulaires de Soumission".
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Sûreté\s*$/,
-        /^Section IV\s+Formulaires de Soumission\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Sûreté (Non): tableau Section III "6. Sûreté" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // Notes de bas de page jaunes (footnotes 26/27/28) attachées au tableau
-    // 6. Sûreté : convertir leur surlignage jaune → rouge dans
-    // `word/footnotes.xml`. Ces 3 ids sont stables dans le template AFD PAY.
-    if (footnotesXml) {
-      const { xml: outFn, footnoteCount, runCount } = convertYellowToRedInFootnoteIds(
-        footnotesXml,
-        ['26', '27', '28'],
-      );
-      footnotesXml = outFn;
-      if (footnoteCount > 0) console.log(`[exportDocx] Sûreté (Non): notes de bas de page 26/27/28 jaune→rouge (${footnoteCount} note(s), ${runCount} run(s))`);
-    }
-  }
+  // 3b-sexies-bis-VI-quater → migré dans HIGHLIGHTING_RULES (ids :
+  // 'surete-non-chapitre-complet', 'surete-non-sommaire-ligne',
+  // 'surete-non-tableau-section-iii', 'surete-non-footnotes-26-27-28').
+  // Voir 1.7.3.
 
   // 3b-sexies-bis-VII-bis → migré dans HIGHLIGHTING_RULES
   // (id: 'sections-v-vi-yellow-to-red').
