@@ -4407,9 +4407,34 @@ export async function exportDocx({
     if (docXml !== before) console.log(`[exportDocx] Liste « ${fieldId} » rebâtie (${items.length} item(s))`);
   }
 
-  // 3b-zero. Run declarative highlighting rules (FR pack). Populated
-  // incrementally during phase 1.7 lots. Each migrated rule replaces a
-  // corresponding inline block below in the same commit.
+  // 3b-zero-pre. ESSS fills (Enjeux + Articles tables) — exécutés AVANT le
+  // dispatcher pour préserver le contrat de comptage de la rule
+  // 'esss-oui-chapter-yellow-to-red' : les placeholder rows du tableau
+  // Articles contiennent ~4 yellow runs que la rule yellow-to-red comptait
+  // dans le baseline OLD seulement quand fills tournaient AVANT. Ces fills
+  // n'écrivent jamais de jaune (Enjeux écrit du red direct, Articles
+  // remplace les rows placeholder par des rows utilisateur sans highlight),
+  // donc déplacer les fills avant n'a pas d'effet sur les autres rules.
+  if (formData.esss_applicable === "Oui") {
+    // (0a) Fill the 15-row Enjeux table from S-ESSS-02 (formData.enjeux_esss):
+    //      per row, keep the chosen OUI/NON and red-highlight the other.
+    {
+      const { xml: out, rowCount } = fillEnjeuxTable(docXml, formData.enjeux_esss);
+      docXml = out;
+      if (rowCount > 0) console.log(`[exportDocx] ESSS (Oui): tableau Enjeux rempli (${rowCount} ligne(s) marquées)`);
+    }
+    // (0b) Fill the "Exigences ESSS non applicables" articles table from the
+    //      user's dynamic rows (articlesEsssRows → S-ESSS-04).
+    {
+      const { xml: out, rowCount } = fillArticlesTable(docXml, articlesEsssRows);
+      docXml = out;
+      if (rowCount > 0) console.log(`[exportDocx] ESSS (Oui): tableau Articles non applicables rempli (${rowCount} ligne(s))`);
+    }
+  }
+
+  // 3b-zero. Run declarative highlighting rules (FR pack). All conditional
+  // highlighting/yellow-conversion logic lives in HIGHLIGHTING_RULES (50
+  // sub-rules covering 33 logical rules from the original inline blocks).
   {
     // Engine helpers exposed to rule.apply functions (used for cases that
     // can't be expressed as a simple op — dynamic regex, multi-branch, etc).
@@ -4456,26 +4481,6 @@ export async function exportDocx({
   // 'esss-oui-chapter-yellow-to-red', 'esss-oui-exemple-situation',
   // 'esss-prix-form-conditional', 'esss-non-methodologie-form',
   // 'esss-non-engagement-intro', 'esss-non-formulaire-engagement').
-  // Les fills ESSS (Enjeux + Articles tables) NE sont PAS du highlighting —
-  // ils restent ici, exécutés inline après le dispatcher. Vérifié : ces fills
-  // n'écrivent jamais de jaune, donc l'inversion d'ordre yellow-to-red →
-  // fills introduite par la migration ne change pas le résultat final.
-  if (formData.esss_applicable === "Oui") {
-    // (0a) Fill the 15-row Enjeux table from S-ESSS-02 (formData.enjeux_esss):
-    //      per row, keep the chosen OUI/NON and red-highlight the other.
-    {
-      const { xml: out, rowCount } = fillEnjeuxTable(docXml, formData.enjeux_esss);
-      docXml = out;
-      if (rowCount > 0) console.log(`[exportDocx] ESSS (Oui): tableau Enjeux rempli (${rowCount} ligne(s) marquées)`);
-    }
-    // (0b) Fill the "Exigences ESSS non applicables" articles table from the
-    //      user's dynamic rows (articlesEsssRows → S-ESSS-04).
-    {
-      const { xml: out, rowCount } = fillArticlesTable(docXml, articlesEsssRows);
-      docXml = out;
-      if (rowCount > 0) console.log(`[exportDocx] ESSS (Oui): tableau Articles non applicables rempli (${rowCount} ligne(s))`);
-    }
-  }
 
   // 3b-sexies-bis-VI-sexies → migré dans HIGHLIGHTING_RULES (id:
   // 'bordereau-surete-form-conditional'). Voir 1.7.3.

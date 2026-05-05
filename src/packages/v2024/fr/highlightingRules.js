@@ -37,11 +37,29 @@
 // For irreducible cases (multi-branch, dynamic regex, complex pStyle scans),
 // use a custom shape: `apply: (docXml, formData, ctx) => ({ docXml?, footnotesXml?, message? })`.
 //
-// The rules registry is populated incrementally during phase 1.7 lots (1.7.1
-// → 1.7.4). Rule ORDER MUST match the existing inline orchestration order in
-// `exportDocx.js` to preserve behavior across migration.
+// ── Rule order (reflects the OLD baseline execution order) ────────────────
+// In the OLD code, the dispatcher contained 21 rules (#1, #2-5, #8a-c, #6,
+// #7, #11, #12, #20, #22, #23, #25, #26, #27, #30, #31, #32) and ran FIRST,
+// then ~15 inline blocks executed AFTER (ESSS, Sûreté, Documents financiers,
+// Préqualif est/n'est pas, CCAP_YELLOW_DRAFTS). Phases 1.7.2-1.7.4 migrated
+// those inline blocks INTO this registry. To preserve OLD execution order
+// (and therefore OLD log output exactly), the rules added in 1.7.2-1.7.4 are
+// placed AFTER the 21 originally-in-dispatcher rules:
+//   1. Stable rules (already in dispatcher pre-1.7.2): #1 → #32
+//   2. Migrated ESSS rules (1.7.2)
+//   3. Migrated Sûreté rules (1.7.3)
+//   4. Migrated other rules (1.7.4): Documents financiers, Préqualif, CCAP drafts
+// The fillEnjeuxTable / fillArticlesTable inline calls are ALSO moved to
+// BEFORE the dispatcher invocation in exportDocx.js so the
+// 'esss-oui-chapter-yellow-to-red' rule sees the same set of yellow runs
+// as it did in the OLD baseline.
 
 export const HIGHLIGHTING_RULES = [
+  // ════════════════════════════════════════════════════════════════════════
+  // SECTION 1 : RULES ALREADY IN DISPATCHER PRE-1.7.2 (stable order, kept
+  // first to preserve OLD execution order vs the 1.7.2-1.7.4 migrated rules).
+  // ════════════════════════════════════════════════════════════════════════
+
   // ── Rule #1 — Date convention OPTION A/B ────────────────────────────────
   // Surligner rouge le bloc OPTION non retenu (start = "[OPTION X…",
   // end = "Fin de l'OPTION X]"). Pour des paires multiples (Convention de
@@ -67,13 +85,6 @@ export const HIGHLIGHTING_RULES = [
       };
     },
   },
-
-  // ────────────────────────────────────────────────────────────────────────
-  // ORDER MATTERS — Rules #2-#5, #8a-#8c map directly to the inline blocks
-  // formerly at exportDocx.js L4577-L4632 (call sites L4579/L4587/L4594/
-  // L4601/L4613/L4621/L4629). Their order in this array reflects the
-  // execution order in the original orchestration. Do not reorder.
-  // ────────────────────────────────────────────────────────────────────────
 
   // ── Rule #2 — IS 11.1(b) formats de prix non retenus ────────────────────
   {
@@ -132,8 +143,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #8a — Annexe 1 (révision des prix) prix fermes ─────────────────
-  // Helper highlightAnnexe1Revisions résorbé : c'était un délégué pur à
-  // highlightParagraphRange(start, end), donc op déclaratif suffit.
   {
     id: 'annexe-1-revisions-prix-fermes',
     description: "Section IV Annexe 1 — bloc complet rouge si prix_revisables === 'fermes'",
@@ -148,12 +157,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #8b — Annexe 2 alternative non retenue ─────────────────────────
-  // Helper highlightAnnexe2Alternative résorbé : la branche A/B sélectionne
-  // dynamiquement le range à passer à highlightParagraphRange. Pattern
-  // identique à Rule #1 (option-non-retenue).
-  // Mapping (cf. ancien helper) :
-  //   isA → range(AltB_start, Annexe3_start)
-  //   isB → range(AltA_start, AltB_start)
   {
     id: 'annexe-2-alternative-non-retenue',
     description: 'Section IV Annexe 2 — Alternative A ou B rouge selon option_monnaie',
@@ -241,15 +244,133 @@ export const HIGHLIGHTING_RULES = [
       paraCount > 0 ? `[exportDocx] Modèle de Déclaration de Garantie surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
   },
 
-  // ────────────────────────────────────────────────────────────────────────
-  // ESSS rules (phase 1.7.2). Mappent les blocs inline anciennement à
-  // exportDocx.js sections 3b-sexies-bis-VI-bis (call site L4568, Non),
-  // VI-ter (L4604, Oui — minus the fillEnjeuxTable / fillArticlesTable
-  // calls which stay inline car ce ne sont PAS du highlighting), VI-quinquies
-  // (L4648, Prix ESSS, branched Oui/Non), VI-septies (L4699, formulaires
-  // Méthodologie + Engagement, Non). Rule 16 (Bordereau Sûreté) reste à
-  // 1.7.3. Order matters — insert in source-call-site order.
-  // ────────────────────────────────────────────────────────────────────────
+  // ── Rule #20 — Sections V & VI — guides jaunes Convention AFD ───────────
+  {
+    id: 'sections-v-vi-yellow-to-red',
+    description: 'Sections V & VI — paragraphes jaunes → rouge (always)',
+    trigger: { always: true },
+    ops: [{
+      type: 'yellow-to-red-range',
+      startAnchor: 'SECTIONS_V_VI_START_RE',
+      endAnchor: 'SECTIONS_V_VI_END_RE',
+      requireHeading: true,
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Sections V & VI: ${paraCount} paragraphe(s) jaunes convertis en rouge (${runCount} run(s))` : null,
+  },
+
+  // ── Rule #22 — IS 33.1 « pas de marge de préférence » ───────────────────
+  {
+    id: 'marge-preference-non-accordee',
+    description: "IS 33.1 — bloc Marge de préférence rouge si marge_preference === 'ne sera pas'",
+    trigger: { field: 'marge_preference', equals: 'ne sera pas' },
+    apply: (docXml, formData, ctx) => {
+      const r = ctx.helpers.highlightMargePreferenceBlock(docXml, formData.marge_preference);
+      return {
+        docXml: r.xml,
+        message: r.paraCount > 0
+          ? `[exportDocx] IS 33.1 bloc marge de préférence surligné rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
+          : null,
+      };
+    },
+  },
+
+  // ── Rule #23 — IS 4.5 « pas de pré-qualification » — guide ──────────────
+  {
+    id: 'prequalification-no-prequal-guide',
+    description: 'IS 4.5 — guide "[sinon supprimer toute cette section]" rouge si prequalification === "n\'est pas"',
+    trigger: { field: 'prequalification', equals: "n'est pas" },
+    ops: [{ type: 'highlight-matching', matchAnchor: 'NO_PREQUAL_GUIDE_ANCHORS' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] IS 4.5 guide "sinon supprimer toute cette section" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #25 — Static guide markers — toujours rouges ───────────────────
+  {
+    id: 'static-guides-always-red',
+    description: 'IS 7.4/14.5/22.1/25.1/33.1 — guides AFD toujours surlignés rouge',
+    trigger: { always: true },
+    ops: [{ type: 'highlight-matching', matchAnchor: 'STATIC_GUIDE_ANCHORS' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] ${paraCount} guide(s) statique(s) surligné(s) rouge (${runCount} run(s))` : null,
+  },
+
+  // ── Rule #26 — Convention AFD OPTION A/B markers — toujours rouges ──────
+  {
+    id: 'afd-convention-option-markers',
+    description: 'Convention AFD — marqueurs OPTION A/B toujours convertis jaune→rouge',
+    trigger: { always: true },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'AFD_CONVENTION_OPTION_MARKERS_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] ${paraCount} marqueur(s) OPTION A/B Convention AFD → rouge (${runCount} surlignage(s))` : null,
+  },
+
+  // ── Rule #27 — IS 7.4 « pas de réunion » — bloc Lieu/Date/Heure ─────────
+  {
+    id: 'is-7-4-reunion-block',
+    description: "IS 7.4 — bloc Lieu/Date/Heure réunion rouge si reunion_prevue === \"n'est pas prévue\"",
+    trigger: { field: 'reunion_prevue', equals: "n'est pas prévue" },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'REUNION_START_RE',
+      endAnchor: 'REUNION_END_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] IS 7.4 bloc réunion surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
+  },
+
+  // ── Rule #30 — Marqueurs littéraux de suppression — toujours rouges ─────
+  // MUST run BEFORE Rule #24 (delete-block) so deletion markers inside the
+  // bloc 3.3 (which Rule #24 removes) are still counted/highlighted in the
+  // log. Visual end result is identical (markers in deleted block disappear
+  // either way), but log count would otherwise drop by 1.
+  {
+    id: 'deletion-markers-always',
+    description: '"[Rayer la mention inutile]" / "[Supprimer la mention inutile]" / "[à supprimer si …]" — toujours rouges',
+    trigger: { always: true },
+    ops: [{
+      type: 'highlight-inline-markers',
+      patternsAnchor: 'DELETION_MARKER_PATTERNS',
+      prefilterAnchor: 'SUPPRIMER_RAYER_PREFILTER',
+    }],
+    log: ({ count }) =>
+      count > 0 ? `[exportDocx] ${count} marqueur(s) de suppression surligné(s) rouge` : null,
+  },
+
+  // ── Rule #31 — §3.2 note "Le montant devrait se situer…" ────────────────
+  // MUST run BEFORE Rule #21a/#21b (replace-inline-phrase Documents
+  // financiers) since those replace operations strip yellow highlights from
+  // the §3.2 note paragraph. Without this ordering, Rule #31 would find 0
+  // yellow runs (visual end result is identical).
+  {
+    id: 'chiffre-affaires-note-yellow-to-red',
+    description: '§3.2 — note "Le montant devrait se situer entre 1.5 et 2 fois…" toujours convertie jaune→rouge',
+    trigger: { always: true },
+    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CHIFFRE_AFFAIRES_NOTE_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] §3.2 note "Le montant devrait se situer…" jaune→rouge (${paraCount} para, ${runCount} run)` : null,
+  },
+
+  // ── Rule #32 — §4.2(b)(ii) Sous-traitant spécialisé non autorisé ────────
+  {
+    id: 'sst-specialise-non',
+    description: "§4.2(b)(ii) — ligne complète rouge si sst_specialise_autorise === 'Non'",
+    trigger: { field: 'sst_specialise_autorise', equals: 'Non' },
+    ops: [{
+      type: 'highlight-range',
+      startAnchor: 'SST_SPECIALISE_START_RE',
+      endAnchor: 'SST_SPECIALISE_END_RE',
+    }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] §4.2(b)(ii) Sous-traitant spécialisé (Non): ligne complète surlignée rouge (${paraCount} para, ${runCount} run)` : null,
+  },
+
+  // ════════════════════════════════════════════════════════════════════════
+  // SECTION 2 : RULES MIGRATED IN PHASE 1.7.2 (ESSS) — placed AFTER the
+  // 1.7.1 stable rules to preserve OLD execution order. In OLD code these
+  // ran INLINE after the dispatcher; in NEW code they run inside the
+  // dispatcher but at the END of its iteration.
+  // ════════════════════════════════════════════════════════════════════════
 
   // ── Rule #13a — ESSS Non : ligne "Contenu" du sommaire Section VII ──────
   {
@@ -280,9 +401,10 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #14a — ESSS Oui : conversion jaune→rouge dans le chapitre ──────
-  // Les fills Enjeux / Articles restent inline (pas du highlighting) ; ils
-  // tournent APRÈS le dispatcher. Vérifié : ils n'écrivent rien en jaune,
-  // donc l'ordre yellow→red puis fills ne change pas le résultat final.
+  // Les fills Enjeux / Articles tournent AVANT le dispatcher (cf.
+  // exportDocx.js section 3b-zero-pre), pour préserver le contrat OLD :
+  // les yellow runs dans les placeholder rows du tableau Articles avaient
+  // déjà été éliminés par fillArticlesTable au moment où cette rule fire.
   {
     id: 'esss-oui-chapter-yellow-to-red',
     description: "Chapitre ESSS — paragraphes jaunes → rouge si esss_applicable === 'Oui'",
@@ -311,9 +433,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #15 — Section IV Prix ESSS (branché Oui/Non) ───────────────────
-  // Apply custom car 2 branches mutuellement exclusives :
-  //   'Oui' → yellow-to-red sur 2 notes draft (matching).
-  //   'Non' → highlight-range tout le bloc (titre → titre Bordereau Sûreté).
   {
     id: 'esss-prix-form-conditional',
     description: 'Section IV Prix ESSS — Oui : 2 notes draft jaune→rouge ; Non : bloc complet rouge',
@@ -334,6 +453,34 @@ export const HIGHLIGHTING_RULES = [
           docXml: r.xml,
           message: r.paraCount > 0
             ? `[exportDocx] Section IV Prix ESSS (Non): bloc complet surligné rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
+            : null,
+        };
+      }
+      return {};
+    },
+  },
+
+  // ── Rule #16 — Section IV Bordereau Sûreté (branché Oui/Non) ────────────
+  {
+    id: 'bordereau-surete-form-conditional',
+    description: "Section IV Bordereau Sûreté — 'Oui' : 2 notes draft jaune→rouge ; 'Non' : bloc complet rouge",
+    trigger: { fieldExists: 'surete_applicable' },
+    apply: (docXml, formData, ctx) => {
+      if (formData.surete_applicable === 'Oui – inclure sûreté') {
+        const r = ctx.helpers.convertYellowToRedInMatchingParagraphs(docXml, ctx.anchors.BORDEREAU_SURETE_DRAFT_NOTES_RE);
+        return {
+          docXml: r.xml,
+          message: r.paraCount > 0
+            ? `[exportDocx] Section IV Bordereau Sûreté (Oui): ${r.paraCount} note(s) draft jaune→rouge (${r.runCount} run(s))`
+            : null,
+        };
+      }
+      if (formData.surete_applicable === 'Non') {
+        const r = ctx.helpers.highlightParagraphRange(docXml, ctx.anchors.BORDEREAU_SURETE_TITLE_RE, ctx.anchors.FORMULAIRES_PROPOSITION_TECHNIQUE_TITLE_RE);
+        return {
+          docXml: r.xml,
+          message: r.paraCount > 0
+            ? `[exportDocx] Section IV Bordereau Sûreté (Non): bloc complet surligné rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
             : null,
         };
       }
@@ -382,45 +529,9 @@ export const HIGHLIGHTING_RULES = [
       paraCount > 0 ? `[exportDocx] Section IV Formulaire engagement ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
   },
 
-  // ────────────────────────────────────────────────────────────────────────
-  // Sûreté rules (phase 1.7.3). Cover 3 logical rules from inventory:
-  //   #16 Bordereau Sûreté Section IV (1 sub-rule, branched apply).
-  //   #18 Sûreté Oui compound (8 sub-rules: opening + 3 replace-yellow-guide
-  //       + Cocher Option guide + Options N°1/N°2 branched + 4 bullets
-  //       branched + escortes branched).
-  //   #19 Sûreté Non (4 sub-rules: chapter + sommaire ligne + Section III
-  //       tableau + footnotes 26/27/28 yellow-to-red).
-  // Insert after rule #17c and before rule #20, preserving source-call-site
-  // order (L4585-L4790 in the pre-1.7.3 exportDocx.js).
-  // ────────────────────────────────────────────────────────────────────────
-
-  // ── Rule #16 — Section IV Bordereau Sûreté (branché Oui/Non) ────────────
-  {
-    id: 'bordereau-surete-form-conditional',
-    description: "Section IV Bordereau Sûreté — 'Oui' : 2 notes draft jaune→rouge ; 'Non' : bloc complet rouge",
-    trigger: { fieldExists: 'surete_applicable' },
-    apply: (docXml, formData, ctx) => {
-      if (formData.surete_applicable === 'Oui – inclure sûreté') {
-        const r = ctx.helpers.convertYellowToRedInMatchingParagraphs(docXml, ctx.anchors.BORDEREAU_SURETE_DRAFT_NOTES_RE);
-        return {
-          docXml: r.xml,
-          message: r.paraCount > 0
-            ? `[exportDocx] Section IV Bordereau Sûreté (Oui): ${r.paraCount} note(s) draft jaune→rouge (${r.runCount} run(s))`
-            : null,
-        };
-      }
-      if (formData.surete_applicable === 'Non') {
-        const r = ctx.helpers.highlightParagraphRange(docXml, ctx.anchors.BORDEREAU_SURETE_TITLE_RE, ctx.anchors.FORMULAIRES_PROPOSITION_TECHNIQUE_TITLE_RE);
-        return {
-          docXml: r.xml,
-          message: r.paraCount > 0
-            ? `[exportDocx] Section IV Bordereau Sûreté (Non): bloc complet surligné rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
-            : null,
-        };
-      }
-      return {};
-    },
-  },
+  // ════════════════════════════════════════════════════════════════════════
+  // SECTION 3 : RULES MIGRATED IN PHASE 1.7.3 (Sûreté).
+  // ════════════════════════════════════════════════════════════════════════
 
   // ── Rule #18a — Sûreté Oui : bloc d'ouverture (2 paragraphes) ───────────
   {
@@ -476,7 +587,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #18c — Sûreté Oui : guide "[Cocher l'Option N°1...]" ───────────
-  // Toujours rougit quand Sûreté Oui, indépendamment de conditions_tres_degradees.
   {
     id: 'surete-oui-cocher-option-guide',
     description: "Sûreté Oui — guide '[Cocher l'Option N°1...]' toujours rouge",
@@ -491,9 +601,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #18d — Sûreté Oui : Options N°1/N°2 mutuellement exclusives ────
-  // Apply : trigger primaire = surete_applicable Oui ; secondaire = conditions_tres_degradees.
-  //   'Oui' (contexte très dégradé) → N°1 retenue, N°2 rouge (range : Option N°2 → §4.2)
-  //   'Non' → N°2 retenue, N°1 rouge (range : Option N°1 → Option N°2)
   {
     id: 'surete-oui-options-n1-n2-non-retenue',
     description: 'Sûreté Oui — Option N°1 ou N°2 (4.1) rouge selon conditions_tres_degradees',
@@ -518,9 +625,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #18e — Sûreté Oui : 4 bullets S07-005 (§4.2/§4.3/§4.4/§5) ──────
-  // Apply : trigger primaire = surete_applicable Oui ; secondaire = conditions_tres_degradees.
-  //   'Oui' → seul le marqueur jauni→rouge (contenu pertinent reste).
-  //   'Non' → tout le paragraphe rougit (bullet inapplicable).
   {
     id: 'surete-oui-4-bullets-s07-005',
     description: "Sûreté Oui — 4 bullets §4.2/§4.3/§4.4/§5 selon conditions_tres_degradees",
@@ -549,9 +653,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #18f — Sûreté Oui : bullet escortes S07-006 (§4.2) ─────────────
-  // Apply : trigger primaire = surete_applicable Oui ; secondaire = escortes_non_prises_en_charge.
-  //   'Oui' → marqueur jauni→rouge dans range (texte reste applicable).
-  //   'Non' → tout le paragraphe range rougit (escortes inutiles).
   {
     id: 'surete-oui-bullet-escortes-s07-006',
     description: 'Sûreté Oui — bullet escortes §4.2 selon escortes_non_prises_en_charge',
@@ -621,9 +722,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #19d — Sûreté Non : footnotes 26/27/28 jaune→rouge ─────────────
-  // IDs de footnote stables dans le template AFD PAY (attachées au tableau
-  // 6. Sûreté). Le dispatcher applique la conversion sur footnotesXml (chargé
-  // une fois au début de l'export et réécrit à la fin si modifié).
   {
     id: 'surete-non-footnotes-26-27-28',
     description: "Sûreté Non — footnotes 26/27/28 (notes de bas de page tableau '6. Sûreté') jaune→rouge",
@@ -636,28 +734,12 @@ export const HIGHLIGHTING_RULES = [
       footnoteCount > 0 ? `[exportDocx] Sûreté (Non): notes de bas de page 26/27/28 jaune→rouge (${footnoteCount} note(s), ${runCount} run(s))` : null,
   },
 
-  // ── Rule #20 — Sections V & VI — guides jaunes Convention AFD ───────────
-  // Toujours convertir jaune→rouge dans le range Section V → Section VII
-  // (helper heading-aware : ne matche que sur paragraphes Heading-styled).
-  {
-    id: 'sections-v-vi-yellow-to-red',
-    description: 'Sections V & VI — paragraphes jaunes → rouge (always)',
-    trigger: { always: true },
-    ops: [{
-      type: 'yellow-to-red-range',
-      startAnchor: 'SECTIONS_V_VI_START_RE',
-      endAnchor: 'SECTIONS_V_VI_END_RE',
-      requireHeading: true,
-    }],
-    log: ({ paraCount, runCount }) =>
-      paraCount > 0 ? `[exportDocx] Sections V & VI: ${paraCount} paragraphe(s) jaunes convertis en rouge (${runCount} run(s))` : null,
-  },
+  // ════════════════════════════════════════════════════════════════════════
+  // SECTION 4 : RULES MIGRATED IN PHASE 1.7.4 (Documents financiers,
+  // Préqualif est, Préqualif n'est pas, CCAP_YELLOW_DRAFTS).
+  // ════════════════════════════════════════════════════════════════════════
 
   // ── Rule #21a — Section III "Documents financiers" — phrase 1 ───────────
-  // Always-on : la phrase jaune "[indiquer le nombre] années" est remplacée
-  // par "le nombre d'années requis" (renvoi à la grille de critères Section
-  // III). Le placeholder jaune disparaît. Package-specific (les phrases
-  // sources changent en EN/ES) → reste dans highlightingRules.js du pack FR.
   {
     id: 'documents-financiers-replace-phrase-1',
     description: 'Section III Documents financiers — remplace "les [indiquer le nombre] années"',
@@ -683,38 +765,7 @@ export const HIGHLIGHTING_RULES = [
     log: ({ replaced }) => replaced ? '[exportDocx] Documents financiers: "[indiquer le nombre] années telles que requises" remplacé' : null,
   },
 
-  // ── Rule #22 — IS 33.1 « pas de marge de préférence » ───────────────────
-  // Helper highlightMargePreferenceBlock fait un Heading1→Heading1 scan
-  // (logique trop spécifique pour un op déclaratif). Apply custom.
-  {
-    id: 'marge-preference-non-accordee',
-    description: "IS 33.1 — bloc Marge de préférence rouge si marge_preference === 'ne sera pas'",
-    trigger: { field: 'marge_preference', equals: 'ne sera pas' },
-    apply: (docXml, formData, ctx) => {
-      const r = ctx.helpers.highlightMargePreferenceBlock(docXml, formData.marge_preference);
-      return {
-        docXml: r.xml,
-        message: r.paraCount > 0
-          ? `[exportDocx] IS 33.1 bloc marge de préférence surligné rouge (${r.paraCount} paragraphe(s), ${r.runCount} run(s))`
-          : null,
-      };
-    },
-  },
-
-  // ── Rule #23 — IS 4.5 « pas de pré-qualification » — guide ──────────────
-  {
-    id: 'prequalification-no-prequal-guide',
-    description: 'IS 4.5 — guide "[sinon supprimer toute cette section]" rouge si prequalification === "n\'est pas"',
-    trigger: { field: 'prequalification', equals: "n'est pas" },
-    ops: [{ type: 'highlight-matching', matchAnchor: 'NO_PREQUAL_GUIDE_ANCHORS' }],
-    log: ({ paraCount, runCount }) =>
-      paraCount > 0 ? `[exportDocx] IS 4.5 guide "sinon supprimer toute cette section" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
-  },
-
   // ── Rule #24 — IS 4.5 « est » : suppression bloc 3.3 qualification ──────
-  // Apply custom : le helper retourne `removed` (count) et `preservedSectPr`
-  // (bool). Le log original concatène les deux ; on conserve ce contrat via
-  // apply.
   {
     id: 'prequalification-est-delete-block-3-3',
     description: 'IS 4.5 — supprime le bloc 3.3 "Qualification si une Pré-qualification n\'a pas été effectuée" si prequalification === "est"',
@@ -730,45 +781,7 @@ export const HIGHLIGHTING_RULES = [
     },
   },
 
-  // ── Rule #25 — Static guide markers — toujours rouges ───────────────────
-  {
-    id: 'static-guides-always-red',
-    description: 'IS 7.4/14.5/22.1/25.1/33.1 — guides AFD toujours surlignés rouge',
-    trigger: { always: true },
-    ops: [{ type: 'highlight-matching', matchAnchor: 'STATIC_GUIDE_ANCHORS' }],
-    log: ({ paraCount, runCount }) =>
-      paraCount > 0 ? `[exportDocx] ${paraCount} guide(s) statique(s) surligné(s) rouge (${runCount} run(s))` : null,
-  },
-
-  // ── Rule #26 — Convention AFD OPTION A/B markers — toujours rouges ──────
-  {
-    id: 'afd-convention-option-markers',
-    description: 'Convention AFD — marqueurs OPTION A/B toujours convertis jaune→rouge',
-    trigger: { always: true },
-    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'AFD_CONVENTION_OPTION_MARKERS_RE' }],
-    log: ({ paraCount, runCount }) =>
-      paraCount > 0 ? `[exportDocx] ${paraCount} marqueur(s) OPTION A/B Convention AFD → rouge (${runCount} surlignage(s))` : null,
-  },
-
-  // ── Rule #27 — IS 7.4 « pas de réunion » — bloc Lieu/Date/Heure ─────────
-  {
-    id: 'is-7-4-reunion-block',
-    description: "IS 7.4 — bloc Lieu/Date/Heure réunion rouge si reunion_prevue === \"n'est pas prévue\"",
-    trigger: { field: 'reunion_prevue', equals: "n'est pas prévue" },
-    ops: [{
-      type: 'highlight-range',
-      startAnchor: 'REUNION_START_RE',
-      endAnchor: 'REUNION_END_RE',
-    }],
-    log: ({ paraCount, runCount }) =>
-      paraCount > 0 ? `[exportDocx] IS 7.4 bloc réunion surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))` : null,
-  },
-
   // ── Rule #28 — Préqualif « n'est pas » — références "pré-qualif" ────────
-  // Apply : le helper highlightPrequalificationReferences scanne tous les
-  // "pré-qualif" du document et les rougit, sauf une liste d'exclusions
-  // (cas SANS pré-qualif, ligne IS 4.5 elle-même). Logique trop spécifique
-  // pour un op déclaratif → apply custom.
   {
     id: 'prequalification-n-est-pas-references',
     description: 'Préqualif "n\'est pas" — surligne rouge les références "pré-qualif" sauf exclusions',
@@ -785,9 +798,6 @@ export const HIGHLIGHTING_RULES = [
   },
 
   // ── Rule #29 — Préqualif « n'est pas » — section "utilité de la Préqualification" ─
-  // Apply : helper highlightUtilitySection cible un scan par pStyle
-  // (TITLEINTRO) sur la section "Quelle est l'utilité de la Préqualification ?"
-  // → trop spécifique pour un op déclaratif.
   {
     id: 'prequalification-n-est-pas-utility-section',
     description: 'Préqualif "n\'est pas" — section "utilité de la Préqualification" (pStyle TITLEINTRO) rouge',
@@ -803,51 +813,7 @@ export const HIGHLIGHTING_RULES = [
     },
   },
 
-  // ── Rule #30 — Marqueurs littéraux de suppression — toujours rouges ─────
-  {
-    id: 'deletion-markers-always',
-    description: '"[Rayer la mention inutile]" / "[Supprimer la mention inutile]" / "[à supprimer si …]" — toujours rouges',
-    trigger: { always: true },
-    ops: [{
-      type: 'highlight-inline-markers',
-      patternsAnchor: 'DELETION_MARKER_PATTERNS',
-      prefilterAnchor: 'SUPPRIMER_RAYER_PREFILTER',
-    }],
-    log: ({ count }) =>
-      count > 0 ? `[exportDocx] ${count} marqueur(s) de suppression surligné(s) rouge` : null,
-  },
-
-  // ── Rule #31 — §3.2 note "Le montant devrait se situer…" ────────────────
-  {
-    id: 'chiffre-affaires-note-yellow-to-red',
-    description: '§3.2 — note "Le montant devrait se situer entre 1.5 et 2 fois…" toujours convertie jaune→rouge',
-    trigger: { always: true },
-    ops: [{ type: 'yellow-to-red-matching', matchAnchor: 'CHIFFRE_AFFAIRES_NOTE_RE' }],
-    log: ({ paraCount, runCount }) =>
-      paraCount > 0 ? `[exportDocx] §3.2 note "Le montant devrait se situer…" jaune→rouge (${paraCount} para, ${runCount} run)` : null,
-  },
-
-  // ── Rule #32 — §4.2(b)(ii) Sous-traitant spécialisé non autorisé ────────
-  {
-    id: 'sst-specialise-non',
-    description: "§4.2(b)(ii) — ligne complète rouge si sst_specialise_autorise === 'Non'",
-    trigger: { field: 'sst_specialise_autorise', equals: 'Non' },
-    ops: [{
-      type: 'highlight-range',
-      startAnchor: 'SST_SPECIALISE_START_RE',
-      endAnchor: 'SST_SPECIALISE_END_RE',
-    }],
-    log: ({ paraCount, runCount }) =>
-      paraCount > 0 ? `[exportDocx] §4.2(b)(ii) Sous-traitant spécialisé (Non): ligne complète surlignée rouge (${paraCount} para, ${runCount} run)` : null,
-  },
-
-  // ────────────────────────────────────────────────────────────────────────
-  // Rule #33 — CCAP Partie A "yellow drafts" — 7 sous-règles déclaratives.
-  // Pour chaque champ rempli, le paragraphe de guidage jaune correspondant
-  // (qui n'est plus utile une fois la décision prise) bascule jaune→rouge.
-  // Trigger `fieldFilled` = isFilled(formData[field]) (cf. dispatcher).
-  // L'array CCAP_YELLOW_DRAFTS a été remplacé par ces 7 entrées.
-  // ────────────────────────────────────────────────────────────────────────
+  // ── Rule #33 — CCAP Partie A "yellow drafts" — 7 sous-règles déclaratives ─
 
   {
     id: 'ccap-draft-tranches-refs',
