@@ -161,3 +161,73 @@ export const CHIFFRE_AFFAIRES_NOTE_RE = /Le montant devrait se situer entre 1\.5
 // suivante).
 export const SST_SPECIALISE_START_RE = /^\[ajouter le critère suivant si un sous-traitant spécialisé est autorisé/i;
 export const SST_SPECIALISE_END_RE = /^Qualification Environnementale,\s*Sociale,\s*Santé et Sécurité\s*\(ESSS\)\s*$/i;
+
+// ── IS 11.1(b) — Layout Bordereau / Prix global / Combinaison ──────────────
+// Trois lignes alternées par "[ou]" dans le DPAO, surlignée en rouge selon le
+// choix `type_prix`. L'ordre rowAnchors[0..2] doit matcher l'ordre du template
+// (unitaires / global-forfaitaire / combinaison) — utilisé comme index par
+// highlightUnselectedPriceFormats pour décider quelle ligne reste jaune.
+export const PRICE_FORMAT_ROW_ANCHORS = [
+  /\[pour les march[eé]s [aà] prix unitaires\]/i,
+  /\[pour les march[eé]s [aà] prix global et forfaitaire\]/i,
+  /\[pour les march[eé]s combinant/i,
+];
+export const PRICE_FORMAT_OR_RE = /^\s*\[ou\]\s*$/i;
+
+// ── Section IV "Tableaux de prix" guide — séquence 6 paragraphes ───────────
+// Le bloc d'introduction "Tableaux de prix" (page 60) est une séquence stricte
+// de 6 paragraphes. anchors[0] localise l'intro, anchors[1..5] valident la
+// structure avant la conversion sélective jaune→rouge selon `type_prix`.
+export const TABLEAUX_DE_PRIX_GUIDE_ANCHORS = [
+  /Insérer.*formulaire de Bordereau des prix.*Détail quantitatif/i,
+  /^ou$/i,
+  /un formulaire de Prix Global et Forfaitaire et de décomposition/i,
+  /^ou$/i,
+  /les deux formulaires pour un march[ée] combinant/i,
+  /Et insérer le texte ci-dessous comme introduction\]/i,
+];
+
+// ── IS 15.1 — Monnaie option (anchor + privilégier label) ──────────────────
+// Le DPAO IS 15.1 présente Option A (monnaie nationale) vs Option B (nationale
+// + étrangères) via un guide commençant par "L'Option B reflète mieux les
+// besoins". Le label "[Option à privilégier]" sépare A et B et doit aussi
+// être rougi quand A est choisi.
+export const MONNAIE_OPTION_ANCHOR_RE = /L'Option B refl[eè]te mieux les besoins/i;
+export const MONNAIE_OPTION_PRIVILEGIER_RE = /^\[Option [aà] privil[eé]gier\]\s*$/i;
+
+// ── IS 32.1 — Conversion option (anchor) ───────────────────────────────────
+// Anchor sur la phrase introductive de la cellule IS 32.1 ("…conformément à
+// la procédure correspondant à l'Option") qui précède les blocs Option A / B.
+export const CONVERSION_OPTION_ANCHOR_RE = /conform[eé]ment [aà] la proc[eé]dure correspondant [aà] l'Option/i;
+
+// ── A/B headers + IS/Section boundary (partagés IS 15.1 + IS 32.1) ─────────
+// Les deux helpers (Monnaie / Conversion) scannent en avant pour trouver les
+// headers "Option A (" / "Option B (" puis la frontière de cellule (heading
+// IS suivant ou Section romaine).
+export const OPTION_A_HEADER_RE = /^Option A \(/i;
+export const OPTION_B_HEADER_RE = /^Option B \(/i;
+export const SECTION_OR_IS_BOUNDARY_RE = /^IS\s+\d|^Section\s+[IVX]/i;
+
+// ── Annexe 1 (Révision des prix) — range start/end ─────────────────────────
+// `prix_revisables === "fermes"` → tout le bloc "Annexe 1 à la Soumission —
+// Données relatives à la révision des prix" devient inapplicable. Range :
+// du titre Annexe 1 (inclus) au titre Annexe 2 (exclusif).
+export const ANNEXE_1_REVISIONS_START_RE = /^Annexe 1 [aà] la Soumission\b.*r[eé]vision des prix/i;
+export const ANNEXE_1_REVISIONS_END_RE = /^Annexe 2 [aà] la Soumission\b/i;
+
+// ── Annexe 2 (Alternative A / B) — selon option_monnaie ────────────────────
+// L'Annexe 2 carry les deux Alternatives. Option A → rouge Alternative B
+// (range AltB → Annexe 3). Option B → rouge Alternative A (range AltA → AltB).
+export const ANNEXE_2_ALT_A_RE = /Tableau\s*:\s*Alternative\s*A/i;
+export const ANNEXE_2_ALT_B_RE = /Tableau\s*:\s*Alternative\s*B/i;
+export const ANNEXE_3_HEADER_RE = /^Annexe 3 [aà] la Soumission\b/i;
+
+// ── Section IV formulaire "Variantes techniques" ───────────────────────────
+// `variantes_techniques === "ne sont pas"` → le formulaire Variantes
+// techniques (titre + intro + tableau 4-colonnes) est inapplicable. Anchor
+// sur l'intro (unique en Section IV+, distincte du titre dupliqué en TOC),
+// puis walk-back pour le titre et walk-forward pour le heading suivant
+// "Méthodologie environnementale…".
+export const VARIANTES_TECH_INTRO_RE = /^Proposition pour les [eé]l[eé]ments d\s*es ouvrages pour lesquels des variantes technique\s*s sont autoris[eé]es/i;
+export const VARIANTES_TECH_TITLE_RE = /^Variantes techniques\s*$/i;
+export const METHODOLOGIE_ESSS_HEADER_RE = /M[eé]thodologie\s+environnementale/i;

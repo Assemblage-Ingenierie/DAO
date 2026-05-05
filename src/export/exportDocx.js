@@ -11,6 +11,18 @@ import {
   MARGE_PREFERENCE_HEADER_ANCHOR,
   NO_PREQUAL_GUIDE_ANCHORS,
   NO_PREQUAL_HEADER_ANCHOR,
+  PRICE_FORMAT_ROW_ANCHORS,
+  PRICE_FORMAT_OR_RE,
+  TABLEAUX_DE_PRIX_GUIDE_ANCHORS,
+  MONNAIE_OPTION_ANCHOR_RE,
+  MONNAIE_OPTION_PRIVILEGIER_RE,
+  CONVERSION_OPTION_ANCHOR_RE,
+  OPTION_A_HEADER_RE,
+  OPTION_B_HEADER_RE,
+  SECTION_OR_IS_BOUNDARY_RE,
+  VARIANTES_TECH_INTRO_RE,
+  VARIANTES_TECH_TITLE_RE,
+  METHODOLOGIE_ESSS_HEADER_RE,
 } from '../packages/v2024/fr/anchors.js';
 import { HIGHLIGHTING_RULES } from '../packages/v2024/fr/highlightingRules.js';
 import { isFilled } from '../utils/fieldStatus.js';
@@ -1398,12 +1410,8 @@ function highlightUnselectedPriceFormats(xml, typePrix) {
   const selectedIdx = optionMap[typePrix];
   if (selectedIdx === undefined) return { xml, count: 0 };
 
-  const rowRes = [
-    /\[pour les march[eé]s [aà] prix unitaires\]/i,
-    /\[pour les march[eé]s [aà] prix global et forfaitaire\]/i,
-    /\[pour les march[eé]s combinant/i,
-  ];
-  const orRe = /^\s*\[ou\]\s*$/i;
+  const rowRes = PRICE_FORMAT_ROW_ANCHORS;
+  const orRe = PRICE_FORMAT_OR_RE;
 
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const sectI = findSectionIBounds(xml);
@@ -1498,14 +1506,7 @@ function highlightUnselectedTableauxDePrixGuide(xml, typePrix) {
   const keep = KEEP_YELLOW[typePrix];
   if (!keep) return { xml, count: 0 };
 
-  const expected = [
-    /Insérer.*formulaire de Bordereau des prix.*Détail quantitatif/i,
-    /^ou$/i,
-    /un formulaire de Prix Global et Forfaitaire et de décomposition/i,
-    /^ou$/i,
-    /les deux formulaires pour un march[ée] combinant/i,
-    /Et insérer le texte ci-dessous comme introduction\]/i,
-  ];
+  const expected = TABLEAUX_DE_PRIX_GUIDE_ANCHORS;
 
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
@@ -1571,7 +1572,7 @@ function highlightUnselectedMonnaieOption(xml, optionMonnaie) {
   for (let i = 1; i < parts.length; i += 2) {
     if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (/L'Option B refl[eè]te mieux les besoins/i.test(t)) { anchorIdx = i; break; }
+    if (MONNAIE_OPTION_ANCHOR_RE.test(t)) { anchorIdx = i; break; }
   }
   if (anchorIdx === -1) return { xml, count: 0 };
 
@@ -1580,10 +1581,10 @@ function highlightUnselectedMonnaieOption(xml, optionMonnaie) {
   let optAHead = -1, priviLabel = -1, optBHead = -1, endIdx = parts.length;
   for (let i = anchorIdx + 2; i < parts.length; i += 2) {
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (optAHead === -1 && /^Option A \(/i.test(t)) { optAHead = i; continue; }
-    if (priviLabel === -1 && /^\[Option [aà] privil[eé]gier\]\s*$/i.test(t)) { priviLabel = i; continue; }
-    if (optBHead === -1 && /^Option B \(/i.test(t)) { optBHead = i; continue; }
-    if (optBHead !== -1 && (/^IS\s+\d/.test(t) || /^Section\s+[IVX]/i.test(t))) { endIdx = i; break; }
+    if (optAHead === -1 && OPTION_A_HEADER_RE.test(t)) { optAHead = i; continue; }
+    if (priviLabel === -1 && MONNAIE_OPTION_PRIVILEGIER_RE.test(t)) { priviLabel = i; continue; }
+    if (optBHead === -1 && OPTION_B_HEADER_RE.test(t)) { optBHead = i; continue; }
+    if (optBHead !== -1 && SECTION_OR_IS_BOUNDARY_RE.test(t)) { endIdx = i; break; }
     if (i - anchorIdx > 40) { endIdx = i; break; } // safety rail
   }
   if (optAHead === -1 || optBHead === -1) return { xml, count: 0 };
@@ -1637,16 +1638,16 @@ function highlightUnselectedConversionOption(xml, optionConversion) {
   for (let i = 1; i < parts.length; i += 2) {
     if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (/conform[eé]ment [aà] la proc[eé]dure correspondant [aà] l'Option/i.test(t)) { anchorIdx = i; break; }
+    if (CONVERSION_OPTION_ANCHOR_RE.test(t)) { anchorIdx = i; break; }
   }
   if (anchorIdx === -1) return { xml, count: 0 };
 
   let optAHead = -1, optBHead = -1, endIdx = parts.length;
   for (let i = anchorIdx + 2; i < parts.length; i += 2) {
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (optAHead === -1 && /^Option A \(/i.test(t)) { optAHead = i; continue; }
-    if (optBHead === -1 && /^Option B \(/i.test(t)) { optBHead = i; continue; }
-    if (optBHead !== -1 && (/^IS\s+\d/.test(t) || /^Section\s+[IVX]/i.test(t))) { endIdx = i; break; }
+    if (optAHead === -1 && OPTION_A_HEADER_RE.test(t)) { optAHead = i; continue; }
+    if (optBHead === -1 && OPTION_B_HEADER_RE.test(t)) { optBHead = i; continue; }
+    if (optBHead !== -1 && SECTION_OR_IS_BOUNDARY_RE.test(t)) { endIdx = i; break; }
     if (i - anchorIdx > 40) { endIdx = i; break; }
   }
   if (optAHead === -1 || optBHead === -1) return { xml, count: 0 };
@@ -1896,13 +1897,12 @@ function highlightVariantesTechniquesForm(xml, variantesTechniques) {
   const sectI = findSectionIBounds(xml);
   const positions = buildPartPositions(parts);
 
-  const introRe = /^Proposition pour les [eé]l[eé]ments d\s*es ouvrages pour lesquels des variantes technique\s*s sont autoris[eé]es/i;
   let introIdx = -1;
   for (let i = 1; i < parts.length; i += 2) {
     if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
     if (isTocParagraph(parts[i])) continue;
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (introRe.test(t)) { introIdx = i; break; }
+    if (VARIANTES_TECH_INTRO_RE.test(t)) { introIdx = i; break; }
   }
   if (introIdx === -1) return { xml, paraCount: 0, runCount: 0 };
 
@@ -1912,13 +1912,13 @@ function highlightVariantesTechniquesForm(xml, variantesTechniques) {
     const k = introIdx - 2 * j;
     if (k < 1) break;
     const t = normApos(extractRunNodes(parts[k]).map(r => r.text).join(''));
-    if (/^Variantes techniques\s*$/i.test(t)) { startIdx = k; break; }
+    if (VARIANTES_TECH_TITLE_RE.test(t)) { startIdx = k; break; }
   }
   // End: next form heading (Méthodologie ESSS).
   let endIdx = -1;
   for (let i = introIdx + 2; i < parts.length; i += 2) {
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (/M[eé]thodologie\s+environnementale/i.test(t)) { endIdx = i; break; }
+    if (METHODOLOGIE_ESSS_HEADER_RE.test(t)) { endIdx = i; break; }
   }
   if (endIdx === -1) return { xml, paraCount: 0, runCount: 0 };
 
