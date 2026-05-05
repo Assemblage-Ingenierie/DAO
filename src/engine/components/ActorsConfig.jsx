@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LABELS, tpl } from "../packages/v2024/fr/labels.js";
+import { LABELS, tpl } from "../../packages/v2024/fr/labels.js";
 
 const PALETTE = [
   { color: "#6A1B9A", bgColor: "#F3E5F5", borderColor: "#CE93D8" },

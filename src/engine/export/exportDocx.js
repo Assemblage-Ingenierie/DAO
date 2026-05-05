@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 // a 0-byte cloud-only placeholder in this Google Drive shared folder.
 // Use the local equivalent in src/utils/saveBlob.js instead.
 import { saveAs } from '../utils/saveBlob.js';
-import * as anchors from '../packages/v2024/fr/anchors.js';
+import * as anchors from '../../packages/v2024/fr/anchors.js';
 import {
   STATIC_GUIDE_ANCHORS,
   IS_13_5_VARIANTES_DELAIS_ANCHORS,
@@ -71,11 +71,11 @@ import {
   CCAP_20_2_OPT_TROIS_MEMBRES_RE,
   CCAP_20_2_LISTE_BOUNDARY_RE,
   CCAP_20_2_SUB_REF_BOUNDARY_RE,
-} from '../packages/v2024/fr/anchors.js';
-import { HIGHLIGHTING_RULES } from '../packages/v2024/fr/highlightingRules.js';
+} from '../../packages/v2024/fr/anchors.js';
+import { HIGHLIGHTING_RULES } from '../../packages/v2024/fr/highlightingRules.js';
 import { isFilled } from '../utils/fieldStatus.js';
-import { isEnjeuEsssLabel } from '../packages/v2024/fr/enjeux.js';
-import { SECTIONS } from '../packages/v2024/fr/sections.js';
+import { isEnjeuEsssLabel } from '../../packages/v2024/fr/enjeux.js';
+import { SECTIONS } from '../../packages/v2024/fr/sections.js';
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 

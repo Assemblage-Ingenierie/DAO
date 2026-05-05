@@ -1,26 +1,36 @@
 import { useState } from "react";
-import { LABELS } from "../packages/v2024/fr/labels.js";
-import { DEFAULT_PROPOSITION_ITEMS as DEFAULT_ITEMS } from "../packages/v2024/fr/defaults.js";
+import { LABELS } from "../../packages/v2024/fr/labels.js";
 
-let nextId = 20;
+let nextId = 10000;
 
-export default function PropositionTechnique({ items, onChange }) {
+// Generic editable bullet list used by:
+//  - S04-001 Proposition technique (legacy PropositionTechnique, kept for
+//    its own default set)
+//  - S04-ORGA-* Organisation des travaux (bullets a…i)
+//  - S04-CAL-*  Calendrier d'Exécution (bullets a…d)
+//
+// `items` shape: [{ id, label, enabled, description? }]
+// `defaults`  : fallback when `items` is empty (on first render)
+export default function BulletList({ items, onChange, defaults = [] }) {
   const [editingId, setEditingId] = useState(null);
-  const data = items && items.length > 0 ? items : DEFAULT_ITEMS;
+  const data = items && items.length > 0 ? items : defaults;
 
   const updateItem = (id, patch) => {
-    onChange(data.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+    const base = items && items.length > 0 ? items : defaults;
+    onChange(base.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   };
 
   const addItem = () => {
+    const base = items && items.length > 0 ? items : defaults;
     onChange([
-      ...data,
-      { id: nextId++, label: LABELS.proposition.newItem, enabled: true, description: "" },
+      ...base,
+      { id: nextId++, label: LABELS.bulletList.newItem, enabled: true, description: "" },
     ]);
   };
 
   const removeItem = (id) => {
-    onChange(data.filter((it) => it.id !== id));
+    const base = items && items.length > 0 ? items : defaults;
+    onChange(base.filter((it) => it.id !== id));
   };
 
   return (
@@ -61,7 +71,7 @@ export default function PropositionTechnique({ items, onChange }) {
                     }}
                   />
                   <textarea
-                    value={item.description}
+                    value={item.description || ""}
                     onChange={(e) => updateItem(item.id, { description: e.target.value })}
                     rows={2}
                     style={{
@@ -74,7 +84,7 @@ export default function PropositionTechnique({ items, onChange }) {
                       width: "100%",
                       resize: "vertical",
                     }}
-                    placeholder={LABELS.proposition.descriptionPlaceholder}
+                    placeholder={LABELS.bulletList.descriptionPlaceholder}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -112,7 +122,7 @@ export default function PropositionTechnique({ items, onChange }) {
                 <div
                   style={{ cursor: "pointer" }}
                   onClick={() => setEditingId(item.id)}
-                  title={LABELS.proposition.clickToEdit}
+                  title={LABELS.bulletList.clickToEdit}
                 >
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#4D4D4D", marginBottom: 2 }}>
                     {item.label}
@@ -144,7 +154,7 @@ export default function PropositionTechnique({ items, onChange }) {
           cursor: "pointer",
         }}
       >
-        {LABELS.proposition.addButton}
+        {LABELS.bulletList.addButton}
       </button>
     </div>
   );

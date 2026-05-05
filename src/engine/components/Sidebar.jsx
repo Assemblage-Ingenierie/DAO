@@ -1,5 +1,5 @@
-import { SECTIONS, SECTION_GROUPS } from "../packages/v2024/fr/sections.js";
-import { LABELS, tpl } from "../packages/v2024/fr/labels.js";
+import { SECTIONS, SECTION_GROUPS } from "../../packages/v2024/fr/sections.js";
+import { LABELS, tpl } from "../../packages/v2024/fr/labels.js";
 import { getFieldStatus } from "../utils/fieldStatus.js";
 
 function aggregateStatus(section, formData, actorAssignments, fieldComments) {

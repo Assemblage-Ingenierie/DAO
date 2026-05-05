@@ -1,4 +1,4 @@
-import { LABELS, tpl } from "../packages/v2024/fr/labels.js";
+import { LABELS, tpl } from "../../packages/v2024/fr/labels.js";
 
 export default function ActorTag({ actor, onRemove }) {
   return (

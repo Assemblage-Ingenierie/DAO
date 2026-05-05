@@ -1,5 +1,5 @@
-import { LABELS } from "../packages/v2024/fr/labels.js";
-import { DEFAULT_PERSONNEL_ROWS as DEFAULT_ROWS } from "../packages/v2024/fr/defaults.js";
+import { LABELS } from "../../packages/v2024/fr/labels.js";
+import { DEFAULT_PERSONNEL_ROWS as DEFAULT_ROWS } from "../../packages/v2024/fr/defaults.js";
 
 let nextId = 10;
 

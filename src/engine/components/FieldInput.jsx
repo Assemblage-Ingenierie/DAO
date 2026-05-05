@@ -8,7 +8,7 @@ import ArticlesTable from "./ArticlesTable.jsx";
 import TranchesTable from "./TranchesTable.jsx";
 import MultiCheckExtensible from "./MultiCheckExtensible.jsx";
 import { getFieldStatus } from "../utils/fieldStatus.js";
-import { LABELS, tpl } from "../packages/v2024/fr/labels.js";
+import { LABELS, tpl } from "../../packages/v2024/fr/labels.js";
 
 // ── Couleurs C2 ────────────────────────────────────────────────────────────
 const ACTIVE_RED = "#E30513";

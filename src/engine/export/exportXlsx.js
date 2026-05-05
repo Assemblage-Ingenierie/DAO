@@ -4,8 +4,8 @@
 import * as XLSX from 'xlsx-js-style';
 import JSZip from 'jszip';
 import { saveAs } from '../utils/saveBlob.js';
-import { SECTIONS, SECTION_GROUPS } from '../packages/v2024/fr/sections.js';
-import { ENJEUX_ESSS, isEnjeuEsssLabel } from '../packages/v2024/fr/enjeux.js';
+import { SECTIONS, SECTION_GROUPS } from '../../packages/v2024/fr/sections.js';
+import { ENJEUX_ESSS, isEnjeuEsssLabel } from '../../packages/v2024/fr/enjeux.js';
 
 // ── Value formatting ──────────────────────────────────────────────────────
 

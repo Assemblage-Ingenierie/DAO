@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { LABELS } from "../packages/v2024/fr/labels.js";
+import { LABELS } from "../../packages/v2024/fr/labels.js";
 
 // MultiCheckExtensible — checklist with predefined "default" options that the
 // user can toggle on/off, plus the ability to add custom options at the

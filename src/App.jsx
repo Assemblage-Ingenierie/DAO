@@ -6,17 +6,17 @@ import {
   DEFAULT_MATERIEL_ROWS,
   DEFAULT_PROPOSITION_ITEMS,
 } from "./packages/v2024/fr/defaults.js";
-import { usePersistedState } from "./hooks/usePersistedState.js";
+import { usePersistedState } from "./engine/hooks/usePersistedState.js";
 import { isEnjeuEsssLabel } from "./packages/v2024/fr/enjeux.js";
 import { LABELS, tpl } from "./packages/v2024/fr/labels.js";
-import Sidebar from "./components/Sidebar.jsx";
-import FieldInput from "./components/FieldInput.jsx";
-import ProgressBar from "./components/ProgressBar.jsx";
-import ActorsConfig from "./components/ActorsConfig.jsx";
-import ActorChecklist from "./components/ActorChecklist.jsx";
-import { exportDocx } from "./export/exportDocx.js";
-import { exportXlsx } from "./export/exportXlsx.js";
-import { parseXlsxImport } from "./export/importXlsx.js";
+import Sidebar from "./engine/components/Sidebar.jsx";
+import FieldInput from "./engine/components/FieldInput.jsx";
+import ProgressBar from "./engine/components/ProgressBar.jsx";
+import ActorsConfig from "./engine/components/ActorsConfig.jsx";
+import ActorChecklist from "./engine/components/ActorChecklist.jsx";
+import { exportDocx } from "./engine/export/exportDocx.js";
+import { exportXlsx } from "./engine/export/exportXlsx.js";
+import { parseXlsxImport } from "./engine/export/importXlsx.js";
 
 const FIRST_SECTION = SECTIONS[0]?.id || "identification";
 

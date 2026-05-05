@@ -4,8 +4,8 @@
 // `__personnel_0`; those are parsed back into their structured rows.
 
 import * as XLSX from 'xlsx-js-style';
-import { SECTIONS } from '../packages/v2024/fr/sections.js';
-import { isEnjeuEsssLabel, enjeuKeyByLabel } from '../packages/v2024/fr/enjeux.js';
+import { SECTIONS } from '../../packages/v2024/fr/sections.js';
+import { isEnjeuEsssLabel, enjeuKeyByLabel } from '../../packages/v2024/fr/enjeux.js';
 
 // Build a lookup: field.id → field definition (including type).
 function indexFieldsById() {

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { LABELS } from "../packages/v2024/fr/labels.js";
+import { LABELS } from "../../packages/v2024/fr/labels.js";
 
 let nextId = 10;
 

@@ -1,5 +1,5 @@
-import { SECTIONS } from "../packages/v2024/fr/sections.js";
-import { LABELS } from "../packages/v2024/fr/labels.js";
+import { SECTIONS } from "../../packages/v2024/fr/sections.js";
+import { LABELS } from "../../packages/v2024/fr/labels.js";
 
 const SPECIAL_TYPES = ["personnel_table", "materiel_table", "proposition_list"];
 

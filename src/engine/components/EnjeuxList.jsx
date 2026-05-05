@@ -1,5 +1,5 @@
-import { ENJEUX_ESSS as ENJEUX } from "../packages/v2024/fr/enjeux.js";
-import { LABELS } from "../packages/v2024/fr/labels.js";
+import { ENJEUX_ESSS as ENJEUX } from "../../packages/v2024/fr/enjeux.js";
+import { LABELS } from "../../packages/v2024/fr/labels.js";
 
 const cellStyle = {
   padding: "8px 10px",
