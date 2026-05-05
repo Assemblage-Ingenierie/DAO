@@ -23,6 +23,54 @@ import {
   VARIANTES_TECH_INTRO_RE,
   VARIANTES_TECH_TITLE_RE,
   METHODOLOGIE_ESSS_HEADER_RE,
+  // CCAP helpers anchors (1.8)
+  CCAP_TRANCHES_CAPTION_RE,
+  CCAP_TRANCHES_TABLE_HEADER_RE,
+  CCAP_ESSS_CHECKBOXES_ANCHOR_TEXT,
+  CCAP_CONDITIONS_CLIMATIQUES_ANCHOR_RE,
+  CCAP_14_1_HEADING_TEXT_LC,
+  CCAP_14_1_REF_TEXT,
+  CCAP_14_1_HEADER_GUIDE_RE,
+  CCAP_14_1_OPT_FORFAITAIRE_RE,
+  CCAP_14_1_OPT_UNITAIRES_RE,
+  CCAP_14_1_OPT_COMBINAISON_RE,
+  CCAP_14_1_OU_SEPARATOR_RE,
+  CCAP_14_1_DESC_FORF_RE,
+  CCAP_14_1_DESC_UNIT_RE,
+  CCAP_14_1_SUB_REF_BOUNDARY_RE,
+  CCAP_13_5_B_II_HEADING_LC_INCLUDES,
+  CCAP_13_5_B_II_REF_PREFIX_LC,
+  CCAP_14_1_B_REF_TEXT,
+  CCAP_14_1_E_REF_TEXT,
+  CCAP_14_1_E_SUPPRIMER_SUFFIX_TEXT,
+  CCAP_14_2_HEADING_TEXT_LC,
+  CCAP_14_2_REF_TEXT,
+  CCAP_14_3_HEADING_TEXT_LC,
+  CCAP_14_3_REF_TEXT,
+  CCAP_14_5_HEADING_TEXT_LC,
+  CCAP_14_5_GUIDE_RE,
+  CCAP_14_5_FOB_REF_PREFIX_LC,
+  CCAP_14_5_ONSITE_REF_PREFIX_LC,
+  CCAP_14_5_NEXT_SUBCLAUSE_RE,
+  CCAP_18_1_HEADING_RE,
+  CCAP_18_1_REF_TEXT,
+  CCAP_18_1_ATTESTATION_LABEL_RE,
+  CCAP_18_1_POLICES_LABEL_RE,
+  CCAP_18_1_UNDERSCORE_JOURS_RE,
+  CCAP_18_1_UNDERSCORE_ONLY_RE,
+  CCAP_18_1_SUB_REF_BOUNDARY_RE,
+  CCAP_18_1_POLICES_OLD_LABEL_LC,
+  CCAP_18_1_POLICES_NEW_LABEL_TEXT,
+  CCAP_18_3_HEADING_RE,
+  CCAP_18_3_REF_TEXT,
+  CCAP_20_2_HEADING_RE,
+  CCAP_20_2_REF_TEXT,
+  CCAP_20_2_GUIDE_SOIT_UPPER_RE,
+  CCAP_20_2_OPT_UN_MEMBRE_RE,
+  CCAP_20_2_GUIDE_SOIT_LOWER_RE,
+  CCAP_20_2_OPT_TROIS_MEMBRES_RE,
+  CCAP_20_2_LISTE_BOUNDARY_RE,
+  CCAP_20_2_SUB_REF_BOUNDARY_RE,
 } from '../packages/v2024/fr/anchors.js';
 import { HIGHLIGHTING_RULES } from '../packages/v2024/fr/highlightingRules.js';
 import { isFilled } from '../utils/fieldStatus.js';
@@ -2152,17 +2200,13 @@ function fillCcapTranchesTable(xml, tranchesRows) {
 
   // Locate the LAST occurrence of "Résumé des Tranches" (earlier ones are
   // guide notes inside CCAP paragraphs); the table itself follows shortly.
-  const captionRe = /Résumé des Tranches/g;
+  const captionRe = new RegExp(CCAP_TRANCHES_CAPTION_RE.source, CCAP_TRANCHES_CAPTION_RE.flags);
   let captionByte = -1;
   let cm;
   while ((cm = captionRe.exec(xml)) !== null) captionByte = cm.index;
   if (captionByte === -1) return { xml, rowCount: 0 };
 
-  const tbl = findTableAfter(
-    xml,
-    captionByte,
-    /Nom\/Description des Tranches[\s\S]*Article 1\.1\.3\.3[\s\S]*Pénalités de retard/,
-  );
+  const tbl = findTableAfter(xml, captionByte, CCAP_TRANCHES_TABLE_HEADER_RE);
   if (!tbl) return { xml, rowCount: 0 };
 
   const rowRe = /<w:tr\b[\s\S]*?<\/w:tr>/g;
@@ -2268,7 +2312,7 @@ function setCcapEsssCheckboxes(xml, choice) {
   if (choice !== 'Oui' && choice !== 'Non') return { xml, applied: false };
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
-  const anchorNorm = normApos("Les Spécifications ESSS sont applicables :");
+  const anchorNorm = normApos(CCAP_ESSS_CHECKBOXES_ANCHOR_TEXT);
   // Find the last anchor paragraph
   let lastAnchor = -1;
   for (let i = 1; i < parts.length; i += 2) {
@@ -2314,9 +2358,8 @@ function fillCcapConditionsClimatiques(xml, value) {
   if (!v) return { xml, applied: false };
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
-  const anchorRe = /^"?Conditions Climatiques Exceptionnellement D[ée]favorables"?\s+signifie\s*:/i;
   for (let i = 1; i < parts.length; i += 2) {
-    if (!anchorRe.test(paraText(parts[i]))) continue;
+    if (!CCAP_CONDITIONS_CLIMATIQUES_ANCHOR_RE.test(paraText(parts[i]))) continue;
     // Collect up to 4 following yellow-highlighted bullet paragraphs.
     const bulletIdx = [];
     for (let j = i + 2; j < parts.length && bulletIdx.length < 4; j += 2) {
@@ -2497,11 +2540,11 @@ function applyCcap14_1(xml, choice, descForf, descUnit) {
   // Find anchor: heading "Montant du Marché" followed by ref "14.1"
   let refAt = -1;
   for (let i = 1; i < parts.length; i += 2) {
-    if (paraText(parts[i]).toLowerCase() !== 'montant du marché') continue;
+    if (paraText(parts[i]).toLowerCase() !== CCAP_14_1_HEADING_TEXT_LC) continue;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '14.1') { refAt = j; break; }
+      if (tj === CCAP_14_1_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt !== -1) break;
@@ -2513,18 +2556,18 @@ function applyCcap14_1(xml, choice, descForf, descUnit) {
   for (let k = refAt + 2; k < Math.min(parts.length, refAt + 26); k += 2) {
     const t = paraText(parts[k]);
     if (!t) continue;
-    if (/^\[Choisir l[''']option correspondant/i.test(t)) labels.header = k;
-    else if (/^Le march[ée] est [àa] Prix Global et Forfaitaire$/i.test(t)) labels.optForf = k;
-    else if (/^Le March[ée] est [àa] Prix Unitaires$/i.test(t)) labels.optUnit = k;
-    else if (/^Le March[ée] est une combinaison/i.test(t)) labels.optComb = k;
-    else if (/^\[ou\]$/i.test(t)) {
+    if (CCAP_14_1_HEADER_GUIDE_RE.test(t)) labels.header = k;
+    else if (CCAP_14_1_OPT_FORFAITAIRE_RE.test(t)) labels.optForf = k;
+    else if (CCAP_14_1_OPT_UNITAIRES_RE.test(t)) labels.optUnit = k;
+    else if (CCAP_14_1_OPT_COMBINAISON_RE.test(t)) labels.optComb = k;
+    else if (CCAP_14_1_OU_SEPARATOR_RE.test(t)) {
       if (labels.ou1 === undefined) labels.ou1 = k;
       else if (labels.ou2 === undefined) labels.ou2 = k;
     }
-    else if (/^La Composante [àa] Prix Global et Forfaitaire consiste/i.test(t)) labels.descForf = k;
-    else if (/^La Composante [àa] Prix Unitaires consiste/i.test(t)) labels.descUnit = k;
+    else if (CCAP_14_1_DESC_FORF_RE.test(t)) labels.descForf = k;
+    else if (CCAP_14_1_DESC_UNIT_RE.test(t)) labels.descUnit = k;
     // Stop if we've gone past — next sub-clause ref like "14.1(b)" etc.
-    if (/^14\.1\(/i.test(t)) break;
+    if (CCAP_14_1_SUB_REF_BOUNDARY_RE.test(t)) break;
   }
 
   // Decide which paragraph indices to paint red based on choice.
@@ -2595,12 +2638,12 @@ function fillCcapPourcentageProvisions(xml, value, isNA) {
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]).toLowerCase();
-    if (!t.includes("pourcentage pour l'ajustement des sommes provisionnelles")) continue;
+    if (!t.includes(CCAP_13_5_B_II_HEADING_LC_INCLUDES)) continue;
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 8); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj.toLowerCase().startsWith("13.5(b)(ii)")) { refAt = j; break; }
+      if (tj.toLowerCase().startsWith(CCAP_13_5_B_II_REF_PREFIX_LC)) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -2673,7 +2716,7 @@ function fillCcap14_1_b_Exemptions(xml, value) {
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
-    if (paraText(parts[i]) !== '14.1(b)') continue;
+    if (paraText(parts[i]) !== CCAP_14_1_B_REF_TEXT) continue;
     const yIdx = findNextYellowParaIdx(parts, i, 4);
     if (yIdx === -1) return { xml, replaced: false };
     parts[yIdx] = rewriteParaWithHighlightedLines(parts[yIdx], lines, 'green');
@@ -2692,7 +2735,7 @@ function applyCcap14_1_e(xml, choice) {
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
-    if (paraText(parts[i]) !== '14.1(e)') continue;
+    if (paraText(parts[i]) !== CCAP_14_1_E_REF_TEXT) continue;
     const yIdx = findNextYellowParaIdx(parts, i, 4);
     if (yIdx === -1) return { xml, replaced: false };
     const tpl = parts[yIdx];
@@ -2707,7 +2750,7 @@ function applyCcap14_1_e(xml, choice) {
       makeRun('', ' / ') +
       makeRedRun('', dropped) +
       makeRun('', ' ') +
-      makeRedRun('', '[Supprimer la mention inutile]');
+      makeRedRun('', CCAP_14_1_E_SUPPRIMER_SUFFIX_TEXT);
     parts[yIdx] = `${openTag}${pPr}${body}</w:p>`;
     return { xml: parts.join(''), replaced: true };
   }
@@ -2725,12 +2768,12 @@ function fillCcap14_2_AvanceDemarrage(xml, value) {
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]);
-    if (t.toLowerCase() !== "paiement de l'avance de démarrage") continue;
+    if (t.toLowerCase() !== CCAP_14_2_HEADING_TEXT_LC) continue;
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '14.2') { refAt = j; break; }
+      if (tj === CCAP_14_2_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -2756,12 +2799,12 @@ function fillCcap14_3_PlafondRetenue(xml, value) {
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]);
-    if (t.toLowerCase() !== 'plafond de la retenue de garantie') continue;
+    if (t.toLowerCase() !== CCAP_14_3_HEADING_TEXT_LC) continue;
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '14.3') { refAt = j; break; }
+      if (tj === CCAP_14_3_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -2795,11 +2838,11 @@ function applyCcap14_5(xml, applique, fobText, onsiteText) {
   // paragraphs) by yellow "[Si la SousClause 14.5 s'applique :]".
   let headIdx = -1, guideIdx = -1;
   for (let i = 1; i < parts.length; i += 2) {
-    if (paraText(parts[i]).toLowerCase() !== 'equipements et matériaux') continue;
+    if (paraText(parts[i]).toLowerCase() !== CCAP_14_5_HEADING_TEXT_LC) continue;
     for (let j = i + 2; j < Math.min(parts.length, i + 10); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (/^\[Si la Sous[- ]?Clause\s*14\.5\s*s/i.test(tj)) {
+      if (CCAP_14_5_GUIDE_RE.test(tj)) {
         headIdx = i;
         guideIdx = j;
         break;
@@ -2819,16 +2862,16 @@ function applyCcap14_5(xml, applique, fobText, onsiteText) {
   for (let k = guideIdx + 2; k < Math.min(parts.length, guideIdx + 24); k += 2) {
     const tk = paraText(parts[k]);
     if (!tk) continue;
-    if (tk.toLowerCase().startsWith('14.5(b)(i)') && fobRefIdx === -1) {
+    if (tk.toLowerCase().startsWith(CCAP_14_5_FOB_REF_PREFIX_LC) && fobRefIdx === -1) {
       fobRefIdx = k;
       fobYIdx = findNextYellowParaIdx(parts, k, 4);
-    } else if (tk.toLowerCase().startsWith('14.5(c)(i)') && onsiteRefIdx === -1) {
+    } else if (tk.toLowerCase().startsWith(CCAP_14_5_ONSITE_REF_PREFIX_LC) && onsiteRefIdx === -1) {
       onsiteRefIdx = k;
       onsiteYIdx = findNextYellowParaIdx(parts, k, 4);
     }
     // Stop once we've passed both, or when we hit the next unrelated cell.
     if (fobRefIdx !== -1 && onsiteRefIdx !== -1) break;
-    if (/^14\.6(\b|$)/i.test(tk)) break;
+    if (CCAP_14_5_NEXT_SUBCLAUSE_RE.test(tk)) break;
   }
 
   let painted = 0, filled = 0;
@@ -2897,14 +2940,14 @@ function fillCcap18_1_Delais(xml, valAttestation, valPolice) {
     const t = paraText(parts[i]);
     // Use regex (with optional accent decomposition) so we don't trip over
     // NFC vs NFD normalization of "é" between source code and Word XML.
-    if (!/^d[ée]lais de pr[ée]sentation des assurances\s*:?\s*$/i.test(t)) continue;
+    if (!CCAP_18_1_HEADING_RE.test(t)) continue;
 
     // Find ref "18.1" within next 4 paras
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 8); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '18.1') { refAt = j; break; }
+      if (tj === CCAP_18_1_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -2918,17 +2961,17 @@ function fillCcap18_1_Delais(xml, valAttestation, valPolice) {
         labels.guide = k;
         continue;
       }
-      if (/^Attestation\s+d'assurance/i.test(tk) && labels.labelA === undefined) {
+      if (CCAP_18_1_ATTESTATION_LABEL_RE.test(tk) && labels.labelA === undefined) {
         labels.labelA = k;
         continue;
       }
-      if (/^Polices\b.*applicables?/i.test(tk) && labels.labelP === undefined) {
+      if (CCAP_18_1_POLICES_LABEL_RE.test(tk) && labels.labelP === undefined) {
         labels.labelP = k;
         continue;
       }
       // Yellow heading "Montant minimum…" or any "18.x" ref means we've left the cell.
-      if (/^18\.\d/.test(tk) && tk !== '18.1') break;
-      if (/^Montant minimum de l'assurance/i.test(tk)) break;
+      if (CCAP_18_1_SUB_REF_BOUNDARY_RE.test(tk) && tk !== CCAP_18_1_REF_TEXT) break;
+      if (CCAP_18_3_HEADING_RE.test(tk)) break;
     }
 
     // Helper: from a label paragraph, find the next non-empty para that
@@ -2937,7 +2980,7 @@ function fillCcap18_1_Delais(xml, valAttestation, valPolice) {
       for (let k = startIdx + 2; k < Math.min(parts.length, startIdx + 14); k += 2) {
         const tk = paraText(parts[k]);
         if (!tk) continue;
-        if (/^_+\s*jours\.?$/i.test(tk) || /^_+$/i.test(tk)) return k;
+        if (CCAP_18_1_UNDERSCORE_JOURS_RE.test(tk) || CCAP_18_1_UNDERSCORE_ONLY_RE.test(tk)) return k;
         // Stop at the next label or anything non-trivial.
         return -1;
       }
@@ -2952,9 +2995,9 @@ function fillCcap18_1_Delais(xml, valAttestation, valPolice) {
       // body to "Polices d'assurance applicables", inheriting the rPr of the
       // first run.
       if (runs.length > 0) {
-        const newText = "Polices d'assurance applicables";
+        const newText = CCAP_18_1_POLICES_NEW_LABEL_TEXT;
         const tCombined = normApos(runs.map(r => r.text).join('')).trim();
-        if (tCombined.toLowerCase() === 'polices applicables') {
+        if (tCombined.toLowerCase() === CCAP_18_1_POLICES_OLD_LABEL_LC) {
           const openMatch = para.match(/^<w:p\b[^>]*>/);
           const openTag = openMatch ? openMatch[0] : '<w:p>';
           const pPrMatch = para.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
@@ -3018,11 +3061,11 @@ function applyCcap20_2_Composition(xml, choice) {
   let refAt = -1;
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]);
-    if (!/^Le CRD doit comprendre$/i.test(t)) continue;
+    if (!CCAP_20_2_HEADING_RE.test(t)) continue;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '20.2') { refAt = j; break; }
+      if (tj === CCAP_20_2_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt !== -1) break;
@@ -3034,13 +3077,13 @@ function applyCcap20_2_Composition(xml, choice) {
   for (let k = refAt + 2; k < Math.min(parts.length, refAt + 22); k += 2) {
     const t = paraText(parts[k]);
     if (!t) continue;
-    if (/^\[Soit\s*:?\s*\]$/i.test(t) && labels.guide1 === undefined) { labels.guide1 = k; continue; }
-    if (/^Un membre unique$/i.test(t) && labels.unique === undefined) { labels.unique = k; continue; }
-    if (/^\[soit\s*:?\s*\]$/i.test(t) && labels.guide2 === undefined) { labels.guide2 = k; continue; }
-    if (/^Trois membres$/i.test(t) && labels.trois === undefined) { labels.trois = k; continue; }
+    if (CCAP_20_2_GUIDE_SOIT_UPPER_RE.test(t) && labels.guide1 === undefined) { labels.guide1 = k; continue; }
+    if (CCAP_20_2_OPT_UN_MEMBRE_RE.test(t) && labels.unique === undefined) { labels.unique = k; continue; }
+    if (CCAP_20_2_GUIDE_SOIT_LOWER_RE.test(t) && labels.guide2 === undefined) { labels.guide2 = k; continue; }
+    if (CCAP_20_2_OPT_TROIS_MEMBRES_RE.test(t) && labels.trois === undefined) { labels.trois = k; continue; }
     // Stop once we've hit the next ref or "Liste de membres potentiels".
-    if (/^Liste de membres potentiels/i.test(t)) break;
-    if (/^20\.\d/.test(t) && t !== '20.2') break;
+    if (CCAP_20_2_LISTE_BOUNDARY_RE.test(t)) break;
+    if (CCAP_20_2_SUB_REF_BOUNDARY_RE.test(t) && t !== CCAP_20_2_REF_TEXT) break;
   }
 
   // Decide which paragraphs to paint red.
@@ -3086,12 +3129,12 @@ function fillCcap18_3_Montant(xml, value) {
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim().normalize('NFC');
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]);
-    if (!/^Montant minimum de l'assurance contre les atteintes/i.test(t)) continue;
+    if (!CCAP_18_3_HEADING_RE.test(t)) continue;
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '18.3') { refAt = j; break; }
+      if (tj === CCAP_18_3_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;

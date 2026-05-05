@@ -345,6 +345,108 @@ export const SECTION_IV_FORMULAIRES_HEADING_RE = /^Section IV\s+Formulaires de S
 // ['26', '27', '28']`, pas via une ancre. Le dispatcher (op
 // 'yellow-to-red-footnotes') prend `op.footnoteIds` tel quel.
 
+// ════════════════════════════════════════════════════════════════════════
+// CCAP HELPERS ANCHORS (phase 1.8) — paramétrisation des 13 helpers CCAP
+// nommés. Chaque export ci-dessous est un anchor template (regex ou string)
+// utilisé par UN helper pour localiser sa cible dans le document. Les
+// helpers conservent leur API actuelle ; seules les regex inline sont
+// promues ici. Détails XML (yellow highlight, Wingdings F0FE/F06F, pPr,
+// underscores littéraux, etc.) restent intra-helper car ce sont des
+// implémentation details, pas des anchors template.
+// ════════════════════════════════════════════════════════════════════════
+
+// ── CCAP — Tableau "Résumé des Tranches" (Article 1.1.3.3) ────────────────
+// Le caption "Résumé des Tranches" apparaît plusieurs fois (guides + table) ;
+// on cible la DERNIÈRE occurrence (= le tableau réel) — d'où le flag /g.
+export const CCAP_TRANCHES_CAPTION_RE = /Résumé des Tranches/g;
+export const CCAP_TRANCHES_TABLE_HEADER_RE = /Nom\/Description des Tranches[\s\S]*Article 1\.1\.3\.3[\s\S]*Pénalités de retard/;
+
+// ── CCAP §1.1.6.11 — Spécifications ESSS applicables (cases Wingdings) ────
+// L'anchor "Les Spécifications ESSS sont applicables :" apparaît 3× dans le
+// template (2 guides + le slot CCAP réel) — le helper cible la DERNIÈRE
+// occurrence. Match par includes() après normApos sur le texte concaténé.
+export const CCAP_ESSS_CHECKBOXES_ANCHOR_TEXT = "Les Spécifications ESSS sont applicables :";
+
+// ── CCAP §1.1.6.15 — Conditions Climatiques Exceptionnellement Défavorables
+// Anchor sur la phrase d'introduction de la SC (« "Conditions Climatiques
+// Exceptionnellement Défavorables" signifie : »). Tolère guillemets droits/
+// absents (`"?…"?`) et accents NFD (`D[ée]favorables`).
+export const CCAP_CONDITIONS_CLIMATIQUES_ANCHOR_RE = /^"?Conditions Climatiques Exceptionnellement D[ée]favorables"?\s+signifie\s*:/i;
+
+// ── CCAP §14.1 — Type de Marché (3 options exclusives) ────────────────────
+// Heading + ref + 8 labels : header guide, 3 options, 2 séparateurs [ou],
+// 2 descriptions composantes (Combinaison). Boundary = sous-clause 14.1(x).
+export const CCAP_14_1_HEADING_TEXT_LC = 'montant du marché';
+export const CCAP_14_1_REF_TEXT = '14.1';
+export const CCAP_14_1_HEADER_GUIDE_RE = /^\[Choisir l[''']option correspondant/i;
+export const CCAP_14_1_OPT_FORFAITAIRE_RE = /^Le march[ée] est [àa] Prix Global et Forfaitaire$/i;
+export const CCAP_14_1_OPT_UNITAIRES_RE = /^Le March[ée] est [àa] Prix Unitaires$/i;
+export const CCAP_14_1_OPT_COMBINAISON_RE = /^Le March[ée] est une combinaison/i;
+export const CCAP_14_1_OU_SEPARATOR_RE = /^\[ou\]$/i;
+export const CCAP_14_1_DESC_FORF_RE = /^La Composante [àa] Prix Global et Forfaitaire consiste/i;
+export const CCAP_14_1_DESC_UNIT_RE = /^La Composante [àa] Prix Unitaires consiste/i;
+export const CCAP_14_1_SUB_REF_BOUNDARY_RE = /^14\.1\(/i;
+
+// ── CCAP §13.5(b)(ii) — Pourcentage Sommes provisionnelles ────────────────
+// Comparaison lowercase substring sur le heading + comparaison `startsWith`
+// sur la ref (qui peut être suivie de texte additionnel selon l'export).
+export const CCAP_13_5_B_II_HEADING_LC_INCLUDES = "pourcentage pour l'ajustement des sommes provisionnelles";
+export const CCAP_13_5_B_II_REF_PREFIX_LC = '13.5(b)(ii)';
+
+// ── CCAP §14.1(b) — Exemptions de droits, taxes et impôts ─────────────────
+export const CCAP_14_1_B_REF_TEXT = '14.1(b)';
+
+// ── CCAP §14.1(e) — Toggle Oui/Non + suffix "[Supprimer la mention inutile]"
+export const CCAP_14_1_E_REF_TEXT = '14.1(e)';
+export const CCAP_14_1_E_SUPPRIMER_SUFFIX_TEXT = '[Supprimer la mention inutile]';
+
+// ── CCAP §14.2 — Avance de Démarrage (heading + ref) ──────────────────────
+export const CCAP_14_2_HEADING_TEXT_LC = "paiement de l'avance de démarrage";
+export const CCAP_14_2_REF_TEXT = '14.2';
+
+// ── CCAP §14.3 — Plafond de la Retenue de Garantie (heading + ref) ────────
+export const CCAP_14_3_HEADING_TEXT_LC = 'plafond de la retenue de garantie';
+export const CCAP_14_3_REF_TEXT = '14.3';
+
+// ── CCAP §14.5 — Equipements et Matériaux (heading + guide + sub-refs) ────
+// Heading lowercase compare ; guide regex tolère trait d'union/espace/NBSP
+// dans "Sous-Clause" (artéfact Word). Boundary = sous-clause 14.6.
+export const CCAP_14_5_HEADING_TEXT_LC = 'equipements et matériaux';
+export const CCAP_14_5_GUIDE_RE = /^\[Si la Sous[- ]?Clause\s*14\.5\s*s/i;
+export const CCAP_14_5_FOB_REF_PREFIX_LC = '14.5(b)(i)';
+export const CCAP_14_5_ONSITE_REF_PREFIX_LC = '14.5(c)(i)';
+export const CCAP_14_5_NEXT_SUBCLAUSE_RE = /^14\.6(\b|$)/i;
+
+// ── CCAP §18.1 — Délais de présentation des assurances ────────────────────
+// Heading regex tolère NFC/NFD sur `é` ; labels Attestation / Polices ;
+// underscore + jours patterns ; boundary 18.x ou Montant minimum (18.3).
+export const CCAP_18_1_HEADING_RE = /^d[ée]lais de pr[ée]sentation des assurances\s*:?\s*$/i;
+export const CCAP_18_1_REF_TEXT = '18.1';
+export const CCAP_18_1_ATTESTATION_LABEL_RE = /^Attestation\s+d'assurance/i;
+export const CCAP_18_1_POLICES_LABEL_RE = /^Polices\b.*applicables?/i;
+export const CCAP_18_1_UNDERSCORE_JOURS_RE = /^_+\s*jours\.?$/i;
+export const CCAP_18_1_UNDERSCORE_ONLY_RE = /^_+$/i;
+export const CCAP_18_1_SUB_REF_BOUNDARY_RE = /^18\.\d/;
+// Typo template "Polices applicables" → corrigé en "Polices d'assurance applicables"
+export const CCAP_18_1_POLICES_OLD_LABEL_LC = 'polices applicables';
+export const CCAP_18_1_POLICES_NEW_LABEL_TEXT = "Polices d'assurance applicables";
+
+// ── CCAP §18.3 — Montant minimum de l'assurance ──────────────────────────
+export const CCAP_18_3_HEADING_RE = /^Montant minimum de l'assurance contre les atteintes/i;
+export const CCAP_18_3_REF_TEXT = '18.3';
+
+// ── CCAP §20.2 — Composition du CRD (Un membre unique / Trois membres) ────
+// Heading + ref + 4 labels (2 guides "[Soit :]" / "[soit :]" + 2 options).
+// Boundary = "Liste de membres potentiels" ou sous-clause 20.x.
+export const CCAP_20_2_HEADING_RE = /^Le CRD doit comprendre$/i;
+export const CCAP_20_2_REF_TEXT = '20.2';
+export const CCAP_20_2_GUIDE_SOIT_UPPER_RE = /^\[Soit\s*:?\s*\]$/i;
+export const CCAP_20_2_OPT_UN_MEMBRE_RE = /^Un membre unique$/i;
+export const CCAP_20_2_GUIDE_SOIT_LOWER_RE = /^\[soit\s*:?\s*\]$/i;
+export const CCAP_20_2_OPT_TROIS_MEMBRES_RE = /^Trois membres$/i;
+export const CCAP_20_2_LISTE_BOUNDARY_RE = /^Liste de membres potentiels/i;
+export const CCAP_20_2_SUB_REF_BOUNDARY_RE = /^20\.\d/;
+
 // ── CCAP Partie A — notes jaunes "draft" à rougir si le champ est rempli ───
 // 7 paragraphes de guidage du CCAP (ex: "[Si des tranches sont utilisées…]",
 // "[cocher la / les case(s) correspondante(s)]") qui doivent être convertis
