@@ -81,7 +81,22 @@ let
   CCAP_20_2_GUIDE_SOIT_LOWER_RE,
   CCAP_20_2_OPT_TROIS_MEMBRES_RE,
   CCAP_20_2_LISTE_BOUNDARY_RE,
-  CCAP_20_2_SUB_REF_BOUNDARY_RE;
+  CCAP_20_2_SUB_REF_BOUNDARY_RE,
+  // Polish phase 1 — regex anchors moved out of helpers
+  PREAMBLE_HEADING_RE,
+  TOC_HEADING_RE,
+  COVER_DATE_RE,
+  UTILITY_PREQUAL_TITLE_RE,
+  AAO_BLOCK_PREQUALIFIES_HEADING_RE,
+  AAO_BLOCK_NON_PREQUAL_HEADING_RE,
+  SPEC_TRAVAUX_HEADING_RE,
+  MODELE_AAO_HEADING_RE,
+  AAO_END_OF_SCAN_RE,
+  CAPTION_NOM_MOA_RE,
+  CAPTION_NOM_MARCHE_RE,
+  ARTICLES_NON_APPLICABLES_TABLE_HEADER_RE,
+  PREQUAL_RE,
+  PREQUAL_EXCLUDE_RES;
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 
@@ -673,8 +688,8 @@ function fillCcagPageGarde(xml, nomMaitre, identTravaux) {
       [...para.matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map(m => m[1]).join('')
     );
     let value = null;
-    if (/^\s*\[Nom du Ma[îi]tre\s*d'Ouvrage\]\s*$/.test(txt)) value = nomMaitre;
-    else if (/^\s*\[Nom du March[ée]\]\s*$/.test(txt))       value = nomMarche;
+    if (CAPTION_NOM_MOA_RE.test(txt))    value = nomMaitre;
+    else if (CAPTION_NOM_MARCHE_RE.test(txt)) value = nomMarche;
     if (!value) continue;
 
     // Look backward up to ~4 paragraphs for the underscore signature line.
@@ -1046,36 +1061,7 @@ function highlightUnselectedOption(xml, selected) {
 // présent Appel d'Offres [est / n'est pas] précédé d'une pré-qualification")
 // is also left untouched — it carries the user's chosen value.
 function highlightPrequalificationReferences(xml) {
-  const preqRe = /pr[eé]-?qualif/i;
-  // Paragraphs that should remain untouched (no-preq branch, config line,
-  // and paragraphs flagged by the MOA as keep-always because they are
-  // either dual-case clauses or the "sans pré-qualif" counterpart).
-  const excludeRes = [
-    /n'a pas été précédé/i,
-    /n'a pas été effectuée/i,
-    /Cas sans pr[eé]-?qualif/i,
-    /\[Section à supprimer si une pr[eé]-?qualif/i,
-    /\[est \/ n'est pas\][\s\S]*pr[eé]-?qualif/i,
-    // DPAO IS 4.5 after placeholder replacement ("n'est pas" baked in)
-    /\[supprimer la mention inutile\]/i,
-    // Préambule §3 — texte méta qui décrit le DTAO lui-même
-    /Ce DTAO a été adapté des Documents Type/i,
-    // IS 17.1 — clause conditionnelle (pré-qualif + examen a posteriori)
-    /Conformément aux dispositions de la Section III[\s\S]*Critères d'évaluation et de qualification/i,
-    // IS 17.3 — règle sur changement de structure post pré-qualif
-    /Tout changement dans la structure ou la composition du Soumissionnaire/i,
-    // IS 34.3 — contrepartie conditionnelle de 34.4
-    /Lorsque l'Appel d'Offres a été précédé/i,
-    // IS 37.1 — règle sur modifications après pré-qualif / invitation
-    /Toute modification dans la structure ou composition d'un Soumissionnaire/i,
-    // IS 37.2 — traite les deux cas explicitement
-    /Le Maître d'Ouvrage s'assurera que le Soumissionnaire/i,
-    // Évaluation ESSS — formulation générique "qualification ou de pré-qualification"
-    /Chaque critère de qualification ou de pr[eé]-?qualification ESSS/i,
-    // Section III §1.3 Marchés pour lots multiples
-    /Les Soumissionnaires ont le choix de soumissionner pour un ou plusieurs lots/i,
-  ];
-
+  // PREQUAL_RE + PREQUAL_EXCLUDE_RES live in src/packages/v2024/fr/anchors.js.
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   // Règle d'or: Section I is fully protected. The prior per-paragraph
   // excludeRes list covered many Section I clauses (IS 17.1, IS 17.3,
@@ -1096,8 +1082,8 @@ function highlightPrequalificationReferences(xml) {
     const runs = extractRunNodes(para);
     if (runs.length === 0) continue;
     const combined = normApos(runs.map(r => r.text).join(''));
-    if (!preqRe.test(combined)) continue;
-    if (excludeRes.some(re => re.test(combined))) continue;
+    if (!PREQUAL_RE.test(combined)) continue;
+    if (PREQUAL_EXCLUDE_RES.some(re => re.test(combined))) continue;
 
     let out = '';
     let lastEnd = 0;
@@ -1128,7 +1114,7 @@ function highlightPrequalificationReferences(xml) {
 // "pré-qualification" — c'est le bloc dans son ensemble qui disparaît.
 function highlightUtilitySection(xml) {
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
-  const titleRe = /Quelle est l'utilit[eé] de la Pr[eé]qualification/i;
+  const titleRe = UTILITY_PREQUAL_TITLE_RE;
   const titleStyleRe = /<w:pStyle\s+w:val="TITLEINTRO"/i;
 
   let startIdx = -1;
@@ -1200,9 +1186,9 @@ function stripPreambleBlock(xml) {
   paraRe.lastIndex = 0;
   while ((m = paraRe.exec(xml)) !== null) {
     const txt = stripTags(m[0]);
-    if (startPos === -1 && /^Pr[eé]\s*ambule\s*$/i.test(txt)) {
+    if (startPos === -1 && PREAMBLE_HEADING_RE.test(txt)) {
       startPos = m.index;
-    } else if (startPos !== -1 && /^Table des mati[eè]res\s*$/i.test(txt)) {
+    } else if (startPos !== -1 && TOC_HEADING_RE.test(txt)) {
       endPos = m.index;
       break;
     }
@@ -1248,7 +1234,7 @@ function injectProjectNameOnCover(xml, projectName) {
   let m;
   while ((m = paraRe.exec(xml)) !== null) {
     const txt = stripTags(m[0]);
-    if (/^F[EÉ]VRIER\s+2024$/i.test(txt)) {
+    if (COVER_DATE_RE.test(txt)) {
       return {
         xml: xml.slice(0, m.index) + newPara + xml.slice(m.index),
         injected: true,
@@ -1285,14 +1271,12 @@ function stripConditionalPrequalLetters(xml, prequalification) {
   paraRe.lastIndex = 0;
   while ((m = paraRe.exec(xml)) !== null) {
     const txt = normApos(stripTags(m[0]));
-    if (blockAStart === -1 &&
-        /^Avis d'Appel d'Offres\s*[-\u2013]\s*Lettre aux Soumissionnaires pr[eé][-\s]?qualifi[eé]s\s*$/i.test(txt)) {
+    if (blockAStart === -1 && AAO_BLOCK_PREQUALIFIES_HEADING_RE.test(txt)) {
       blockAStart = m.index;
     } else if (blockAStart !== -1 && blockBStart === -1 &&
-        /^Avis d'Appel d'Offres\s*[-\u2013]\s*Cas sans pr[eé][-\s]?qualification\s*$/i.test(txt)) {
+        AAO_BLOCK_NON_PREQUAL_HEADING_RE.test(txt)) {
       blockBStart = m.index;
-    } else if (blockBStart !== -1 &&
-        /^Sp[eé]cifications des Travaux\s*$/i.test(txt)) {
+    } else if (blockBStart !== -1 && SPEC_TRAVAUX_HEADING_RE.test(txt)) {
       blockBEnd = m.index;
       break;
     }
@@ -1340,8 +1324,7 @@ function stripSpecsGuideBlock(xml) {
   while ((m = paraRe.exec(xml)) !== null) {
     const raw = m[0];
     const isTitleIntro = /<w:pStyle\s+w:val="TITLEINTRO"/.test(raw);
-    if (startPos === -1 && isTitleIntro &&
-        /^Sp[eé]cifications des Travaux\s*$/i.test(stripTags(raw))) {
+    if (startPos === -1 && isTitleIntro && SPEC_TRAVAUX_HEADING_RE.test(stripTags(raw))) {
       startPos = m.index;
     } else if (startPos !== -1 && /<w:sectPr\b/.test(raw)) {
       // Stop BEFORE this paragraph: its sectPr closes the surrounding
@@ -2142,7 +2125,7 @@ function fillArticlesTable(xml, articlesRows) {
   const tbl = findTableAfter(
     xml,
     chapterStart,
-    /Numéro d'Article non applicable[\s\S]*insérer les explications/,
+    ARTICLES_NON_APPLICABLES_TABLE_HEADER_RE,
   );
   if (!tbl) return { xml, rowCount: 0 };
 
@@ -3459,11 +3442,11 @@ function fillAaoLetterPlaceholders(xml, formData) {
   let startIdx = -1, endIdx = -1;
   for (let i = 1; i < parts.length; i += 2) {
     const combined = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (startIdx === -1 && /Modèle d'Avis d'Appel d'Offres/i.test(combined)) {
+    if (startIdx === -1 && MODELE_AAO_HEADING_RE.test(combined)) {
       startIdx = i;
     } else if (
       startIdx !== -1 && i > startIdx + 10 &&
-      /Notes relatives à la préparation|^Spécifications des Travaux\s*$/i.test(combined)
+      AAO_END_OF_SCAN_RE.test(combined)
     ) {
       endIdx = i;
       break;
@@ -4016,6 +3999,20 @@ export async function exportDocx({
     CCAP_20_2_OPT_TROIS_MEMBRES_RE,
     CCAP_20_2_LISTE_BOUNDARY_RE,
     CCAP_20_2_SUB_REF_BOUNDARY_RE,
+    PREAMBLE_HEADING_RE,
+    TOC_HEADING_RE,
+    COVER_DATE_RE,
+    UTILITY_PREQUAL_TITLE_RE,
+    AAO_BLOCK_PREQUALIFIES_HEADING_RE,
+    AAO_BLOCK_NON_PREQUAL_HEADING_RE,
+    SPEC_TRAVAUX_HEADING_RE,
+    MODELE_AAO_HEADING_RE,
+    AAO_END_OF_SCAN_RE,
+    CAPTION_NOM_MOA_RE,
+    CAPTION_NOM_MARCHE_RE,
+    ARTICLES_NON_APPLICABLES_TABLE_HEADER_RE,
+    PREQUAL_RE,
+    PREQUAL_EXCLUDE_RES,
   } = pkg.anchors);
   ORDERED_BINDING_FIELDS = SECTIONS
     .flatMap(sec => (sec.fields || []))
