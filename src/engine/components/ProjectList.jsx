@@ -29,9 +29,15 @@ export default function ProjectList({ defaultsFromPack }) {
   );
 
   const handleCreate = ({ name }) => {
+    // Seed formData.nom_projet with the card label so the user lands on
+    // the editor with their project name already filled in (the most
+    // visible "Nom du Projet" field in the form). They can still edit
+    // either the card label or the form field independently afterwards.
+    const initial = defaultsFromPack();
+    initial.formData = { ...(initial.formData || {}), nom_projet: name };
     const proj = createProject(
       { name, schemaVersion, language },
-      defaultsFromPack(),
+      initial,
     );
     setModalOpen(false);
     navigate(`/projects/${proj.id}`);
@@ -170,21 +176,28 @@ function ProjectCard({ project, labels, onOpen, onDuplicate, onDelete, onRename 
       <div
         onClick={onOpen}
         style={{ flex: 1, cursor: "pointer", minWidth: 0 }}
-        title={labels.openButton}
+        title={project.name || labels.untitled}
       >
         <div
           style={{
             fontSize: 15,
             fontWeight: 700,
             color: "#30323E",
-            whiteSpace: "nowrap",
+            // Allow up to 2 lines, then ellipsis. -webkit-line-clamp is
+            // supported on every modern browser; the standard property
+            // `lineClamp` ships unprefixed in 2024+ but webkit version is
+            // still the safe one.
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
             overflow: "hidden",
-            textOverflow: "ellipsis",
+            wordBreak: "break-word",
+            lineHeight: 1.3,
           }}
         >
           {project.name || labels.untitled}
         </div>
-        <div style={{ fontSize: 11, color: "#777", marginTop: 2 }}>
+        <div style={{ fontSize: 11, color: "#777", marginTop: 4 }}>
           {meta} · {labels.lastModified.replace("{date}", updatedAt)}
         </div>
       </div>
