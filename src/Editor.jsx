@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { SECTIONS, SECTION_GROUPS } from "./packages/v2024/fr/sections.js";
 import {
   DEFAULT_ACTORS,
@@ -7,7 +8,8 @@ import {
   DEFAULT_PROPOSITION_ITEMS,
 } from "./packages/v2024/fr/defaults.js";
 import { usePackage } from "./engine/PackageContext.jsx";
-import { usePersistedState } from "./engine/hooks/usePersistedState.js";
+import { useProject } from "./engine/projects/useProject.js";
+import { renameProject } from "./engine/projects/projectStore.js";
 import { isEnjeuEsssLabel } from "./packages/v2024/fr/enjeux.js";
 import { LABELS, tpl } from "./packages/v2024/fr/labels.js";
 import Sidebar from "./engine/components/Sidebar.jsx";
@@ -21,24 +23,9 @@ import { parseXlsxImport } from "./engine/export/importXlsx.js";
 
 const FIRST_SECTION = SECTIONS[0]?.id || "identification";
 
-export function Editor() {
+export function Editor({ projectId }) {
   const pkg = usePackage();
-
-  // Persisted state
-  const [formData, setFormData] = usePersistedState("dtao_formData", {});
-  const [actorAssignments, setActorAssignments] = usePersistedState("dtao_actorAssignments", {});
-  const [fieldComments, setFieldComments] = usePersistedState("dtao_fieldComments", {});
-  const [actors, setActors] = usePersistedState("dtao_actors", DEFAULT_ACTORS);
-  const [personnelRows, setPersonnelRows] = usePersistedState("dtao_personnelRows", DEFAULT_PERSONNEL_ROWS);
-  const [materielRows, setMaterielRows] = usePersistedState("dtao_materielRows", DEFAULT_MATERIEL_ROWS);
-  const [propositionItems, setPropositionItems] = usePersistedState("dtao_propositionItems", DEFAULT_PROPOSITION_ITEMS);
-  // Generic bullet lists keyed by field id (Organisation des travaux,
-  // Calendrier d'Exécution, and any future bullet_list field). Starts empty:
-  // BulletList falls back to the field's `defaultItems` until the user edits
-  // something, at which point its state lives here and overrides the default.
-  const [bulletListItems, setBulletListItems] = usePersistedState("dtao_bulletListItems", {});
-  const [articlesEsssRows, setArticlesEsssRows] = usePersistedState("dtao_articlesEsssRows", []);
-  const [tranchesRows, setTranchesRows] = usePersistedState("dtao_tranchesRows", []);
+  const [project, setData] = useProject(projectId);
 
   // UI state (not persisted)
   const [activeSection, setActiveSection] = useState(FIRST_SECTION);
@@ -49,22 +36,68 @@ export function Editor() {
 
   // Self-heal : un import xlsx mal balisé (avant le fix) a pu injecter les 15
   // enjeux ESSS dans propositionItems. On purge les labels ESSS au démarrage
-  // pour nettoyer un état corrompu persisté en localStorage.
+  // pour nettoyer un état corrompu persisté en localStorage. Runs once per
+  // project mount; bails early when the project hasn't loaded yet.
   useEffect(() => {
-    const polluted = propositionItems.some((it) => isEnjeuEsssLabel(it.label));
+    if (!project) return;
+    const items = project.data?.propositionItems ?? [];
+    const polluted = items.some((it) => isEnjeuEsssLabel(it.label));
     if (polluted) {
-      const cleaned = propositionItems.filter((it) => !isEnjeuEsssLabel(it.label));
+      const cleaned = items.filter((it) => !isEnjeuEsssLabel(it.label));
       console.warn(
-        tpl(LABELS.app.selfHealLog, { count: propositionItems.length - cleaned.length })
+        tpl(LABELS.app.selfHealLog, { count: items.length - cleaned.length })
       );
-      setPropositionItems(cleaned);
+      setData('propositionItems', cleaned);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [projectId]);
+
+  // Project not loaded (id missing or just deleted) — render a minimal
+  // placeholder so navigation back to the list page still works.
+  if (!project) {
+    return (
+      <div style={{ padding: 40, fontFamily: "Open Sans, sans-serif", color: "#777" }}>
+        {LABELS.app?.projectNotFound || "Projet introuvable."}
+      </div>
+    );
+  }
+
+  // ── Derived sub-stores + setters ──────────────────────────────────────
+  // Each setter delegates to setData(key, valueOrFn). Function-form updates
+  // (prev => next) are handled inside useProject — same shape as the
+  // legacy usePersistedState API so the rest of Editor doesn't change.
+  const formData = project.data.formData ?? {};
+  const setFormData = (v) => setData('formData', v);
+  const actorAssignments = project.data.actorAssignments ?? {};
+  const setActorAssignments = (v) => setData('actorAssignments', v);
+  const fieldComments = project.data.fieldComments ?? {};
+  const setFieldComments = (v) => setData('fieldComments', v);
+  const actors = project.data.actors ?? DEFAULT_ACTORS;
+  const setActors = (v) => setData('actors', v);
+  const personnelRows = project.data.personnelRows ?? DEFAULT_PERSONNEL_ROWS;
+  const setPersonnelRows = (v) => setData('personnelRows', v);
+  const materielRows = project.data.materielRows ?? DEFAULT_MATERIEL_ROWS;
+  const setMaterielRows = (v) => setData('materielRows', v);
+  const propositionItems = project.data.propositionItems ?? DEFAULT_PROPOSITION_ITEMS;
+  const setPropositionItems = (v) => setData('propositionItems', v);
+  const bulletListItems = project.data.bulletListItems ?? {};
+  const setBulletListItems = (v) => setData('bulletListItems', v);
+  const articlesEsssRows = project.data.articlesEsssRows ?? [];
+  const setArticlesEsssRows = (v) => setData('articlesEsssRows', v);
+  const tranchesRows = project.data.tranchesRows ?? [];
+  const setTranchesRows = (v) => setData('tranchesRows', v);
 
   // Field value change
   const handleFieldChange = (fieldId, value) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
+    // Bidirectional sync: editing the doc's "Nom du Projet" field updates
+    // the project metadata name shown on the home page list. Empty values
+    // are ignored so a momentarily-empty input doesn't blank the card.
+    // Symmetric path: ProjectList.handleRename writes back to formData.
+    if (fieldId === 'nom_projet' && projectId) {
+      const trimmed = typeof value === 'string' ? value.trim() : '';
+      if (trimmed) renameProject(projectId, trimmed);
+    }
   };
 
   // Actor assignment change
@@ -418,6 +451,7 @@ export function Editor() {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Project header */}
         <ProjectHeader
+          projectName={project.name}
           nomProjet={formData.nom_projet}
           identificationTravaux={formData.identification_travaux}
         />
@@ -618,9 +652,14 @@ export function Editor() {
 
 // ── Project header ────────────────────────────────────────────────────────
 
-function ProjectHeader({ nomProjet, identificationTravaux }) {
+function ProjectHeader({ projectName, nomProjet, identificationTravaux }) {
   const hasNom = nomProjet && String(nomProjet).trim();
   const hasId = identificationTravaux && String(identificationTravaux).trim();
+  // Only show the project metadata name as a hint when it differs from the
+  // form-filled nom_projet — avoids visual duplication when the user named
+  // the project after the form value.
+  const showProjectMeta =
+    projectName && (!hasNom || projectName.trim() !== String(nomProjet).trim());
 
   return (
     <div
@@ -632,16 +671,57 @@ function ProjectHeader({ nomProjet, identificationTravaux }) {
         flexShrink: 0,
       }}
     >
+      {/* Top row: back link + section label */}
       <div
         style={{
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: 0.8,
-          color: "#4D4D4D",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 2,
         }}
       >
-        {LABELS.app.projectHeader}
+        <Link
+          to="/"
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#1565C0",
+            textDecoration: "none",
+            padding: "2px 6px",
+            borderRadius: 3,
+            background: "rgba(21, 101, 192, 0.08)",
+          }}
+        >
+          {LABELS.app.backToList}
+        </Link>
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+            color: "#4D4D4D",
+          }}
+        >
+          {LABELS.app.projectHeader}
+        </div>
+        {showProjectMeta && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "#777",
+              fontStyle: "italic",
+              marginLeft: "auto",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: 320,
+            }}
+            title={projectName}
+          >
+            « {projectName} »
+          </div>
+        )}
       </div>
       <div
         style={{
