@@ -6,6 +6,8 @@ import {
   DEFAULT_MATERIEL_ROWS,
   DEFAULT_PROPOSITION_ITEMS,
 } from "./packages/v2024/fr/defaults.js";
+import { pkgV2024Fr } from "./packages/v2024/fr/index.js";
+import { PackageContext } from "./engine/PackageContext.jsx";
 import { usePersistedState } from "./engine/hooks/usePersistedState.js";
 import { isEnjeuEsssLabel } from "./packages/v2024/fr/enjeux.js";
 import { LABELS, tpl } from "./packages/v2024/fr/labels.js";
@@ -399,6 +401,7 @@ export default function App() {
   };
 
   return (
+    <PackageContext.Provider value={pkgV2024Fr}>
     <div style={{ display: "flex", height: "100vh", overflow: "hidden", fontFamily: "Open Sans, sans-serif" }}>
       {/* Sidebar */}
       <Sidebar
@@ -608,6 +611,7 @@ export default function App() {
         </div>
       </div>
     </div>
+    </PackageContext.Provider>
   );
 }
 
