@@ -1,4 +1,4 @@
-import { LABELS } from "../../packages/v2024/fr/labels.js";
+import { usePackage } from "../PackageContext.jsx";
 
 let nextId = 10;
 
@@ -20,6 +20,7 @@ const inputStyle = {
 };
 
 export default function MaterielTable({ rows, onChange }) {
+  const { labels } = usePackage();
   const data = rows || [];
 
   const updateRow = (id, field, value) => {
@@ -45,10 +46,10 @@ export default function MaterielTable({ rows, onChange }) {
             <tr style={{ background: "#F2F2F2" }}>
               <th style={{ ...cellStyle, width: 36, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>No.</th>
               <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                {LABELS.materiel.type}
+                {labels.materiel.type}
               </th>
               <th style={{ ...cellStyle, width: 160, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>
-                {LABELS.materiel.minNumber}
+                {labels.materiel.minNumber}
               </th>
               <th style={{ ...cellStyle, width: 36 }}></th>
             </tr>
@@ -57,7 +58,7 @@ export default function MaterielTable({ rows, onChange }) {
             {data.length === 0 ? (
               <tr>
                 <td colSpan={4} style={{ ...cellStyle, textAlign: "center", color: "#aaa", fontStyle: "italic", padding: "16px 8px" }}>
-                  {LABELS.materiel.emptyState}
+                  {labels.materiel.emptyState}
                 </td>
               </tr>
             ) : (
@@ -69,7 +70,7 @@ export default function MaterielTable({ rows, onChange }) {
                       style={inputStyle}
                       value={row.type || ""}
                       onChange={(e) => updateRow(row.id, "type", e.target.value)}
-                      placeholder={LABELS.materiel.typePlaceholder}
+                      placeholder={labels.materiel.typePlaceholder}
                     />
                   </td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -92,7 +93,7 @@ export default function MaterielTable({ rows, onChange }) {
                         padding: "0 4px",
                         lineHeight: 1,
                       }}
-                      title={LABELS.common.delete}
+                      title={labels.common.delete}
                     >
                       ×
                     </button>
@@ -117,7 +118,7 @@ export default function MaterielTable({ rows, onChange }) {
           cursor: "pointer",
         }}
       >
-        {LABELS.materiel.addButton}
+        {labels.materiel.addButton}
       </button>
     </div>
   );

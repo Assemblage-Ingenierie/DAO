@@ -1,5 +1,4 @@
-import { SECTIONS, SECTION_GROUPS } from "../../packages/v2024/fr/sections.js";
-import { LABELS, tpl } from "../../packages/v2024/fr/labels.js";
+import { usePackage } from "../PackageContext.jsx";
 import { getFieldStatus } from "../utils/fieldStatus.js";
 
 function aggregateStatus(section, formData, actorAssignments, fieldComments) {
@@ -27,7 +26,8 @@ function aggregateStatus(section, formData, actorAssignments, fieldComments) {
 }
 
 export default function Sidebar({ activeSection, onNavigate, formData, actorAssignments, fieldComments }) {
-  const sectionMap = Object.fromEntries(SECTIONS.map((s) => [s.id, s]));
+  const { sections, sectionGroups, labels, tpl } = usePackage();
+  const sectionMap = Object.fromEntries(sections.map((s) => [s.id, s]));
 
   return (
     <div
@@ -53,23 +53,23 @@ export default function Sidebar({ activeSection, onNavigate, formData, actorAssi
         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 6 }}>
           <img
             src="/assemblage-logo.png"
-            alt={LABELS.sidebar.logoAlt}
+            alt={labels.sidebar.logoAlt}
             style={{ height: 36, width: "auto", display: "block" }}
           />
           <span style={{ fontSize: 18, fontWeight: 800, letterSpacing: -0.5, opacity: 0.9 }}>
-            {LABELS.sidebar.title}
+            {labels.sidebar.title}
           </span>
         </div>
         <div style={{ fontSize: 11, opacity: 0.5, marginTop: 2, letterSpacing: 0.5 }}>
-          {LABELS.sidebar.version}
+          {labels.sidebar.version}
         </div>
       </div>
 
       {/* Special tabs */}
       <div style={{ padding: "8px 10px 4px", flexShrink: 0 }}>
         {[
-          { id: "__suivi__", label: LABELS.sidebar.actorTracking, icon: "📌" },
-          { id: "__acteurs__", label: LABELS.sidebar.actors, icon: "⚙️" },
+          { id: "__suivi__", label: labels.sidebar.actorTracking, icon: "📌" },
+          { id: "__acteurs__", label: labels.sidebar.actors, icon: "⚙️" },
         ].map((tab) => {
           const active = activeSection === tab.id;
           return (
@@ -107,7 +107,7 @@ export default function Sidebar({ activeSection, onNavigate, formData, actorAssi
 
       {/* Section groups */}
       <div style={{ flex: 1, padding: "0 10px 16px", overflowY: "auto" }}>
-        {SECTION_GROUPS.map((group) => (
+        {sectionGroups.map((group) => (
           <div key={group.groupLabel} style={{ marginBottom: 8 }}>
             <div
               style={{
@@ -175,7 +175,7 @@ export default function Sidebar({ activeSection, onNavigate, formData, actorAssi
                         unfilled: "#E30513",
                       }[status],
                     }}
-                    title={tpl(LABELS.sidebar.statusTooltip, { unfilled, delegated, filled })}
+                    title={tpl(labels.sidebar.statusTooltip, { unfilled, delegated, filled })}
                   />
                   <span style={{ flex: 1, lineHeight: 1.3 }}>{section.title}</span>
                 </button>

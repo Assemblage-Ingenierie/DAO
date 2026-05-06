@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { LABELS } from "../../packages/v2024/fr/labels.js";
-import { DEFAULT_PROPOSITION_ITEMS as DEFAULT_ITEMS } from "../../packages/v2024/fr/defaults.js";
+import { usePackage } from "../PackageContext.jsx";
 
 let nextId = 20;
 
 export default function PropositionTechnique({ items, onChange }) {
+  const { labels, defaults: { propositionItems: DEFAULT_ITEMS } } = usePackage();
   const [editingId, setEditingId] = useState(null);
   const data = items && items.length > 0 ? items : DEFAULT_ITEMS;
 
@@ -15,7 +15,7 @@ export default function PropositionTechnique({ items, onChange }) {
   const addItem = () => {
     onChange([
       ...data,
-      { id: nextId++, label: LABELS.proposition.newItem, enabled: true, description: "" },
+      { id: nextId++, label: labels.proposition.newItem, enabled: true, description: "" },
     ]);
   };
 
@@ -74,7 +74,7 @@ export default function PropositionTechnique({ items, onChange }) {
                       width: "100%",
                       resize: "vertical",
                     }}
-                    placeholder={LABELS.proposition.descriptionPlaceholder}
+                    placeholder={labels.proposition.descriptionPlaceholder}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -90,7 +90,7 @@ export default function PropositionTechnique({ items, onChange }) {
                         cursor: "pointer",
                       }}
                     >
-                      {LABELS.common.validate}
+                      {labels.common.validate}
                     </button>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -104,7 +104,7 @@ export default function PropositionTechnique({ items, onChange }) {
                         cursor: "pointer",
                       }}
                     >
-                      {LABELS.common.delete}
+                      {labels.common.delete}
                     </button>
                   </div>
                 </div>
@@ -112,7 +112,7 @@ export default function PropositionTechnique({ items, onChange }) {
                 <div
                   style={{ cursor: "pointer" }}
                   onClick={() => setEditingId(item.id)}
-                  title={LABELS.proposition.clickToEdit}
+                  title={labels.proposition.clickToEdit}
                 >
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#4D4D4D", marginBottom: 2 }}>
                     {item.label}
@@ -144,7 +144,7 @@ export default function PropositionTechnique({ items, onChange }) {
           cursor: "pointer",
         }}
       >
-        {LABELS.proposition.addButton}
+        {labels.proposition.addButton}
       </button>
     </div>
   );

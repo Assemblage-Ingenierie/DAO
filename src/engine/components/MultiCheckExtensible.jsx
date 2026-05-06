@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { LABELS } from "../../packages/v2024/fr/labels.js";
+import { usePackage } from "../PackageContext.jsx";
 
 // MultiCheckExtensible — checklist with predefined "default" options that the
 // user can toggle on/off, plus the ability to add custom options at the
@@ -26,6 +26,7 @@ const cellStyle = {
 };
 
 export default function MultiCheckExtensible({ value, onChange, defaultOptions = [] }) {
+  const { labels } = usePackage();
   const [expandedId, setExpandedId] = useState(null);
 
   // Seed the working list. If the stored value is empty, we present every
@@ -118,7 +119,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
                     type="text"
                     value={it.label || ""}
                     onChange={(e) => updateLabel(it.id, e.target.value)}
-                    placeholder={LABELS.multiCheck.optionPlaceholder}
+                    placeholder={labels.multiCheck.optionPlaceholder}
                     style={{
                       flex: 1,
                       border: "1px solid #DFE4E8",
@@ -146,7 +147,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
                   <button
                     type="button"
                     onClick={() => setExpandedId(expanded ? null : it.id)}
-                    title={expanded ? LABELS.multiCheck.hideSubclause : LABELS.multiCheck.showSubclause}
+                    title={expanded ? labels.multiCheck.hideSubclause : labels.multiCheck.showSubclause}
                     style={{
                       width: 22,
                       height: 22,
@@ -170,7 +171,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
                 <button
                   type="button"
                   onClick={() => removeItem(it.id)}
-                  title={it.custom ? LABELS.multiCheck.deleteCheckedTooltip : LABELS.multiCheck.uncheckTooltip}
+                  title={it.custom ? labels.multiCheck.deleteCheckedTooltip : labels.multiCheck.uncheckTooltip}
                   style={{
                     background: "none",
                     border: "none",
@@ -205,7 +206,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
                       📖 {meta.subClauseRef}
                     </div>
                   )}
-                  {meta.subClauseText || LABELS.multiCheck.noSubclauseText}
+                  {meta.subClauseText || labels.multiCheck.noSubclauseText}
                 </div>
               )}
             </div>
@@ -227,7 +228,7 @@ export default function MultiCheckExtensible({ value, onChange, defaultOptions =
           cursor: "pointer",
         }}
       >
-        {LABELS.multiCheck.addButton}
+        {labels.multiCheck.addButton}
       </button>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { LABELS } from "../../packages/v2024/fr/labels.js";
+import { usePackage } from "../PackageContext.jsx";
 
 let nextId = 10;
 
@@ -21,6 +21,7 @@ const inputStyle = {
 };
 
 export default function TranchesTable({ rows, onChange, disabled = false }) {
+  const { labels } = usePackage();
   const data = rows || [];
 
   // Always keep at least one (possibly empty) row visible. Matches the template's
@@ -71,7 +72,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
             justifyContent: "center",
             borderRadius: 4,
           }}
-          title={LABELS.tranches.disabledTooltip}
+          title={labels.tranches.disabledTooltip}
         >
           <span style={{
             fontSize: 11,
@@ -82,7 +83,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
             borderRadius: 3,
             padding: "4px 10px",
           }}>
-            {LABELS.tranches.disabledLabel}
+            {labels.tranches.disabledLabel}
           </span>
         </div>
       )}
@@ -92,21 +93,21 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
             <tr style={{ background: "#F2F2F2" }}>
               <th style={{ ...cellStyle, width: 36, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>No.</th>
               <th style={{ ...cellStyle, width: "40%", fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                {LABELS.tranches.nomHeader}
+                {labels.tranches.nomHeader}
                 <div style={{ fontWeight: 400, fontSize: 11, color: "#999", marginTop: 2 }}>
-                  {LABELS.tranches.nomHeaderRef}
+                  {labels.tranches.nomHeaderRef}
                 </div>
               </th>
               <th style={{ ...cellStyle, width: "25%", fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                {LABELS.tranches.delaiHeader}
+                {labels.tranches.delaiHeader}
                 <div style={{ fontWeight: 400, fontSize: 11, color: "#999", marginTop: 2 }}>
-                  {LABELS.tranches.delaiHeaderRef}
+                  {labels.tranches.delaiHeaderRef}
                 </div>
               </th>
               <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                {LABELS.tranches.penalitesHeader}
+                {labels.tranches.penalitesHeader}
                 <div style={{ fontWeight: 400, fontSize: 11, color: "#999", marginTop: 2 }}>
-                  {LABELS.tranches.penalitesHeaderRef}
+                  {labels.tranches.penalitesHeaderRef}
                 </div>
               </th>
               <th style={{ ...cellStyle, width: 36 }}></th>
@@ -121,7 +122,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
                     style={inputStyle}
                     value={row.nom || ""}
                     onChange={(e) => updateRow(row.id, "nom", e.target.value)}
-                    placeholder={LABELS.tranches.nomPlaceholder}
+                    placeholder={labels.tranches.nomPlaceholder}
                     disabled={disabled}
                   />
                 </td>
@@ -130,7 +131,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
                     style={inputStyle}
                     value={row.delai || ""}
                     onChange={(e) => updateRow(row.id, "delai", e.target.value)}
-                    placeholder={LABELS.tranches.delaiPlaceholder}
+                    placeholder={labels.tranches.delaiPlaceholder}
                     disabled={disabled}
                   />
                 </td>
@@ -139,7 +140,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
                     style={inputStyle}
                     value={row.penalites || ""}
                     onChange={(e) => updateRow(row.id, "penalites", e.target.value)}
-                    placeholder={LABELS.tranches.penalitesPlaceholder}
+                    placeholder={labels.tranches.penalitesPlaceholder}
                     disabled={disabled}
                   />
                 </td>
@@ -155,7 +156,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
                       padding: "0 4px",
                       lineHeight: 1,
                     }}
-                    title={LABELS.common.delete}
+                    title={labels.common.delete}
                   >
                     ×
                   </button>
@@ -180,7 +181,7 @@ export default function TranchesTable({ rows, onChange, disabled = false }) {
           cursor: disabled ? "not-allowed" : "pointer",
         }}
       >
-        {LABELS.tranches.addButton}
+        {labels.tranches.addButton}
       </button>
     </div>
   );

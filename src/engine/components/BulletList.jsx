@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LABELS } from "../../packages/v2024/fr/labels.js";
+import { usePackage } from "../PackageContext.jsx";
 
 let nextId = 10000;
 
@@ -12,6 +12,7 @@ let nextId = 10000;
 // `items` shape: [{ id, label, enabled, description? }]
 // `defaults`  : fallback when `items` is empty (on first render)
 export default function BulletList({ items, onChange, defaults = [] }) {
+  const { labels } = usePackage();
   const [editingId, setEditingId] = useState(null);
   const data = items && items.length > 0 ? items : defaults;
 
@@ -24,7 +25,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
     const base = items && items.length > 0 ? items : defaults;
     onChange([
       ...base,
-      { id: nextId++, label: LABELS.bulletList.newItem, enabled: true, description: "" },
+      { id: nextId++, label: labels.bulletList.newItem, enabled: true, description: "" },
     ]);
   };
 
@@ -84,7 +85,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                       width: "100%",
                       resize: "vertical",
                     }}
-                    placeholder={LABELS.bulletList.descriptionPlaceholder}
+                    placeholder={labels.bulletList.descriptionPlaceholder}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -100,7 +101,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                         cursor: "pointer",
                       }}
                     >
-                      {LABELS.common.validate}
+                      {labels.common.validate}
                     </button>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -114,7 +115,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                         cursor: "pointer",
                       }}
                     >
-                      {LABELS.common.delete}
+                      {labels.common.delete}
                     </button>
                   </div>
                 </div>
@@ -122,7 +123,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                 <div
                   style={{ cursor: "pointer" }}
                   onClick={() => setEditingId(item.id)}
-                  title={LABELS.bulletList.clickToEdit}
+                  title={labels.bulletList.clickToEdit}
                 >
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#4D4D4D", marginBottom: 2 }}>
                     {item.label}
@@ -154,7 +155,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
           cursor: "pointer",
         }}
       >
-        {LABELS.bulletList.addButton}
+        {labels.bulletList.addButton}
       </button>
     </div>
   );

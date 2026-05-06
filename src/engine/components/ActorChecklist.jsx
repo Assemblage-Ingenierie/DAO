@@ -1,15 +1,15 @@
-import { SECTIONS } from "../../packages/v2024/fr/sections.js";
-import { LABELS, tpl } from "../../packages/v2024/fr/labels.js";
+import { usePackage } from "../PackageContext.jsx";
 import ActorTag from "./ActorTag.jsx";
 
 const SPECIAL_TYPES = ["personnel_table", "materiel_table", "proposition_list"];
 
 export default function ActorChecklist({ actors, actorAssignments, onNavigate }) {
+  const { sections, labels, tpl } = usePackage();
   // Group delegated fields by actor
   const byActor = {};
   actors.forEach((a) => { byActor[a.id] = []; });
 
-  SECTIONS.forEach((section) => {
+  sections.forEach((section) => {
     section.fields.forEach((field) => {
       if (SPECIAL_TYPES.includes(field.type)) return;
       const assigned = actorAssignments[field.id] || [];
@@ -26,12 +26,12 @@ export default function ActorChecklist({ actors, actorAssignments, onNavigate })
   return (
     <div style={{ padding: "24px 28px", maxWidth: 800 }}>
       <h2 style={{ fontSize: 18, fontWeight: 700, color: "#30323E", marginBottom: 6 }}>
-        {LABELS.checklist.title}
+        {labels.checklist.title}
       </h2>
       <p style={{ fontSize: 13, color: "#777", marginBottom: 24 }}>
         {totalDelegated === 0
-          ? LABELS.checklist.noFieldsDelegated
-          : tpl(LABELS.checklist.fieldsDelegatedSummary, { n: totalDelegated, plural: totalDelegated > 1 ? LABELS.checklist.pluralMark : "" })}
+          ? labels.checklist.noFieldsDelegated
+          : tpl(labels.checklist.fieldsDelegatedSummary, { n: totalDelegated, plural: totalDelegated > 1 ? labels.checklist.pluralMark : "" })}
       </p>
 
       {actors.map((actor) => {
@@ -64,13 +64,13 @@ export default function ActorChecklist({ actors, actorAssignments, onNavigate })
                   fontWeight: 700,
                 }}
               >
-                {tpl(LABELS.checklist.fieldCountSuffix, { n: fields.length, plural: fields.length !== 1 ? LABELS.checklist.pluralMark : "" })}
+                {tpl(labels.checklist.fieldCountSuffix, { n: fields.length, plural: fields.length !== 1 ? labels.checklist.pluralMark : "" })}
               </span>
             </div>
 
             {fields.length === 0 ? (
               <p style={{ fontSize: 13, color: "#aaa", fontStyle: "italic", paddingLeft: 8 }}>
-                {tpl(LABELS.checklist.noFieldsForActor, { label: actor.label })}
+                {tpl(labels.checklist.noFieldsForActor, { label: actor.label })}
               </p>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -88,7 +88,7 @@ export default function ActorChecklist({ actors, actorAssignments, onNavigate })
                       cursor: "pointer",
                     }}
                     onClick={() => onNavigate(section.id)}
-                    title={tpl(LABELS.checklist.goToSection, { title: section.title })}
+                    title={tpl(labels.checklist.goToSection, { title: section.title })}
                   >
                     <span style={{ fontSize: 16, flexShrink: 0 }}>{section.icon}</span>
                     <div style={{ flex: 1 }}>
@@ -120,9 +120,9 @@ export default function ActorChecklist({ actors, actorAssignments, onNavigate })
             color: "#E30513",
           }}
         >
-          <strong>{LABELS.checklist.delegationGuideTitle}</strong>
+          <strong>{labels.checklist.delegationGuideTitle}</strong>
           <br />
-          {LABELS.checklist.delegationGuideBody}
+          {labels.checklist.delegationGuideBody}
         </div>
       )}
     </div>

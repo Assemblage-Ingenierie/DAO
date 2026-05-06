@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { LABELS } from "../../packages/v2024/fr/labels.js";
+import { usePackage } from "../PackageContext.jsx";
 
 let nextId = 10;
 
@@ -21,6 +21,7 @@ const inputStyle = {
 };
 
 export default function ArticlesTable({ rows, onChange }) {
+  const { labels } = usePackage();
   const data = rows || [];
 
   // Always keep at least one (possibly empty) row visible. Matches the
@@ -61,10 +62,10 @@ export default function ArticlesTable({ rows, onChange }) {
             <tr style={{ background: "#F2F2F2" }}>
               <th style={{ ...cellStyle, width: 36, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>No.</th>
               <th style={{ ...cellStyle, width: "35%", fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                {LABELS.articles.articleNumber}
+                {labels.articles.articleNumber}
               </th>
               <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>
-                {LABELS.articles.explanations}
+                {labels.articles.explanations}
               </th>
               <th style={{ ...cellStyle, width: 36 }}></th>
             </tr>
@@ -73,7 +74,7 @@ export default function ArticlesTable({ rows, onChange }) {
             {data.length === 0 ? (
               <tr>
                 <td colSpan={4} style={{ ...cellStyle, textAlign: "center", color: "#aaa", fontStyle: "italic", padding: "16px 8px" }}>
-                  {LABELS.articles.emptyState}
+                  {labels.articles.emptyState}
                 </td>
               </tr>
             ) : (
@@ -85,7 +86,7 @@ export default function ArticlesTable({ rows, onChange }) {
                       style={inputStyle}
                       value={row.article || ""}
                       onChange={(e) => updateRow(row.id, "article", e.target.value)}
-                      placeholder={LABELS.articles.articlePlaceholder}
+                      placeholder={labels.articles.articlePlaceholder}
                     />
                   </td>
                   <td style={cellStyle}>
@@ -93,7 +94,7 @@ export default function ArticlesTable({ rows, onChange }) {
                       style={inputStyle}
                       value={row.explication || ""}
                       onChange={(e) => updateRow(row.id, "explication", e.target.value)}
-                      placeholder={LABELS.articles.explanationPlaceholder}
+                      placeholder={labels.articles.explanationPlaceholder}
                     />
                   </td>
                   <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -108,7 +109,7 @@ export default function ArticlesTable({ rows, onChange }) {
                         padding: "0 4px",
                         lineHeight: 1,
                       }}
-                      title={LABELS.common.delete}
+                      title={labels.common.delete}
                     >
                       ×
                     </button>
@@ -133,7 +134,7 @@ export default function ArticlesTable({ rows, onChange }) {
           cursor: "pointer",
         }}
       >
-        {LABELS.articles.addButton}
+        {labels.articles.addButton}
       </button>
     </div>
   );
