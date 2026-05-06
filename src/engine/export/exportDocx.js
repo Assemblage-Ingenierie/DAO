@@ -13,6 +13,8 @@ import { isFilled } from '../utils/fieldStatus.js';
 // at the very top of `exportDocx` and all helpers are reached only through
 // that entry point. Single-threaded JS + single entry point = safe.
 let SECTIONS, HIGHLIGHTING_RULES, isEnjeuEsssLabel;
+// `anchors` is the full namespace object — passed as-is to applyHighlightingRules.
+let anchors;
 let
   STATIC_GUIDE_ANCHORS,
   IS_13_5_VARIANTES_DELAIS_ANCHORS,
@@ -3947,6 +3949,7 @@ export async function exportDocx({
   SECTIONS = pkg.sections;
   HIGHLIGHTING_RULES = pkg.highlightingRules;
   isEnjeuEsssLabel = pkg.enjeux.isLabel;
+  anchors = pkg.anchors;
   ({
     STATIC_GUIDE_ANCHORS,
     IS_13_5_VARIANTES_DELAIS_ANCHORS,
