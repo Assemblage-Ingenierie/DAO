@@ -91,6 +91,8 @@ export const LABELS = {
       18: "Assurance",
       20: "Réclamations, différends et arbitrages",
     },
+    projectNotFound: "Projet introuvable. Cliquez sur « Mes projets » pour revenir à la liste.",
+    backToList: "← Mes projets",
   },
 
   sidebar: {
@@ -229,5 +231,32 @@ export const LABELS = {
 
   actorTag: {
     removeTooltip: "Retirer {label}",
+  },
+
+  projectList: {
+    title: "Mes projets DTAO",
+    subtitle: "{n} projet{plural}",
+    newProjectButton: "+ Nouveau projet",
+    openButton: "Ouvrir",
+    duplicateButton: "Dupliquer",
+    renameButton: "Renommer",
+    deleteButton: "Supprimer",
+    confirmDelete: "Supprimer le projet « {name} » ? Cette action est irréversible.",
+    confirmRename: "Nouveau nom du projet :",
+    duplicateSuffix: " (copie)",
+    empty: "Aucun projet pour l'instant. Cliquez sur « Nouveau projet » pour commencer.",
+    lastModified: "Modifié le {date}",
+    languageLabel: "{language} · {schemaVersion}",
+    untitled: "Sans titre",
+  },
+
+  newProjectModal: {
+    title: "Nouveau projet",
+    nameLabel: "Nom du projet",
+    namePlaceholder: "Mon nouveau DTAO",
+    languageLabel: "Langue",
+    versionLabel: "Version AFD",
+    cancelButton: "Annuler",
+    createButton: "Créer le projet",
   },
 };

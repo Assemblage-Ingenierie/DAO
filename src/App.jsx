@@ -1,19 +1,14 @@
-import { useEffect } from "react";
 import {
   HashRouter,
   Routes,
   Route,
   Navigate,
   useParams,
-  useNavigate,
 } from "react-router-dom";
 import { pkgV2024Fr } from "./packages/v2024/fr/index.js";
 import { PackageContext } from "./engine/PackageContext.jsx";
 import { Editor } from "./Editor.jsx";
-import {
-  listProjects,
-  createProject,
-} from "./engine/projects/projectStore.js";
+import ProjectList from "./engine/components/ProjectList.jsx";
 import {
   needsLegacyMigration,
   performLegacyMigration,
@@ -51,29 +46,6 @@ function defaultsFromPack(pkg) {
   };
 }
 
-// Temporary home: until 2.5 ships the real listing page, "/" lands here
-// and redirects to the first project (or creates a default if none).
-function HomeRedirect() {
-  const navigate = useNavigate();
-  useEffect(() => {
-    const projects = listProjects();
-    if (projects.length === 0) {
-      const proj = createProject(
-        {
-          name: "Mon DTAO",
-          schemaVersion: pkgV2024Fr.schemaVersion,
-          language: pkgV2024Fr.language,
-        },
-        defaultsFromPack(pkgV2024Fr),
-      );
-      navigate(`/projects/${proj.id}`, { replace: true });
-    } else {
-      navigate(`/projects/${projects[0].id}`, { replace: true });
-    }
-  }, [navigate]);
-  return null;
-}
-
 // Pulls the project id out of the URL and feeds it to <Editor/>. Keeping
 // this thin wrapper here means Editor.jsx itself stays router-agnostic.
 function EditorRoute() {
@@ -86,7 +58,12 @@ export default function App() {
     <PackageContext.Provider value={pkgV2024Fr}>
       <HashRouter>
         <Routes>
-          <Route path="/" element={<HomeRedirect />} />
+          <Route
+            path="/"
+            element={
+              <ProjectList defaultsFromPack={() => defaultsFromPack(pkgV2024Fr)} />
+            }
+          />
           <Route path="/projects/:id" element={<EditorRoute />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
