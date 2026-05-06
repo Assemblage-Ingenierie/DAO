@@ -44,6 +44,12 @@ function readAll() {
 
 function writeAll(projects) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(projects));
+  // Notify in-tab listeners (e.g. the project list page) so they can
+  // refresh after a create / delete / rename / duplicate. Cross-tab sync
+  // is intentionally out of scope — multi-tab editing isn't supported.
+  if (typeof window !== 'undefined' && typeof CustomEvent === 'function') {
+    window.dispatchEvent(new CustomEvent('dtao:projects-changed'));
+  }
 }
 
 // ── Public API ───────────────────────────────────────────────────────────
