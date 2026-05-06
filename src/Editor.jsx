@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { SECTIONS, SECTION_GROUPS } from "./packages/v2024/fr/sections.js";
 import {
   DEFAULT_ACTORS,
@@ -441,6 +442,7 @@ export function Editor({ projectId }) {
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Project header */}
         <ProjectHeader
+          projectName={project.name}
           nomProjet={formData.nom_projet}
           identificationTravaux={formData.identification_travaux}
         />
@@ -641,9 +643,14 @@ export function Editor({ projectId }) {
 
 // ── Project header ────────────────────────────────────────────────────────
 
-function ProjectHeader({ nomProjet, identificationTravaux }) {
+function ProjectHeader({ projectName, nomProjet, identificationTravaux }) {
   const hasNom = nomProjet && String(nomProjet).trim();
   const hasId = identificationTravaux && String(identificationTravaux).trim();
+  // Only show the project metadata name as a hint when it differs from the
+  // form-filled nom_projet — avoids visual duplication when the user named
+  // the project after the form value.
+  const showProjectMeta =
+    projectName && (!hasNom || projectName.trim() !== String(nomProjet).trim());
 
   return (
     <div
@@ -655,16 +662,57 @@ function ProjectHeader({ nomProjet, identificationTravaux }) {
         flexShrink: 0,
       }}
     >
+      {/* Top row: back link + section label */}
       <div
         style={{
-          fontSize: 10,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: 0.8,
-          color: "#4D4D4D",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 2,
         }}
       >
-        {LABELS.app.projectHeader}
+        <Link
+          to="/"
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            color: "#1565C0",
+            textDecoration: "none",
+            padding: "2px 6px",
+            borderRadius: 3,
+            background: "rgba(21, 101, 192, 0.08)",
+          }}
+        >
+          {LABELS.app.backToList}
+        </Link>
+        <div
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: 0.8,
+            color: "#4D4D4D",
+          }}
+        >
+          {LABELS.app.projectHeader}
+        </div>
+        {showProjectMeta && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "#777",
+              fontStyle: "italic",
+              marginLeft: "auto",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              maxWidth: 320,
+            }}
+            title={projectName}
+          >
+            « {projectName} »
+          </div>
+        )}
       </div>
       <div
         style={{
