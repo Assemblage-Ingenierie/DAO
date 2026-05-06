@@ -42,11 +42,14 @@ export const SECTIONS = [
         context: "Le contenu de la Déclaration d'Intégrité, de la Section V et de la Section VI dépend de la date de signature de la Convention de Financement de l'AFD.",
         note: "Détermine le contenu de 3 sections : Déclaration d'Intégrité, Critères d'éligibilité, Règles AFD. Le texte de l'option non retenue sera surligné en rouge dans le .docx exporté (à supprimer)." },
       { uid: "PREA-002", id: "nom_projet", label: "Nom du Projet", type: "text", placeholder: "Ex: Construction du pont de Koudougou", ref: "IS 2.1",
-        context: "Projet : [insérer le nom du Projet]" },
+        context: "Projet : [insérer le nom du Projet]",
+        templateBinding: { global: true, ph: ["[insérer le nom du Projet]", "[nom du Projet]", "[Nom du Projet]"], captions: ["Nom du Projet"] } },
       { uid: "PREA-003", id: "identification_travaux", label: "Identification des Travaux", type: "textarea", placeholder: "Description succincte des travaux", ref: "Page de garde",
-        context: "Passation des marchés de travaux de [Insérer l'identification des Travaux]" },
+        context: "Passation des marchés de travaux de [Insérer l'identification des Travaux]",
+        templateBinding: { global: true, ph: ["[Insérer l'identification des Travaux]", "[insérer une brève description des travaux]", "[nom du Marché]"] } },
       { uid: "PREA-004-a", id: "nom_maitrise_ouvrage", label: "Nom du Maître d'Ouvrage (MOA)", type: "text", placeholder: "Ex: Ministère des Infrastructures", ref: "IS 1.1 / CCAP 1.1.2.2",
-        context: "Maître d'Ouvrage : [insérer le nom du Maître d'Ouvrage]" },
+        context: "Maître d'Ouvrage : [insérer le nom du Maître d'Ouvrage]",
+        templateBinding: { global: true, ph: ["[insérer le nom du Maître d'Ouvrage]", "[nom du Maître d'Ouvrage]", "[Nom du Maître d'Ouvrage]"], captions: ["Nom du Maître d'Ouvrage"] } },
       { uid: "PREA-004-a2", id: "adresse_moa", label: "Adresse du Maître d'Ouvrage (MOA)", type: "textarea", placeholder: "Adresse complète du MOA", ref: "CCAP 1.3",
         context: "L'adresse du Maître d'Ouvrage est : [insérer l'adresse du Maître d'Ouvrage]" },
       { uid: "PREA-004b", id: "nom_moe", label: "Nom du Maître d'Œuvre (MOE)", type: "text", placeholder: "Ex: Bureau d'études XYZ", ref: "CCAP 1.1.2.4",
@@ -54,15 +57,21 @@ export const SECTIONS = [
       { uid: "PREA-004c", id: "adresse_moe", label: "Adresse du Maître d'Œuvre (MOE)", type: "textarea", placeholder: "Adresse complète du MOE", ref: "CCAP 1.3",
         context: "L'adresse du Maître d'Œuvre est : [insérer l'adresse du Maître d'Œuvre]" },
       { uid: "PREA-005", id: "pays", label: "Pays", type: "text", placeholder: "Ex: Burkina Faso", ref: "Page de garde",
-        context: "Pays : [insérer le pays]" },
+        context: "Pays : [insérer le pays]",
+        templateBinding: { global: true, ph: ["[insérer le pays]", "[Pays]"] } },
       { uid: "PREA-006", id: "ref_aoi", label: "Référence de l'AOI", type: "text", placeholder: "Ex: AOI/2025/BF/001", ref: "IS 1.1",
-        context: "AOI No : [insérer la référence]" },
+        context: "AOI No : [insérer la référence]",
+        templateBinding: { global: true, ph: ["[insérer la référence]", "[Référence de l'AOI]", "[référence de l'AOI]"] } },
       { uid: "PREA-007", id: "num_aao", label: "Numéro de l'Avis d'Appel d'Offres", type: "text", placeholder: "Ex: AAO-2025-001", ref: "IS 1.1",
         context: "Numéro de l'Avis d'Appel d'Offres :" },
       { uid: "PREA-008", id: "nombre_lots", label: "Nombre et identification des lots", type: "text", placeholder: "Lot unique / 3 lots", ref: "IS 1.1",
-        context: "Nombre et numéro d'identification des lots faisant l'objet du présent AOI : [indiquer si non applicable]" },
+        context: "Nombre et numéro d'identification des lots faisant l'objet du présent AOI : [indiquer si non applicable]",
+        // Sibling caption paragraph ends in a <w:tab/> with underscore leader;
+        // strip that line so it doesn't visually compete with the filled value.
+        templateBinding: { ph: "[indiquer si non applicable]", stripUnderscores: { caption: "Nombre et numéro d'identification des lots" } } },
       { uid: "PREA-009", id: "date_emission", label: "Date d'émission du DAO", type: "date", ref: "Page de garde",
-        context: "Emis le : [insérer la date]" },
+        context: "Emis le : [insérer la date]",
+        templateBinding: { global: true, isDate: true, ph: ["[insérer la date]", "[Date de publication de l'AAO]"] } },
     ],
   },
   {
@@ -89,9 +98,12 @@ export const SECTIONS = [
     fields: [
       { uid: "S02-001", id: "prequalification", label: "Pré-qualification", type: "select", options: ["est", "n'est pas"], ref: "IS 4.5",
         context: "Le présent Appel d'Offres [est / n'est pas] précédé d'une pré-qualification.",
-        note: "La pré-qualification est recommandée pour les marchés de travaux importants. Si « n'est pas », la lettre aux soumissionnaires préqualifiés sera retirée du document exporté." },
+        note: "La pré-qualification est recommandée pour les marchés de travaux importants. Si « n'est pas », la lettre aux soumissionnaires préqualifiés sera retirée du document exporté.",
+        // est/n'est pas — nth=1 of three (garantie_soumission=2, declaration_garantie=3).
+        templateBinding: { ph: "[est / n'est pas]", nth: 1, choice: ["est", "n'est pas"] } },
       { uid: "S02-002", id: "max_groupement", label: "Nombre max membres groupement", type: "text", placeholder: "3 ou 'sans objet'", ref: "IS 4.1",
-        context: "Le nombre des membres d'un groupement sera au maximum de : [insérer un nombre maximum, par exemple trois, sinon indiquer la mention \"sans objet\"]" },
+        context: "Le nombre des membres d'un groupement sera au maximum de : [insérer un nombre maximum, par exemple trois, sinon indiquer la mention \"sans objet\"]",
+        templateBinding: { ph: '[insérer un nombre maximum, par exemple trois, sinon indiquer la mention "sans objet"]' } },
     ],
   },
   {
@@ -101,15 +113,21 @@ export const SECTIONS = [
     description: "Adresses pour les éclaircissements",
     fields: [
       { uid: "S02-003", id: "contact_attention", label: "À l'attention de", type: "text", placeholder: "Nom du responsable", ref: "IS 7.1",
-        context: "Aux seules fins d'obtention d'éclaircissements, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :" },
+        context: "Aux seules fins d'obtention d'éclaircissements, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :",
+        // "A l'attention de" caption — nth=1 of two (remise_attention=2).
+        templateBinding: { captionInline: "A l'attention de", nth: 1 } },
       { uid: "S02-004", id: "contact_adresse", label: "Adresse postale", type: "textarea", placeholder: "Adresse complète", ref: "IS 7.1",
-        context: "Adresse :" },
+        context: "Adresse :",
+        templateBinding: { captionInline: "Adresse" } },
       { uid: "S02-005", id: "contact_tel", label: "Téléphone", type: "text", placeholder: "+XXX XX XX XX XX", ref: "IS 7.1",
-        context: "Numéro de téléphone :" },
+        context: "Numéro de téléphone :",
+        templateBinding: { captionInline: "Numéro de téléphone" } },
       { uid: "S02-006", id: "contact_email", label: "Adresse électronique", type: "text", placeholder: "email@example.com", ref: "IS 7.1",
-        context: "Adresse électronique :" },
+        context: "Adresse électronique :",
+        templateBinding: { captionInline: "Adresse électronique" } },
       { uid: "S02-007", id: "contact_web", label: "Page Web", type: "text", placeholder: "https://...", ref: "IS 7.1",
-        context: "Adresse de la page Web :" },
+        context: "Adresse de la page Web :",
+        templateBinding: { captionInline: "Adresse de la page Web" } },
     ],
   },
   {
@@ -119,15 +137,27 @@ export const SECTIONS = [
     description: "Réunion préparatoire et visite du site des travaux",
     fields: [
       { uid: "S02-008", id: "reunion_prevue", label: "Réunion préparatoire", type: "select", options: ["se tiendra", "n'est pas prévue"], ref: "IS 7.4",
-        context: "Une réunion préparatoire [se tiendra / n'est pas prévue] à l'adresse, date et heure ci-après :" },
+        context: "Une réunion préparatoire [se tiendra / n'est pas prévue] à l'adresse, date et heure ci-après :",
+        // Template ships two typographic variants of the same placeholder
+        // (with and without spaces around the slash); both must match.
+        templateBinding: { ph: ["[se tiendra / n'est pas prévue]", "[se tiendra/n'est pas prévue]"], choice: ["se tiendra", "n'est pas prévue"] } },
       { uid: "S02-009", id: "reunion_lieu", label: "Lieu", type: "text", placeholder: "Adresse", ref: "IS 7.4", condition: "reunion_prevue=se tiendra",
-        context: "Lieu :" },
+        context: "Lieu :",
+        templateBinding: { captionInline: "Lieu" } },
       { uid: "S02-010", id: "reunion_date", label: "Date", type: "date", ref: "IS 7.4", condition: "reunion_prevue=se tiendra",
-        context: "Date : [de préférence à mi-période de préparation des Offres]" },
+        context: "Date : [de préférence à mi-période de préparation des Offres]",
+        // "Date" caption — nth=1 of three (date_limite=2, ouverture_date=3).
+        // The standalone "[de préférence à mi-période …]" guide stays yellow
+        // (handled by STATIC_GUIDE_ANCHORS), MOA deletes it manually.
+        templateBinding: { captionInline: "Date", nth: 1, isDate: true } },
       { uid: "S02-011", id: "reunion_heure", label: "Heure", type: "time", ref: "IS 7.4", condition: "reunion_prevue=se tiendra",
-        context: "Heure :" },
+        context: "Heure :",
+        // "Heure" caption — nth=1 of three (heure_limite=2, ouverture_heure=3).
+        templateBinding: { captionInline: "Heure", isTime: true } },
       { uid: "S02-012", id: "visite_site", label: "Visite du site", type: "select", options: ["sera", "ne sera pas"], ref: "IS 7.4",
-        context: "Une visite du Site des Travaux [sera / ne sera pas] organisée par le Maître d'Ouvrage." },
+        context: "Une visite du Site des Travaux [sera / ne sera pas] organisée par le Maître d'Ouvrage.",
+        // sera/ne sera pas — nth=1 of two (marge_preference=2).
+        templateBinding: { ph: "[sera / ne sera pas]", nth: 1, choice: ["sera", "ne sera pas"] } },
     ],
   },
   {
@@ -138,31 +168,45 @@ export const SECTIONS = [
     fields: [
       { uid: "S02-013", id: "type_prix", label: "Tableau des prix", type: "select", options: ["Bordereau des Prix et DQE (prix unitaires)", "Prix global et forfaitaire", "Combinaison prix unitaires + forfaitaire"], ref: "IS 11.1(b)",
         context: "Le tableau des prix suivant devra être remis avec l'Offre : [Rayer la mention inutile]",
-        note: "Les options non retenues seront surlignées en rouge dans le .docx exporté." },
+        note: "Les options non retenues seront surlignées en rouge dans le .docx exporté.",
+        templateBinding: { ph: "[Rayer la mention inutile]", deleteHint: true } },
       { uid: "S02-014", id: "documents_additionnels", label: "Documents additionnels", type: "textarea", placeholder: "Un document par ligne (ou séparés par des virgules)", ref: "IS 11.1(i)",
         context: "Le Soumissionnaire devra joindre à son Offre les documents additionnels suivants : [insérer la liste des documents additionnels, le cas échéant]",
-        note: "Les sauts de ligne (ou virgules) seront convertis en liste à puces dans le document exporté." },
+        note: "Les sauts de ligne (ou virgules) seront convertis en liste à puces dans le document exporté.",
+        templateBinding: { ph: "[insérer la liste des documents additionnels, le cas échéant]" } },
       { uid: "S02-015", id: "offres_variantes", label: "Offres variantes", type: "select", options: ["sont", "ne sont pas"], ref: "IS 13.1",
-        context: "Les Offres variantes [sont / ne sont pas] autorisées." },
+        context: "Les Offres variantes [sont / ne sont pas] autorisées.",
+        // sont/ne sont pas — nth=1 of three (variantes_techniques=2, variantes_delais=3).
+        templateBinding: { ph: "[sont / ne sont pas]", nth: 1, choice: ["sont", "ne sont pas"] } },
       { uid: "S02-016", id: "variantes_techniques", label: "Variantes techniques", type: "select", options: ["sont", "ne sont pas"], ref: "IS 13.2",
-        context: "Les variantes techniques [sont / ne sont pas] autorisées pour les éléments des ouvrages indiqués dans la Section VII." },
+        context: "Les variantes techniques [sont / ne sont pas] autorisées pour les éléments des ouvrages indiqués dans la Section VII.",
+        templateBinding: { ph: "[sont / ne sont pas]", nth: 2, choice: ["sont", "ne sont pas"] } },
       { uid: "S02-017", id: "variantes_delais", label: "Variantes aux délais", type: "select", options: ["sont", "ne sont pas"], ref: "IS 13.5",
         context: "Des variantes aux délais d'exécution des travaux [sont / ne sont pas] autorisées.",
-        note: "Si « ne sont pas », le bloc d'explication (montant d'ajustement et pénalité) sera surligné en rouge." },
+        note: "Si « ne sont pas », le bloc d'explication (montant d'ajustement et pénalité) sera surligné en rouge.",
+        templateBinding: { ph: "[sont / ne sont pas]", nth: 3, choice: ["sont", "ne sont pas"] } },
       { uid: "S02-018", id: "ajustement_variante_montant", label: "Montant d'ajustement variante délai", type: "text", placeholder: "Montant et monnaie", ref: "IS 13.5", condition: "variantes_delais=sont",
-        context: "Le montant d'ajustement de l'Offre pour l'évaluation sera de : [insérer montant et monnaie] par [insérer jour ou semaine]." },
+        context: "Le montant d'ajustement de l'Offre pour l'évaluation sera de : [insérer montant et monnaie] par [insérer jour ou semaine].",
+        templateBinding: { ph: "[insérer montant et monnaie]" } },
       { uid: "S02-019", id: "prix_revisables", label: "Nature des prix", type: "select", options: ["révisables", "fermes"], ref: "IS 14.5",
         context: "Les prix proposés par le Soumissionnaire seront [révisables / fermes].",
-        note: "Révisables recommandés si durée > 18 mois. Le guide de recommandation AFD sera toujours surligné en rouge dans le document exporté." },
+        note: "Révisables recommandés si durée > 18 mois. Le guide de recommandation AFD sera toujours surligné en rouge dans le document exporté.",
+        templateBinding: { ph: "[révisables / fermes]", choice: ["révisables", "fermes"] } },
       { uid: "S02-020", id: "option_monnaie", label: "Option monnaies (IS 15.1)", type: "select", options: ["Option A – Monnaie nationale uniquement", "Option B – Monnaies nationale et étrangères"], ref: "IS 15.1",
         context: "Les monnaies de l'Offre et les monnaies de règlement seront les suivantes : [Le Maître d'Ouvrage doit maintenir uniquement une des deux options]",
         note: "Option A : le Soumissionnaire est requis de libeller ses prix entièrement en monnaie nationale. Option B : le Soumissionnaire est autorisé à libeller directement ses prix en monnaies nationale et étrangères. Le texte de l'option non retenue sera surligné en rouge dans le document exporté." },
       { uid: "S02-021", id: "monnaie_nationale", label: "Monnaie nationale", type: "text", placeholder: "Franc CFA (XOF)", ref: "IS 15.1",
-        context: "les prix seront entièrement libellés en ____________, la monnaie du pays du Maître d'Ouvrage" },
+        context: "les prix seront entièrement libellés en ____________, la monnaie du pays du Maître d'Ouvrage",
+        // Template: "libellés en ____________" — 12 underscores act as the
+        // placeholder anchor.
+        templateBinding: { ph: "____________", nth: 1 } },
       { uid: "S02-022", id: "validite_offre", label: "Validité de l'Offre (jours)", type: "text", placeholder: "90 à 120", ref: "IS 18.1",
-        context: "La Période de validité de l'Offre sera de _____________________ [insérer nombre entre 90 et 120] jours." },
+        context: "La Période de validité de l'Offre sera de _____________________ [insérer nombre entre 90 et 120] jours.",
+        // Strip the leading underscores row that sits in the same paragraph.
+        templateBinding: { ph: "[insérer nombre entre 90 et 120]", stripUnderscores: true } },
       { uid: "S02-023", id: "actualisation_prix", label: "Formule d'actualisation (prix fermes)", type: "text", placeholder: "Formule ou coefficient", ref: "IS 18.3(a)", condition: "prix_revisables=fermes",
-        context: "Le Montant du Marché sera le Montant de l'Offre actualisé de la manière suivante : [insérer formule ou \"selon un coefficient d'actualisation\"]" },
+        context: "Le Montant du Marché sera le Montant de l'Offre actualisé de la manière suivante : [insérer formule ou \"selon un coefficient d'actualisation\"]",
+        templateBinding: { ph: '[insérer formule ou "selon un coefficient d\'actualisation"]' } },
     ],
   },
   {
@@ -173,21 +217,31 @@ export const SECTIONS = [
     fields: [
       { uid: "S02-024", id: "garantie_soumission", label: "Garantie de Soumission", type: "select", options: ["est", "n'est pas"], ref: "IS 19.1",
         context: "Une Garantie de Soumission [est / n'est pas] requise.",
-        note: "Si « n'est pas », les champs ci-dessous restent exportés (valeur « non-applicable ») et les blocs d'explication seront surlignés en rouge dans le document." },
+        note: "Si « n'est pas », les champs ci-dessous restent exportés (valeur « non-applicable ») et les blocs d'explication seront surlignés en rouge dans le document.",
+        // est/n'est pas — nth=2 of three (prequalification=1, declaration_garantie=3).
+        templateBinding: { ph: "[est / n'est pas]", nth: 2, choice: ["est", "n'est pas"] } },
       { uid: "S02-025", id: "declaration_garantie", label: "Déclaration de Garantie", type: "select", options: ["est", "n'est pas"], ref: "IS 19.1",
         context: "Une Déclaration de Garantie de Soumission [est / n'est pas] requise.",
-        note: "Garantie et Déclaration sont mutuellement exclusives." },
+        note: "Garantie et Déclaration sont mutuellement exclusives.",
+        // est/n'est pas — nth=3 of three. Template: "Déclaration de Garantie de
+        // Soumission ____________ [est / n'est pas] requise." — strip the 12
+        // leading underscores after the substitution.
+        templateBinding: { ph: "[est / n'est pas]", nth: 3, choice: ["est", "n'est pas"], stripUnderscores: true } },
       { uid: "S02-026", id: "montant_garantie", label: "Montant de la Garantie", type: "text", placeholder: "50 000 000 XOF", ref: "IS 19.1",
         condition: "garantie_soumission=est",
         context: "Son montant est de : [insérer montant entre 1% et 3% de l'estimation du Montant du Marché et préciser la monnaie].",
-        note: "Inactif si « Garantie de Soumission n'est pas requise » — exporté automatiquement en « non-applicable »." },
+        note: "Inactif si « Garantie de Soumission n'est pas requise » — exporté automatiquement en « non-applicable ».",
+        templateBinding: { ph: "[insérer montant entre 1% et 3% de l'estimation du Montant du Marché et préciser la monnaie]" } },
       { uid: "S02-027", id: "garantie_lots_multi", label: "Garantie par lots (multi-lots)", type: "textarea", placeholder: "Montants et monnaies par lot…", ref: "IS 19.1",
         context: "[Lorsqu'il y a plus d'un lot, insérer le montant et la monnaie de la Garantie de Soumission requise par lot.]",
         note: "À renseigner uniquement si plusieurs lots. Sinon laisser vide (exporté en « non-applicable »)." },
       { uid: "S02-028", id: "autres_garanties", label: "Autres garanties acceptables", type: "text", placeholder: "Néant", ref: "IS 19.3(d)",
-        context: "Autres types de garanties acceptables : [indiquer \"Néant\" si pas applicable]" },
+        context: "Autres types de garanties acceptables : [indiquer \"Néant\" si pas applicable]",
+        templateBinding: { ph: '[indiquer "Néant" si pas applicable]' } },
       { uid: "S02-029", id: "exclusion_annees", label: "Durée d'exclusion (années)", type: "text", placeholder: "2", ref: "IS 19.9", condition: "declaration_garantie=est",
-        context: "le Maître d'Ouvrage l'exclura de toute attribution de marché(s) pour une période de _________________ [insérer le nombre d'années] ans." },
+        context: "le Maître d'Ouvrage l'exclura de toute attribution de marché(s) pour une période de _________________ [insérer le nombre d'années] ans.",
+        // Template: "période de _________________ [insérer le nombre d'années] ans."
+        templateBinding: { ph: "[insérer le nombre d'années]", stripUnderscores: true } },
     ],
   },
   {
@@ -197,23 +251,37 @@ export const SECTIONS = [
     description: "Adresses, dates limites et ouverture des plis",
     fields: [
       { uid: "S02-030", id: "copies_offre", label: "Nombre de copies papier", type: "text", placeholder: "3", ref: "IS 20.1",
-        context: "Outre l'original de l'Offre, le nombre de copies demandé est de : [insérer le nombre] copies papier et une (1) copie numérique." },
+        context: "Outre l'original de l'Offre, le nombre de copies demandé est de : [insérer le nombre] copies papier et une (1) copie numérique.",
+        templateBinding: { ph: "[insérer le nombre]", nth: 1 } },
       { uid: "S02-031", id: "habilitation", label: "Habilitation du signataire", type: "text", placeholder: "Pouvoir de l'autorité compétente...", ref: "IS 20.2",
-        context: "La confirmation écrite de l'habilitation du signataire à engager le Soumissionnaire consistera en : [insérer]" },
+        context: "La confirmation écrite de l'habilitation du signataire à engager le Soumissionnaire consistera en : [insérer]",
+        templateBinding: { ph: '[insérer par exemple "un pouvoir de l\'autorité compétente établi au nom du signataire de l\'Offre".]' } },
       { uid: "S02-032", id: "remise_attention", label: "Remise – À l'attention de", type: "text", ref: "IS 22.1",
-        context: "Aux seules fins de remise des Offres, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :" },
+        context: "Aux seules fins de remise des Offres, l'adresse du Maître d'Ouvrage est la suivante : A l'attention de :",
+        // "A l'attention de" caption — nth=2 of two (contact_attention=1).
+        templateBinding: { captionInline: "A l'attention de", nth: 2 } },
       { uid: "S02-033", id: "remise_adresse", label: "Adresse de remise", type: "textarea", ref: "IS 22.1",
-        context: "Adresse complète :" },
+        context: "Adresse complète :",
+        // "Adresse complète" caption — nth=1 of two (ouverture_adresse=2).
+        templateBinding: { captionInline: "Adresse complète", nth: 1 } },
       { uid: "S02-034", id: "date_limite", label: "Date limite de remise", type: "date", ref: "IS 22.1",
-        context: "La date et heure limites de remise des Offres sont les suivantes : Date :" },
+        context: "La date et heure limites de remise des Offres sont les suivantes : Date :",
+        // IS 22.1 template uses separate "Date :" / "Heure :" captions, not a
+        // combined "[insérer la date et l'heure]" placeholder. nth=2 (after
+        // reunion_date=1).
+        templateBinding: { captionInline: "Date", nth: 2, isDate: true } },
       { uid: "S02-035", id: "heure_limite", label: "Heure limite", type: "time", ref: "IS 22.1",
-        context: "Heure :" },
+        context: "Heure :",
+        templateBinding: { captionInline: "Heure", nth: 2, isTime: true } },
       { uid: "S02-036", id: "ouverture_adresse", label: "Adresse d'ouverture des plis", type: "textarea", ref: "IS 25.1",
-        context: "L'ouverture des plis aura lieu à l'adresse suivante : Adresse complète :" },
+        context: "L'ouverture des plis aura lieu à l'adresse suivante : Adresse complète :",
+        templateBinding: { captionInline: "Adresse complète", nth: 2 } },
       { uid: "S02-037", id: "ouverture_date", label: "Date d'ouverture", type: "date", ref: "IS 25.1",
-        context: "Date :" },
+        context: "Date :",
+        templateBinding: { captionInline: "Date", nth: 3, isDate: true } },
       { uid: "S02-038", id: "ouverture_heure", label: "Heure d'ouverture", type: "time", ref: "IS 25.1",
-        context: "Heure :" },
+        context: "Heure :",
+        templateBinding: { captionInline: "Heure", nth: 3, isTime: true } },
     ],
   },
   {
@@ -223,17 +291,26 @@ export const SECTIONS = [
     description: "Monnaie d'évaluation, préférence nationale, sous-traitance",
     fields: [
       { uid: "S02-039", id: "monnaie_evaluation", label: "Monnaie d'évaluation", type: "text", placeholder: "Monnaie nationale", ref: "IS 32.1",
-        context: "La monnaie utilisée pour convertir en une seule monnaie est : [Insérer la monnaie, normalement la monnaie nationale]" },
+        context: "La monnaie utilisée pour convertir en une seule monnaie est : [Insérer la monnaie, normalement la monnaie nationale]",
+        // Template placeholders include "du Maître d'Ouvrage" suffix and the
+        // closing bracket has NO leading space at the run level — match the
+        // real <w:t> concatenation, otherwise the yellow placeholder never fills.
+        templateBinding: { ph: "[Insérer la monnaie, normalement la monnaie nationale du Maître d'Ouvrage]" } },
       { uid: "S02-040", id: "source_taux_change", label: "Source taux de change", type: "text", placeholder: "Banque Centrale", ref: "IS 32.1",
-        context: "La source du taux de change à employer est : [habituellement la banque centrale du pays]" },
+        context: "La source du taux de change à employer est : [habituellement la banque centrale du pays]",
+        templateBinding: { ph: "[habituellement on utilisera la banque centrale du pays du Maître d'Ouvrage]" } },
       { uid: "S02-041", id: "option_conversion", label: "Option de conversion (IS 32.1)", type: "select", options: ["A", "B"], ref: "IS 32.1",
         context: "La(es) monnaie(s) sera(ont) convertie(s) conformément à l'Option [A / B]",
-        note: "Le bloc de l'option non retenue sera surligné en rouge dans le document exporté." },
+        note: "Le bloc de l'option non retenue sera surligné en rouge dans le document exporté.",
+        templateBinding: { ph: "[A / B]", choice: ["A", "B"] } },
       { uid: "S02-042", id: "marge_preference", label: "Marge de préférence", type: "select", options: ["sera", "ne sera pas"], ref: "IS 33.1",
         context: "Une marge de préférence [sera / ne sera pas] accordée aux entreprises nationales.",
-        note: "Uniquement si réglementation locale l'exige + accord AFD. Les guides AFD seront toujours surlignés en rouge." },
+        note: "Uniquement si réglementation locale l'exige + accord AFD. Les guides AFD seront toujours surlignés en rouge.",
+        // sera/ne sera pas — nth=2 of two (visite_site=1).
+        templateBinding: { ph: "[sera / ne sera pas]", nth: 2, choice: ["sera", "ne sera pas"] } },
       { uid: "S02-043", id: "sous_traitants_designes", label: "Sous-traitants désignés", type: "select", options: ["prévoit", "ne prévoit pas"], ref: "IS 34.1",
-        context: "Le Maître d'Ouvrage [prévoit / ne prévoit pas] de faire réaliser certaines parties par des sous-traitants désignés." },
+        context: "Le Maître d'Ouvrage [prévoit / ne prévoit pas] de faire réaliser certaines parties par des sous-traitants désignés.",
+        templateBinding: { ph: "[prévoit / ne prévoit pas]", choice: ["prévoit", "ne prévoit pas"] } },
     ],
   },
   {
@@ -244,19 +321,33 @@ export const SECTIONS = [
     fields: [
       { uid: "S03-001", id: "capacite_financiere", label: "Trésorerie exigée (€)", type: "text", placeholder: "3-4 mois facturation", ref: "III – 3.1",
         context: "Le Soumissionnaire doit démontrer qu'il dispose [...] à hauteur de [insérer le montant en € correspondant au montant de trois à quatre mois de facturation de travaux pour le marché]",
-        note: "3 à 4 mois de facturation des travaux." },
+        note: "3 à 4 mois de facturation des travaux.",
+        // Fills the long bracket in the §3.1 row of the Section III table.
+        // Template wording is verbose and distinct from any IS-level shorthand.
+        templateBinding: { ph: "[insérer le montant en € correspondant au montant de trois à quatre mois de facturation de travaux pour le marché]" } },
       { uid: "S03-002", id: "ca_minimum", label: "CA annuel moyen min. (€)", type: "text", placeholder: "1,5-2× facturation annuelle", ref: "III – 3.2",
-        context: "Avoir un chiffre d'affaires annuel moyen d'au moins ________ [insérer montant en équivalent € en toutes lettres et en chiffres]" },
+        context: "Avoir un chiffre d'affaires annuel moyen d'au moins ________ [insérer montant en équivalent € en toutes lettres et en chiffres]",
+        // §3.2 row — strip the leading "________" runs that sit immediately
+        // before the bracket ("d'au moins ________ [insérer …]").
+        templateBinding: { ph: "[insérer montant en équivalent € en toutes lettres et en chiffres]", stripUnderscores: true } },
       { uid: "S03-003", id: "ca_periode", label: "Années pour le CA", type: "text", placeholder: "5 (min. 3)", ref: "III – 3.2",
-        context: "sur les ______ [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années." },
+        context: "sur les ______ [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années.",
+        // Same ph as exp_generale_annees but distinct nth occurrence:
+        // ca_periode is nth=1, exp_generale_annees is nth=2. Both must travel
+        // together so replacedCountByPh stays consistent.
+        templateBinding: { ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 1, stripUnderscores: true } },
       { uid: "S03-002b", id: "ca_membre_pct_lettres", label: "% Chaque membre — en lettres", type: "text", placeholder: "vingt-cinq", ref: "III – 3.2",
-        context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise (colonne « Chaque membre » du Groupement d'entreprises)" },
+        context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise (colonne « Chaque membre » du Groupement d'entreprises)",
+        templateBinding: { ph: "[vingt-cinq]" } },
       { uid: "S03-002c", id: "ca_membre_pct_chiffre", label: "% Chaque membre — en chiffres", type: "text", placeholder: "25", ref: "III – 3.2",
-        context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise — chiffre uniquement, le « % » est ajouté automatiquement" },
+        context: "Doit satisfaire à [vingt-cinq] pour cent [25%] de la condition requise — chiffre uniquement, le « % » est ajouté automatiquement",
+        templateBinding: { ph: "[25%]", valueSuffix: '%' } },
       { uid: "S03-002d", id: "ca_unique_pct_lettres", label: "% Un membre — en lettres", type: "text", placeholder: "quarante", ref: "III – 3.2",
-        context: "Doit satisfaire à [quarante] pour cent [40%] de la condition requise (colonne « Un membre » du Groupement d'entreprises)" },
+        context: "Doit satisfaire à [quarante] pour cent [40%] de la condition requise (colonne « Un membre » du Groupement d'entreprises)",
+        templateBinding: { ph: "[quarante]" } },
       { uid: "S03-002e", id: "ca_unique_pct_chiffre", label: "% Un membre — en chiffres", type: "text", placeholder: "40", ref: "III – 3.2",
-        context: "Doit satisfaire à [quarante] pour cent [40%] de la condition requise — chiffre uniquement, le « % » est ajouté automatiquement" },
+        context: "Doit satisfaire à [quarante] pour cent [40%] de la condition requise — chiffre uniquement, le « % » est ajouté automatiquement",
+        templateBinding: { ph: "[40%]", valueSuffix: '%' } },
     ],
   },
   {
@@ -266,19 +357,31 @@ export const SECTIONS = [
     description: "Expérience générale et spécifique de construction",
     fields: [
       { uid: "S03-004", id: "exp_generale_annees", label: "Expérience générale (années)", type: "text", placeholder: "5 (min 3)", ref: "III – 4.1",
-        context: "Expérience de marchés de construction [...] au cours des [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années" },
+        context: "Expérience de marchés de construction [...] au cours des [insérer le nombre d'années, généralement 5 ans et au minimum 3 ans] dernières années",
+        // Same ph as ca_periode (nth=1), here nth=2 (§4.1 row vs §3.2 row).
+        templateBinding: { ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 2, stripUnderscores: true } },
       { uid: "S03-005", id: "exp_generale_annee_depart", label: "Année de début", type: "text", placeholder: "2020", ref: "III – 4.1",
-        context: "à partir du 1er janvier de l'année _______ [insérer l'année]" },
+        context: "à partir du 1er janvier de l'année _______ [insérer l'année]",
+        // §4.1 row — strip the leading "_______ " runs that sit before the
+        // bracket ("à partir du 1er janvier de l'année _______ [insérer l'année]").
+        templateBinding: { ph: "[insérer l'année]", nth: 1, stripUnderscores: true } },
       { uid: "S03-006", id: "exp_specifique_n", label: "Nombre marchés similaires (N)", type: "text", placeholder: "2", ref: "III – 4.2(a)",
-        context: "Participation [...] dans N marchés, d'un montant minimum de V [insérer des valeurs pour N, normalement deux, et V] chacun." },
+        context: "Participation [...] dans N marchés, d'un montant minimum de V [insérer des valeurs pour N, normalement deux, et V] chacun.",
+        templateBinding: { ph: "[insérer des valeurs pour N, normalement deux, et V]" } },
       { uid: "S03-007", id: "exp_specifique_v", label: "Montant min. par marché (V, €)", type: "text", placeholder: "En €", ref: "III – 4.2(a)",
-        context: "d'un montant minimum de V [insérer la valeur de V]" },
+        context: "d'un montant minimum de V [insérer la valeur de V]",
+        templateBinding: { ph: "[insérer la valeur de V]" } },
       { uid: "S03-008", id: "exp_specifique_annee", label: "Année début référence", type: "text", placeholder: "5-10 ans", ref: "III – 4.2(a)",
-        context: "exécutés à compter du 1er janvier [insérer l'année, la période à considérer est généralement de 5 à 10 ans]" },
+        context: "exécutés à compter du 1er janvier [insérer l'année, la période à considérer est généralement de 5 à 10 ans]",
+        templateBinding: { ph: "[insérer l'année, la période à considérer est généralement de 5 à 10 ans]" } },
       { uid: "S03-009", id: "exp_activites_cles", label: "Activités clés (4.2b)", type: "textarea", placeholder: "Activités, volumes, taux de production...", ref: "III – 4.2(b)",
-        context: "une expérience minimale de construction achevée de manière satisfaisante dans les domaines suivants [fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]" },
+        context: "une expérience minimale de construction achevée de manière satisfaisante dans les domaines suivants [fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]",
+        // §4.2(b) — main "Condition Requise" cell ph ends with "tel qu'applicable]".
+        templateBinding: { ph: "[fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]" } },
       { uid: "S03-009b", id: "exp_activites_un_membre", label: "Activités clés — colonne « Un membre »", type: "textarea", placeholder: "Liste des activités et minima requis...", ref: "III – 4.2(b)",
-        context: "Doit satisfaire à la condition requise dans les domaines mentionnés ci-après : [fournir la liste des activités en indiquant le minimum requis]" },
+        context: "Doit satisfaire à la condition requise dans les domaines mentionnés ci-après : [fournir la liste des activités en indiquant le minimum requis]",
+        // §4.2(b) — "Un membre" column has its own ph ending in "minimum requis]".
+        templateBinding: { ph: "[fournir la liste des activités en indiquant le minimum requis]" } },
       { uid: "S03-009c", id: "sst_specialise_autorise", label: "Sous-traitant spécialisé", type: "toggle", ref: "III – 4.2(b)(ii)",
         context: "Le Maître d'Ouvrage autorise des travaux spécialisés ?",
         notes: [
@@ -286,7 +389,12 @@ export const SECTIONS = [
         ] },
       { uid: "S03-009d", id: "sst_specialise_description", label: "Description des travaux spécialisés", type: "textarea", placeholder: "Nature et caractéristiques des travaux spécialisés autorisés en sous-traitance...", ref: "III – 4.2(b)(ii)",
         context: "[ajouter le critère suivant si un sous-traitant spécialisé est autorisé et décrire la nature et les caractéristiques des travaux spécialisés]",
-        condition: "sst_specialise_autorise=Oui" },
+        condition: "sst_specialise_autorise=Oui",
+        // §4.2(b)(ii) — fill only when the toggle sst_specialise_autorise is
+        // "Oui". When "Non" the entire row is painted red downstream; export
+        // an empty value so the yellow ph stays untouched for the red branch.
+        templateBinding: { ph: "[ajouter le critère suivant si un sous-traitant spécialisé est autorisé et décrire la nature et les caractéristiques des travaux spécialisés]",
+          valueOverrideIf: (fd) => fd.sst_specialise_autorise === 'Oui' ? fd.sst_specialise_description : '' } },
     ],
   },
   {
@@ -397,9 +505,11 @@ export const SECTIONS = [
         recommendation: {
           title: "Critère 5.3 – Expérience ESSS",
           text: "Il convient de préciser le nombre d'expériences similaires attendu et la période durant laquelle ces expériences ont dû avoir lieu. Pour cela, il convient de prendre en compte les références des entreprises connues et jugées qualifiées, afin d'adapter le nombre de référence à demander (1, 2 ou 3)."
-        } },
+        },
+        templateBinding: { ph: "[insérer nombre, normalement deux]" } },
       { uid: "S03-016", id: "exp_esss_annees", label: "Période ESSS (années)", type: "text", placeholder: "5-10", ref: "III – 5.3",
-        context: "réalisés dans les [insérer nombre d'années, entre 5 et 10 ans] dernières années" },
+        context: "réalisés dans les [insérer nombre d'années, entre 5 et 10 ans] dernières années",
+        templateBinding: { ph: "[insérer nombre d'années, entre 5 et 10 ans]" } },
       { uid: "S03-017", id: "transfert_competence", label: "Transfert compétence ESSS", type: "select", options: ["Oui – conserver 5.4", "Non – supprimer 5.4"], ref: "III – 5.4",
         context: "[à supprimer si le transfert de compétence n'est pas un enjeu]",
         recommendation: {
@@ -515,9 +625,18 @@ export const SECTIONS = [
         note: "Ajoutez autant de tranches que nécessaire. Le tableau remplit automatiquement la section « Résumé des Tranches » du CCAP dans le document exporté." },
       { uid: "CCAP-005", id: "delai_achevement_ouvrages", label: "Délai d'Achèvement des Ouvrages", type: "text", placeholder: "Ex : 540 (en jours, ou « 18 mois »)", ref: "SC 1.1.3.3",
         context: "_________ jours. [Si des tranches sont utilisées, se référer au tableau ci-dessous : Résumé des Tranches.]",
-        note: "Si CCAP-003 = Oui : saisir uniquement le nombre de jours (l'unité « jours. » est ajoutée automatiquement). Si CCAP-003 = Non : saisir un texte libre qui remplace toute la cellule (par exemple « 540 jours » ou « 18 mois »)." },
+        note: "Si CCAP-003 = Oui : saisir uniquement le nombre de jours (l'unité « jours. » est ajoutée automatiquement). Si CCAP-003 = Non : saisir un texte libre qui remplace toute la cellule (par exemple « 540 jours » ou « 18 mois »).",
+        // SC 1.1.3.3 — placeholder "_________ jours." (9 underscores). The
+        // " jours." suffix disappears at substitution; valueSuffix re-adds it.
+        // When CCAP-003 = "Non" (no tranches), skip the suffix so the user can
+        // type a free unit ("540 jours" or "18 mois").
+        templateBinding: { ph: "_________ jours.", valueSuffix: " jours.",
+          valueSuffixSkipIf: (formData) => formData.tranches_marche_existe === 'Non' } },
       { uid: "CCAP-006", id: "periode_garantie", label: "Période de Garantie (jours)", type: "text", placeholder: "365", ref: "SC 1.1.3.7",
-        context: "365 jours. [Valeur par défaut du template FIDIC PAY ; à ajuster le cas échéant.]" },
+        context: "365 jours. [Valeur par défaut du template FIDIC PAY ; à ajuster le cas échéant.]",
+        // SC 1.1.3.7 — default "365 jours." appears twice in the template
+        // (definition para 4180 + Partie A para 5519). nth=2 targets Partie A.
+        templateBinding: { ph: "365 jours.", nth: 2, valueSuffix: " jours." } },
       { uid: "CCAP-007", id: "tranches_ref_note", label: "Tranches — renvoi au tableau", type: "readonly", ref: "SC 1.1.5.6",
         context: "[Si des tranches sont utilisées, se référer au tableau ci-dessous : Résumé des Tranches.]",
         note: "Renseignez le tableau « Résumé des Tranches » en haut de cette section (CCAP-004). Le contenu de la sous-clause 1.1.5.6 est rempli automatiquement par ce tableau à l'export." },
@@ -535,7 +654,8 @@ export const SECTIONS = [
       // ── SC 2.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-012", id: "delai_acces", label: "Délai d'accès au Chantier (jours)", type: "text", placeholder: "30", ref: "SC 2.1",
         context: "__________ jours après la Date de Commencement.",
-        note: "Si plusieurs Tranches sont prévues et qu'un seul délai d'accès à toutes les zones n'est pas possible, indiquer ici les différents délais d'accès (un délai par Tranche au maximum est recommandé)." },
+        note: "Si plusieurs Tranches sont prévues et qu'un seul délai d'accès à toutes les zones n'est pas possible, indiquer ici les différents délais d'accès (un délai par Tranche au maximum est recommandé).",
+        templateBinding: { ph: "__________ jours après la Date de Commencement", underscorePrefix: "__________ jours" } },
       // ── SC 3.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-013", id: "obligations_moe", label: "Obligations et Pouvoirs du Maître d'Œuvre", type: "multi_check_extensible", ref: "SC 3.1",
         context: "Le Maître d'Œuvre doit obtenir l'approbation spécifique du Maître d'Ouvrage avant d'entreprendre les actions suivantes. Cocher les actions à conserver ; les actions non cochées seront surlignées en rouge dans le .docx exporté.",
@@ -559,7 +679,8 @@ export const SECTIONS = [
           { id: "manuels-exploitation", label: "Les manuels d'exploitation et de maintenance" },
         ] },
       { uid: "CCAP-015", id: "garantie_bonne_exec", label: "Garantie Bonne Exécution (%)", type: "text", placeholder: "5-10%", ref: "SC 4.2",
-        context: "La Garantie de Bonne Exécution doit être sous la forme d'une garantie bancaire pour le(s) montant(s) de [indiquer un chiffre entre 5 et 10] pour cent du Montant Accepté du Marché" },
+        context: "La Garantie de Bonne Exécution doit être sous la forme d'une garantie bancaire pour le(s) montant(s) de [indiquer un chiffre entre 5 et 10] pour cent du Montant Accepté du Marché",
+        templateBinding: { ph: "[indiquer un chiffre entre 5 et 10]" } },
       { uid: "CCAP-016", id: "sous_traitants_paiement_direct", label: "Sous-Traitants — paiement direct autorisé ?", type: "select", options: ["Oui", "Non"], ref: "SC 4.4",
         context: "Paiement direct des Sous-Traitants autorisé : oui/non [rayer la mention inutile]",
         note: "Le paiement direct par le Maître d'Ouvrage des prestations exécutées par les Sous-Traitants permet à ces derniers d'avoir la certitude d'être payés. Si « Oui », des dispositions complémentaires (SC 14.6) s'appliquent." },
@@ -568,16 +689,19 @@ export const SECTIONS = [
         note: "Laisser vide si la fréquence est mensuelle (valeur par défaut)." },
       // ── SC 6.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-018", id: "heures_travail", label: "Heures de travail", type: "text", placeholder: "Ex : 7h-18h Lun-Sam", ref: "SC 6.5",
-        context: "__________ [Indiquer les heures normales de travail.]" },
+        context: "__________ [Indiquer les heures normales de travail.]",
+        templateBinding: { ph: "[Indiquer les heures normales de travail.]" } },
       // ── SC 8.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-019", id: "date_commencement", label: "Date de Commencement", type: "text", placeholder: "Ex : Signature de l'Acte d'Engagement", ref: "SC 8.1",
-        context: "La Date de Commencement doit être : [Insérer la liste des conditions telles que spécifiées dans la SousClause 8.1 des CCAG, ou une date, ou la date de signature de l'Acte d'Engagement (sujette à la fourniture par l'Entrepreneur d'une Garantie de Bonne Exécution).]" },
+        context: "La Date de Commencement doit être : [Insérer la liste des conditions telles que spécifiées dans la SousClause 8.1 des CCAG, ou une date, ou la date de signature de l'Acte d'Engagement (sujette à la fourniture par l'Entrepreneur d'une Garantie de Bonne Exécution).]",
+        templateBinding: { ph: "[Insérer conditions, date, ou date de signature de l'Acte d'Engagement]" } },
       { uid: "CCAP-020", id: "penalites_retard_ouvrages", label: "Pénalités de retard pour les Ouvrages", type: "text", placeholder: "Ex : 1 (en pour mille du Montant du Marché par jour)", ref: "SC 8.7 & 14.15(b)",
         context: "[Généralement d'environ un pour mille 1‰] % du Montant du Marché par jour. [Si des Tranches sont utilisées, se référer au Tableau « Résumé des Tranches » ci-dessous.]",
         note: "Si CCAP-003 = Oui (tranches utilisées) : le champ est rempli automatiquement avec le renvoi au tableau « Résumé des Tranches » et n'est pas modifiable. Si CCAP-003 = Non : saisir la valeur en pour mille (‰) du Montant du Marché par jour.",
         lockedIf: { condition: "tranches_marche_existe=Oui", value: "Se référer au tableau « Résumé des Tranches » ci-dessous." } },
       { uid: "CCAP-021", id: "penalites_max", label: "Pénalités de retard – plafond (%)", type: "text", placeholder: "≤ 10 %", ref: "SC 8.7",
-        context: "Montant maximum des pénalités de retard : [Insérer un pourcentage ne dépassant pas 10] % du Montant final du Marché." },
+        context: "Montant maximum des pénalités de retard : [Insérer un pourcentage ne dépassant pas 10] % du Montant final du Marché.",
+        templateBinding: { ph: "[Insérer un pourcentage ne dépassant pas 10]" } },
       // ── SC 13.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-022", id: "pourcentage_provisions", label: "Pourcentage pour l'ajustement des Sommes provisionnelles (%)", type: "text", placeholder: "Ex : 5", ref: "SC 13.5(b)(ii)",
         naToggle: true,
@@ -605,7 +729,8 @@ export const SECTIONS = [
       { uid: "CCAP-028", id: "avance_demarrage", label: "Avance de Démarrage (%)", type: "text", placeholder: "10-20 %", ref: "SC 14.2",
         context: "______ % du Montant Accepté du Marché [Insérer un nombre entre 10 et 20]" },
       { uid: "CCAP-029", id: "retenue_garantie", label: "Pourcentage de la Retenue (%)", type: "text", placeholder: "5-10 %", ref: "SC 14.3",
-        context: "[Insérer un pourcentage de retenue entre 5 et 10] %" },
+        context: "[Insérer un pourcentage de retenue entre 5 et 10] %",
+        templateBinding: { ph: "[Insérer un pourcentage de retenue entre 5 et 10]" } },
       { uid: "CCAP-030", id: "plafond_retenue", label: "Plafond de la Retenue de Garantie (%)", type: "text", placeholder: "GBE + retenue ≤ 15 %", ref: "SC 14.3",
         context: "______ % du Montant Accepté du Marché [le cumul de la Garantie de Bonne Exécution et de la Retenue de Garantie ne doit pas dépasser 15%]" },
       { uid: "CCAP-031", id: "equipements_materiaux_applique", label: "La Sous-Clause 14.5 (Equipements et Matériaux) s'applique ?", type: "toggle", ref: "SC 14.5",
@@ -622,18 +747,27 @@ export const SECTIONS = [
         context: "Equipements et Matériaux pour paiement lorsque livrés sur le Chantier [liste].",
         note: "Lister un Equipement / Matériau par ligne." },
       { uid: "CCAP-034", id: "montant_min_decompte", label: "Montant minimum des Décomptes Intermédiaires", type: "text", placeholder: "Ex : 10 000 EUR", ref: "SC 14.6",
-        context: "[Insérer un montant, 10.000 EUR par exemple]" },
+        context: "[Insérer un montant, 10.000 EUR par exemple]",
+        templateBinding: { ph: "[Insérer un montant, 10.000 EUR par exemple]" } },
       { uid: "CCAP-035", id: "delai_paiement", label: "Délai de paiement (jours)", type: "text", placeholder: "56", ref: "SC 14.7",
-        context: "le Maître d'Ouvrage doit payer à l'Entrepreneur le montant certifié dans un délai de _______ [insérer un nombre s'il est différent de 56] jours." },
+        context: "le Maître d'Ouvrage doit payer à l'Entrepreneur le montant certifié dans un délai de _______ [insérer un nombre s'il est différent de 56] jours.",
+        // Cell reads "dans un délai de _______ [insérer un nombre s'il est
+        // différent de 56] jours.". Replacing just the bracket leaves the
+        // leading underscores; strip them after fill.
+        templateBinding: { ph: "[insérer un nombre s'il est différent de 56]", stripUnderscores: true } },
       { uid: "CCAP-036", id: "taux_interet_etrangere", label: "Sources de publication des taux d'intérêts (monnaie étrangère)", type: "text", ref: "SC 14.8",
         placeholder: "Ex : EURIBOR + 200 pb",
         context: "Le taux d'intérêts pour les paiements en monnaie locale est celui de la Sous-Clause 14.8 du CCAG. Le taux d'intérêts pour les paiements en monnaie étrangère est [insérer EURIBOR + 200 pb].",
-        note: "Indiquer la source et la marge applicables aux paiements en monnaie étrangère (ex. « EURIBOR 6 mois + 200 pb »). Le texte saisi remplace le placeholder jaune dans le .docx." },
+        note: "Indiquer la source et la marge applicables aux paiements en monnaie étrangère (ex. « EURIBOR 6 mois + 200 pb »). Le texte saisi remplace le placeholder jaune dans le .docx.",
+        templateBinding: { ph: "[insérer EURIBOR + 200 pb]" } },
       // ── SC 17.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-037", id: "multiplicateur_responsabilite", label: "Multiplicateur de la limitation de la responsabilité", type: "text", ref: "SC 17.6",
         placeholder: "Ex : 1, 1.5, 2, 3",
         context: "La responsabilité totale de l'Entrepreneur envers le Maître d'Ouvrage ne doit pas excéder le Montant Accepté du Marché, multiplié par _______ [insérer un multiplicateur égal ou supérieur à un, n'excédant pas trois].",
-        note: "Saisir un nombre ≥ 1 et ≤ 3. Le texte saisi remplace le placeholder jaune dans le .docx (les underscores qui précèdent sont automatiquement nettoyés)." },
+        note: "Saisir un nombre ≥ 1 et ≤ 3. Le texte saisi remplace le placeholder jaune dans le .docx (les underscores qui précèdent sont automatiquement nettoyés).",
+        // Yellow ph preceded by "_______ " in the same paragraph; clean up the
+        // underscores after the value lands.
+        templateBinding: { ph: "[insérer un multiplicateur égal ou supérieur à un, n'excédant pas trois]", stripUnderscores: true } },
       // ── SC 18.x ─────────────────────────────────────────────────────────
       { uid: "CCAP-038", id: "delai_assurance_attestation", label: "Délai attestation d'assurance (jours)", type: "text", placeholder: "14-28", ref: "SC 18.1",
         context: "Délais de présentation des assurances : a) Attestation d'assurance : __________ jours.",
@@ -650,19 +784,23 @@ export const SECTIONS = [
         note: "« un membre unique » : le champ « Liste de membres potentiels » ci-dessous doit être renseigné. « Trois membres » : le champ « Liste de membres potentiels » est automatiquement rempli avec « aucun »." },
       { uid: "CCAP-042", id: "crd_liste", label: "Liste de membres potentiels du CRD", type: "text", placeholder: "Liste si CRD à un membre unique ; sinon « aucun »", ref: "SC 20.2",
         context: "[Insérer la(les) liste(s) de membres potentiels, uniquement lorsque le CRD comprend un membre unique ; sinon, insérer \"aucun\".]",
-        lockedIf: { condition: "crd_composition=Trois membres", value: "aucun" } },
+        lockedIf: { condition: "crd_composition=Trois membres", value: "aucun" },
+        // Template uses straight ASCII quotes around "aucun" and a NBSP (U+00A0)
+        // before ";". When crd_composition = "Trois membres", export "aucun"
+        // regardless of what the user typed (matches the lockedIf above).
+        templateBinding: { ph: '[Insérer la(les) liste(s) de membres potentiels, uniquement lorsque le CRD comprend un membre unique ; sinon, insérer "aucun".]',
+          valueOverrideIf: (formData) => formData.crd_composition === 'Trois membres' ? 'aucun' : null } },
       { uid: "CCAP-043", id: "nomination_crd", label: "Nomination du CRD par (à défaut d'accord)", type: "text", placeholder: "Ex : Président du FIDIC", ref: "SC 20.3",
-        context: "[Insérer le nom de la personne officielle ou de l'entité procédant à la désignation, i.e. Président du FIDIC ou une autre association régionale d'ingénieurs.]" },
+        context: "[Insérer le nom de la personne officielle ou de l'entité procédant à la désignation, i.e. Président du FIDIC ou une autre association régionale d'ingénieurs.]",
+        templateBinding: { ph: "[Insérer le nom de la personne officielle ou de l'entité procédant à la désignation, i.e. Président du FIDIC ou une autre association régionale d'ingénieurs.]" } },
       { uid: "CCAP-044", id: "institution_arbitrage", label: "Institution d'arbitrage", type: "text", placeholder: "CCI par défaut", ref: "SC 20.6",
-        context: "[Insérer le nom de l'institution arbitrale si elle est différente de la Chambre de Commerce Internationale.]" },
+        context: "[Insérer le nom de l'institution arbitrale si elle est différente de la Chambre de Commerce Internationale.]",
+        templateBinding: { ph: "[Insérer le nom de l'institution arbitrale si elle est différente de la Chambre de Commerce Internationale.]" } },
       { uid: "CCAP-045", id: "lieu_arbitrage", label: "Lieu d'arbitrage", type: "text", placeholder: "Lieu neutre", ref: "SC 20.6",
-        context: "[Insérer le lieu de l'arbitrage : il doit être neutre, c'est-à-dire être ni le pays du Maître d'Ouvrage ni le pays du siège de l'Entrepreneur.]" },
+        context: "[Insérer le lieu de l'arbitrage : il doit être neutre, c'est-à-dire être ni le pays du Maître d'Ouvrage ni le pays du siège de l'Entrepreneur.]",
+        // Template uses NBSP (U+00A0) before ":" in "l'arbitrage :".
+        templateBinding: { ph: "[Insérer le lieu de l'arbitrage : il doit être neutre, c'est-à-dire être ni le pays du Maître d'Ouvrage ni le pays du siège de l'Entrepreneur.]" } },
     ],
   },
 ];
 
-export const DEFAULT_ACTORS = [
-  { id: "ugp", label: "UGP", color: "#E65100", bgColor: "#FFF3E0", borderColor: "#FFE0B2", defaultComment: "À remplir par l'UGP" },
-  { id: "moe", label: "MOE", color: "#1565C0", bgColor: "#E3F2FD", borderColor: "#BBDEFB", defaultComment: "À remplir par la MOE" },
-  { id: "afd", label: "AFD", color: "#2E7D32", bgColor: "#E8F5E9", borderColor: "#C8E6C9", defaultComment: "À confirmer avec l'AFD" },
-];

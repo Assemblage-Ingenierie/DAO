@@ -5,7 +5,7 @@
 // Lancement : `node scripts/verify-export/verifyPhase4B.mjs`
 //
 // Les implémentations des fonctions sont copiées à l'identique depuis
-// `src/export/exportDocx.js`. Si vous modifiez l'une des fonctions ci-dessous,
+// `src/engine/export/exportDocx.js`. Si vous modifiez l'une des fonctions ci-dessous,
 // synchronisez l'autre côté — la divergence est détectable en relisant les
 // compteurs attendus imprimés en fin de script.
 
@@ -20,7 +20,7 @@ import {
   buildPartPositions,
 } from './_helpers.mjs';
 
-// ─── Implémentations miroir de src/export/exportDocx.js ───────────────────
+// ─── Implémentations miroir de src/engine/export/exportDocx.js ───────────────────
 
 function highlightUnselectedPriceFormats(xml, typePrix) {
   if (!typePrix) return { xml, count: 0 };

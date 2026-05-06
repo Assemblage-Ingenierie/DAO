@@ -4,8 +4,8 @@
 import * as XLSX from 'xlsx-js-style';
 import JSZip from 'jszip';
 import { saveAs } from '../utils/saveBlob.js';
-import { SECTIONS, SECTION_GROUPS } from '../data/sections.js';
-import { ENJEUX_ESSS, isEnjeuEsssLabel } from '../data/enjeuxEsss.js';
+// Pack-bound names (1.11c). Populated by exportXlsx from the active pack.
+let SECTIONS, SECTION_GROUPS, ENJEUX_ESSS, isEnjeuEsssLabel;
 
 // ── Value formatting ──────────────────────────────────────────────────────
 
@@ -732,6 +732,7 @@ async function postProcessXlsx(wbout, { dropdowns, dateCells, timeCells, hasList
 // ── Main export ───────────────────────────────────────────────────────────
 
 export async function exportXlsx({
+  pkg,
   formData,
   actorAssignments,
   fieldComments,
@@ -742,6 +743,12 @@ export async function exportXlsx({
   articlesEsssRows = [],
   tranchesRows = [],
 }) {
+  // Bind module-level pack-dependent names (1.11c).
+  SECTIONS = pkg.sections;
+  SECTION_GROUPS = pkg.sectionGroups;
+  ENJEUX_ESSS = pkg.enjeux.list;
+  isEnjeuEsssLabel = pkg.enjeux.isLabel;
+
   const { rows, merges, rowStyles, dropdowns, dateCells, timeCells } = buildAoa({
     formData, actorAssignments, fieldComments, actors,
     personnelRows, materielRows, propositionItems,

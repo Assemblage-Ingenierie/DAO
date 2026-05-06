@@ -1,35 +1,26 @@
 import { useState } from "react";
+import { usePackage } from "../PackageContext.jsx";
 
-let nextId = 10000;
+let nextId = 20;
 
-// Generic editable bullet list used by:
-//  - S04-001 Proposition technique (legacy PropositionTechnique, kept for
-//    its own default set)
-//  - S04-ORGA-* Organisation des travaux (bullets a…i)
-//  - S04-CAL-*  Calendrier d'Exécution (bullets a…d)
-//
-// `items` shape: [{ id, label, enabled, description? }]
-// `defaults`  : fallback when `items` is empty (on first render)
-export default function BulletList({ items, onChange, defaults = [] }) {
+export default function PropositionTechnique({ items, onChange }) {
+  const { labels, defaults: { propositionItems: DEFAULT_ITEMS } } = usePackage();
   const [editingId, setEditingId] = useState(null);
-  const data = items && items.length > 0 ? items : defaults;
+  const data = items && items.length > 0 ? items : DEFAULT_ITEMS;
 
   const updateItem = (id, patch) => {
-    const base = items && items.length > 0 ? items : defaults;
-    onChange(base.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+    onChange(data.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   };
 
   const addItem = () => {
-    const base = items && items.length > 0 ? items : defaults;
     onChange([
-      ...base,
-      { id: nextId++, label: "Nouvel élément", enabled: true, description: "" },
+      ...data,
+      { id: nextId++, label: labels.proposition.newItem, enabled: true, description: "" },
     ]);
   };
 
   const removeItem = (id) => {
-    const base = items && items.length > 0 ? items : defaults;
-    onChange(base.filter((it) => it.id !== id));
+    onChange(data.filter((it) => it.id !== id));
   };
 
   return (
@@ -70,7 +61,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                     }}
                   />
                   <textarea
-                    value={item.description || ""}
+                    value={item.description}
                     onChange={(e) => updateItem(item.id, { description: e.target.value })}
                     rows={2}
                     style={{
@@ -83,7 +74,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                       width: "100%",
                       resize: "vertical",
                     }}
-                    placeholder="Description…"
+                    placeholder={labels.proposition.descriptionPlaceholder}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -99,7 +90,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                         cursor: "pointer",
                       }}
                     >
-                      Valider
+                      {labels.common.validate}
                     </button>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -113,7 +104,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                         cursor: "pointer",
                       }}
                     >
-                      Supprimer
+                      {labels.common.delete}
                     </button>
                   </div>
                 </div>
@@ -121,7 +112,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
                 <div
                   style={{ cursor: "pointer" }}
                   onClick={() => setEditingId(item.id)}
-                  title="Cliquer pour modifier"
+                  title={labels.proposition.clickToEdit}
                 >
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#4D4D4D", marginBottom: 2 }}>
                     {item.label}
@@ -153,7 +144,7 @@ export default function BulletList({ items, onChange, defaults = [] }) {
           cursor: "pointer",
         }}
       >
-        + Ajouter un élément
+        {labels.proposition.addButton}
       </button>
     </div>
   );

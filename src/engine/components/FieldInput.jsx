@@ -8,6 +8,7 @@ import ArticlesTable from "./ArticlesTable.jsx";
 import TranchesTable from "./TranchesTable.jsx";
 import MultiCheckExtensible from "./MultiCheckExtensible.jsx";
 import { getFieldStatus } from "../utils/fieldStatus.js";
+import { usePackage } from "../PackageContext.jsx";
 
 // ── Couleurs C2 ────────────────────────────────────────────────────────────
 const ACTIVE_RED = "#E30513";
@@ -88,11 +89,12 @@ function Pill({ children, color = "#999", mono = false }) {
 }
 
 function InfoIcon({ active, onClick }) {
+  const { labels } = usePackage();
   return (
     <button
       type="button"
       onClick={onClick}
-      title="Afficher le contexte"
+      title={labels.fieldInput.showContext}
       style={{
         width: 22,
         height: 22,
@@ -116,11 +118,12 @@ function InfoIcon({ active, onClick }) {
 }
 
 function CommentIcon({ active, onClick }) {
+  const { labels } = usePackage();
   return (
     <button
       type="button"
       onClick={onClick}
-      title="Commentaire libre"
+      title={labels.fieldInput.freeComment}
       style={{
         width: 22,
         height: 22,
@@ -141,6 +144,7 @@ function CommentIcon({ active, onClick }) {
 }
 
 function ActorButtons({ actors, assigned, onToggle }) {
+  const { labels, tpl } = usePackage();
   return (
     <div style={{ display: "inline-flex", gap: 4 }}>
       {actors.map((a) => {
@@ -150,7 +154,7 @@ function ActorButtons({ actors, assigned, onToggle }) {
             key={a.id}
             type="button"
             onClick={() => onToggle(a.id)}
-            title={`Déléguer à ${a.label}`}
+            title={tpl(labels.fieldInput.delegateTo, { label: a.label })}
             style={{
               fontSize: 10,
               fontWeight: 700,
@@ -198,6 +202,7 @@ export default function FieldInput({
   tranchesRows,
   onTranchesRowsChange,
 }) {
+  const { labels, tpl } = usePackage();
   const [expanded, setExpanded] = useState(false);
   const [commentOpen, setCommentOpen] = useState(!!fieldComment);
 
@@ -362,7 +367,7 @@ export default function FieldInput({
                   }}
                 >
                   {isEmpty
-                    ? "(non renseigné — à compléter dans sa section d'origine)"
+                    ? labels.fieldInput.missingReference
                     : it.value}
                 </span>
               </div>
@@ -401,7 +406,7 @@ export default function FieldInput({
               borderColor: isOui ? "#2E7D32" : "#DFE4E8",
             }}
           >
-            OUI
+            {labels.fieldInput.yes}
           </button>
           <button
             type="button"
@@ -414,7 +419,7 @@ export default function FieldInput({
               borderColor: isNon ? "#C62828" : "#DFE4E8",
             }}
           >
-            NON
+            {labels.fieldInput.no}
           </button>
         </div>
       );
@@ -437,7 +442,7 @@ export default function FieldInput({
           rows={2}
           placeholder={
             isDelegated
-              ? `(délégué — ${assignedActors.map((a) => a.label).join(", ")})`
+              ? tpl(labels.fieldInput.delegatedSuffix, { labels: assignedActors.map((a) => a.label).join(", ") })
               : field.placeholder || ""
           }
           style={{ ...style, resize: "vertical", lineHeight: 1.4 }}
@@ -452,7 +457,7 @@ export default function FieldInput({
           disabled={disabled}
           style={{ ...style, cursor: disabled ? "not-allowed" : "pointer" }}
         >
-          <option value="">— Choisir —</option>
+          <option value="">{labels.fieldInput.selectPlaceholder}</option>
           {field.options.map((opt) => (
             <option key={opt} value={opt}>
               {opt}
@@ -500,7 +505,7 @@ export default function FieldInput({
           type="text"
           value={lockedInfo.value}
           readOnly
-          title="Champ rempli automatiquement — voir la note"
+          title={labels.fieldInput.autoFilledTooltip}
           style={{
             ...style,
             background: "#F2F2F2",
@@ -537,7 +542,7 @@ export default function FieldInput({
             disabled={disabled || naActive}
             placeholder={
               isDelegated
-                ? `(délégué — ${assignedActors.map((a) => a.label).join(", ")})`
+                ? tpl(labels.fieldInput.delegatedSuffix, { labels: assignedActors.map((a) => a.label).join(", ") })
                 : field.placeholder || ""
             }
             style={{
@@ -549,10 +554,10 @@ export default function FieldInput({
           <button
             type="button"
             onClick={toggleNa}
-            title={naActive ? "Rétablir le champ (saisir une valeur)" : "Marquer comme Non applicable"}
+            title={naActive ? labels.fieldInput.naClearTooltip : labels.fieldInput.naSetTooltip}
             style={naButtonStyle}
           >
-            {naActive ? "✓ N/A" : "N/A"}
+            {naActive ? labels.fieldInput.naActiveLabel : labels.fieldInput.naInactiveLabel}
           </button>
         </div>
       );
@@ -565,7 +570,7 @@ export default function FieldInput({
         disabled={disabled}
         placeholder={
           isDelegated
-            ? `(délégué — ${assignedActors.map((a) => a.label).join(", ")})`
+            ? tpl(labels.fieldInput.delegatedSuffix, { labels: assignedActors.map((a) => a.label).join(", ") })
             : field.placeholder || ""
         }
         style={style}
@@ -735,7 +740,7 @@ export default function FieldInput({
             value={fieldComment || ""}
             onChange={(e) => onFieldCommentChange(field.id, e.target.value)}
             rows={2}
-            placeholder="Commentaire libre (sera inséré dans le .docx)…"
+            placeholder={labels.fieldInput.commentPlaceholder}
             style={{
               width: "100%",
               fontSize: 11,

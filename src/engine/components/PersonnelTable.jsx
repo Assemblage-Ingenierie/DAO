@@ -1,7 +1,4 @@
-const DEFAULT_ROWS = [
-  { id: 1, poste: "Expert Environnemental et Social", exp_generale: "5", exp_comparable: "2", note: "Si risques E&S élevés" },
-  { id: 2, poste: "Expert Santé et Sécurité", exp_generale: "5", exp_comparable: "2", note: "Si risques S&S élevés" },
-];
+import { usePackage } from "../PackageContext.jsx";
 
 let nextId = 10;
 
@@ -23,6 +20,7 @@ const inputStyle = {
 };
 
 export default function PersonnelTable({ rows, onChange }) {
+  const { labels, defaults: { personnelRows: DEFAULT_ROWS } } = usePackage();
   const data = rows && rows.length > 0 ? rows : DEFAULT_ROWS;
 
   const updateRow = (id, field, value) => {
@@ -48,10 +46,10 @@ export default function PersonnelTable({ rows, onChange }) {
           <thead>
             <tr style={{ background: "#F2F2F2" }}>
               <th style={{ ...cellStyle, width: 36, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>No.</th>
-              <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>Poste</th>
-              <th style={{ ...cellStyle, width: 130, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>Exp. générale (ans)</th>
-              <th style={{ ...cellStyle, width: 140, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>Exp. comparable (ans)</th>
-              <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>Note</th>
+              <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>{labels.personnel.poste}</th>
+              <th style={{ ...cellStyle, width: 130, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>{labels.personnel.expGeneral}</th>
+              <th style={{ ...cellStyle, width: 140, fontWeight: 600, color: "#4D4D4D", textAlign: "center" }}>{labels.personnel.expComparable}</th>
+              <th style={{ ...cellStyle, fontWeight: 600, color: "#4D4D4D", textAlign: "left" }}>{labels.personnel.note}</th>
               <th style={{ ...cellStyle, width: 36 }}></th>
             </tr>
           </thead>
@@ -64,7 +62,7 @@ export default function PersonnelTable({ rows, onChange }) {
                     style={inputStyle}
                     value={row.poste}
                     onChange={(e) => updateRow(row.id, "poste", e.target.value)}
-                    placeholder="Intitulé du poste"
+                    placeholder={labels.personnel.postePlaceholder}
                   />
                 </td>
                 <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -88,7 +86,7 @@ export default function PersonnelTable({ rows, onChange }) {
                     style={inputStyle}
                     value={row.note}
                     onChange={(e) => updateRow(row.id, "note", e.target.value)}
-                    placeholder="Conditions d'application…"
+                    placeholder={labels.personnel.notePlaceholder}
                   />
                 </td>
                 <td style={{ ...cellStyle, textAlign: "center" }}>
@@ -104,7 +102,7 @@ export default function PersonnelTable({ rows, onChange }) {
                       padding: "0 4px",
                       lineHeight: 1,
                     }}
-                    title="Supprimer ce poste"
+                    title={labels.personnel.deleteTooltip}
                   >
                     ×
                   </button>
@@ -128,7 +126,7 @@ export default function PersonnelTable({ rows, onChange }) {
           cursor: "pointer",
         }}
       >
-        + Ajouter un poste
+        {labels.personnel.addButton}
       </button>
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePackage } from "../PackageContext.jsx";
 
 const PALETTE = [
   { color: "#6A1B9A", bgColor: "#F3E5F5", borderColor: "#CE93D8" },
@@ -17,6 +18,7 @@ function getNextPalette() {
 }
 
 export default function ActorsConfig({ actors, onChange }) {
+  const { labels, tpl } = usePackage();
   const [confirmDelete, setConfirmDelete] = useState(null);
 
   const updateActor = (id, patch) => {
@@ -27,8 +29,8 @@ export default function ActorsConfig({ actors, onChange }) {
     const palette = getNextPalette();
     const newActor = {
       id: `custom_${Date.now()}`,
-      label: "Nouvel acteur",
-      defaultComment: "À remplir",
+      label: labels.actorsConfig.newActor,
+      defaultComment: labels.actorsConfig.defaultCommentValue,
       ...palette,
     };
     onChange([...actors, newActor]);
@@ -42,12 +44,10 @@ export default function ActorsConfig({ actors, onChange }) {
   return (
     <div style={{ padding: "24px 28px", maxWidth: 700 }}>
       <h2 style={{ fontSize: 18, fontWeight: 700, color: "#30323E", marginBottom: 6 }}>
-        ⚙️ Configuration des acteurs
+        {labels.actorsConfig.title}
       </h2>
       <p style={{ fontSize: 13, color: "#777", marginBottom: 24 }}>
-        Définissez les acteurs intervenant dans la complétion du DTAO. Pour chaque champ,
-        vous pourrez indiquer quel acteur est responsable — un commentaire Word sera inséré
-        lors de l'export.
+        {labels.actorsConfig.description}
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -84,7 +84,7 @@ export default function ActorsConfig({ actors, onChange }) {
               {/* Label */}
               <div style={{ flex: 1, minWidth: 120 }}>
                 <label style={{ fontSize: 11, color: "#777", display: "block", marginBottom: 2 }}>
-                  Sigle affiché
+                  {labels.actorsConfig.displayLabel}
                 </label>
                 <input
                   value={actor.label}
@@ -107,7 +107,7 @@ export default function ActorsConfig({ actors, onChange }) {
               {/* Commentaire par défaut */}
               <div style={{ flex: 3, minWidth: 200 }}>
                 <label style={{ fontSize: 11, color: "#777", display: "block", marginBottom: 2 }}>
-                  Commentaire Word par défaut
+                  {labels.actorsConfig.defaultWordComment}
                 </label>
                 <input
                   value={actor.defaultComment}
@@ -122,14 +122,14 @@ export default function ActorsConfig({ actors, onChange }) {
                     background: "#fff",
                     width: "100%",
                   }}
-                  placeholder="Texte du commentaire Word…"
+                  placeholder={labels.actorsConfig.commentPlaceholder}
                 />
               </div>
 
               {/* Supprimer */}
               {confirmDelete === actor.id ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                  <span style={{ fontSize: 12, color: "#E30513" }}>Confirmer ?</span>
+                  <span style={{ fontSize: 12, color: "#E30513" }}>{labels.actorsConfig.deleteConfirmation}</span>
                   <button
                     onClick={() => removeActor(actor.id)}
                     style={{
@@ -142,7 +142,7 @@ export default function ActorsConfig({ actors, onChange }) {
                       cursor: "pointer",
                     }}
                   >
-                    Oui
+                    {labels.common.yes}
                   </button>
                   <button
                     onClick={() => setConfirmDelete(null)}
@@ -156,7 +156,7 @@ export default function ActorsConfig({ actors, onChange }) {
                       cursor: "pointer",
                     }}
                   >
-                    Non
+                    {labels.common.no}
                   </button>
                 </div>
               ) : (
@@ -171,7 +171,7 @@ export default function ActorsConfig({ actors, onChange }) {
                     padding: "0 4px",
                     flexShrink: 0,
                   }}
-                  title={`Supprimer ${actor.label}`}
+                  title={tpl(labels.actorsConfig.deleteTooltip, { label: actor.label })}
                 >
                   🗑
                 </button>
@@ -195,7 +195,7 @@ export default function ActorsConfig({ actors, onChange }) {
           cursor: "pointer",
         }}
       >
-        + Ajouter un acteur
+        {labels.actorsConfig.addButton}
       </button>
     </div>
   );

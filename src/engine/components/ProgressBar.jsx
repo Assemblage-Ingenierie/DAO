@@ -1,4 +1,4 @@
-import { SECTIONS } from "../data/sections.js";
+import { usePackage } from "../PackageContext.jsx";
 
 const SPECIAL_TYPES = ["personnel_table", "materiel_table", "proposition_list"];
 
@@ -14,10 +14,11 @@ function isFieldTreated(field, formData, actorAssignments) {
 }
 
 export default function ProgressBar({ formData, actorAssignments }) {
+  const { sections, labels } = usePackage();
   let total = 0;
   let treated = 0;
 
-  SECTIONS.forEach((section) => {
+  sections.forEach((section) => {
     section.fields.forEach((field) => {
       total += 1;
       if (isFieldTreated(field, formData, actorAssignments)) treated += 1;
@@ -39,7 +40,7 @@ export default function ProgressBar({ formData, actorAssignments }) {
           marginBottom: 6,
         }}
       >
-        <span style={{ fontWeight: 600 }}>Progression globale</span>
+        <span style={{ fontWeight: 600 }}>{labels.progressBar.label}</span>
         <span
           style={{
             fontWeight: 700,

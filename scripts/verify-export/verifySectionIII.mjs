@@ -21,7 +21,7 @@ import {
   NO_PREQUAL_HEADER_ANCHOR,
 } from '../../src/data/templateAnchors.js';
 
-// ── Miroirs des fonctions de src/export/exportDocx.js ────────────────────
+// ── Miroirs des fonctions de src/engine/export/exportDocx.js ────────────────────
 
 function highlightMargePreferenceBlock(xml, margePreference) {
   if (margePreference !== 'ne sera pas') return { xml, paraCount: 0, runCount: 0, range: null };

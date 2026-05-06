@@ -1,34 +1,37 @@
 import { useState } from "react";
+import { usePackage } from "../PackageContext.jsx";
 
-let nextId = 20;
+let nextId = 10000;
 
-const DEFAULT_ITEMS = [
-  { id: 1, label: "Variantes techniques", enabled: true, description: "Proposition pour les éléments des ouvrages pour lesquels des variantes techniques sont autorisées" },
-  { id: 2, label: "Méthodologie ESSS", enabled: true, description: "Version préliminaire du PGES-Travaux conforme aux Spécifications ESSS" },
-  { id: 3, label: "Liste des sous-traitants", enabled: true, description: "Sous-traitants proposés avec formulaire d'engagement ESSS" },
-  { id: 4, label: "Organisation des travaux sur site et Méthode de réalisation", enabled: true, description: "Dispositions et méthodes, gestion coordination accès Site, aspects géotechniques" },
-  { id: 5, label: "Programme / Calendrier de Construction", enabled: true, description: "Programme détaillé, calendrier mobilisation, étapes clés, chemin critique" },
-  { id: 6, label: "Personnel proposé et CV (formulaires PER-1 et PER-2)", enabled: true, description: "Noms et CV du personnel qualifié pour les postes clés" },
-  { id: 7, label: "Matériel (formulaire MAT)", enabled: true, description: "Détails matériel proposé pour les équipements clés" },
-];
-
-export default function PropositionTechnique({ items, onChange }) {
+// Generic editable bullet list used by:
+//  - S04-001 Proposition technique (legacy PropositionTechnique, kept for
+//    its own default set)
+//  - S04-ORGA-* Organisation des travaux (bullets a…i)
+//  - S04-CAL-*  Calendrier d'Exécution (bullets a…d)
+//
+// `items` shape: [{ id, label, enabled, description? }]
+// `defaults`  : fallback when `items` is empty (on first render)
+export default function BulletList({ items, onChange, defaults = [] }) {
+  const { labels } = usePackage();
   const [editingId, setEditingId] = useState(null);
-  const data = items && items.length > 0 ? items : DEFAULT_ITEMS;
+  const data = items && items.length > 0 ? items : defaults;
 
   const updateItem = (id, patch) => {
-    onChange(data.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+    const base = items && items.length > 0 ? items : defaults;
+    onChange(base.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   };
 
   const addItem = () => {
+    const base = items && items.length > 0 ? items : defaults;
     onChange([
-      ...data,
-      { id: nextId++, label: "Nouvel élément", enabled: true, description: "" },
+      ...base,
+      { id: nextId++, label: labels.bulletList.newItem, enabled: true, description: "" },
     ]);
   };
 
   const removeItem = (id) => {
-    onChange(data.filter((it) => it.id !== id));
+    const base = items && items.length > 0 ? items : defaults;
+    onChange(base.filter((it) => it.id !== id));
   };
 
   return (
@@ -69,7 +72,7 @@ export default function PropositionTechnique({ items, onChange }) {
                     }}
                   />
                   <textarea
-                    value={item.description}
+                    value={item.description || ""}
                     onChange={(e) => updateItem(item.id, { description: e.target.value })}
                     rows={2}
                     style={{
@@ -82,7 +85,7 @@ export default function PropositionTechnique({ items, onChange }) {
                       width: "100%",
                       resize: "vertical",
                     }}
-                    placeholder="Description…"
+                    placeholder={labels.bulletList.descriptionPlaceholder}
                   />
                   <div style={{ display: "flex", gap: 8 }}>
                     <button
@@ -98,7 +101,7 @@ export default function PropositionTechnique({ items, onChange }) {
                         cursor: "pointer",
                       }}
                     >
-                      Valider
+                      {labels.common.validate}
                     </button>
                     <button
                       onClick={() => removeItem(item.id)}
@@ -112,7 +115,7 @@ export default function PropositionTechnique({ items, onChange }) {
                         cursor: "pointer",
                       }}
                     >
-                      Supprimer
+                      {labels.common.delete}
                     </button>
                   </div>
                 </div>
@@ -120,7 +123,7 @@ export default function PropositionTechnique({ items, onChange }) {
                 <div
                   style={{ cursor: "pointer" }}
                   onClick={() => setEditingId(item.id)}
-                  title="Cliquer pour modifier"
+                  title={labels.bulletList.clickToEdit}
                 >
                   <div style={{ fontWeight: 600, fontSize: 13, color: "#4D4D4D", marginBottom: 2 }}>
                     {item.label}
@@ -152,7 +155,7 @@ export default function PropositionTechnique({ items, onChange }) {
           cursor: "pointer",
         }}
       >
-        + Ajouter un élément
+        {labels.bulletList.addButton}
       </button>
     </div>
   );

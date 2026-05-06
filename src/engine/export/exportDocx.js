@@ -3,45 +3,85 @@ import JSZip from 'jszip';
 // a 0-byte cloud-only placeholder in this Google Drive shared folder.
 // Use the local equivalent in src/utils/saveBlob.js instead.
 import { saveAs } from '../utils/saveBlob.js';
-import {
+import { isFilled } from '../utils/fieldStatus.js';
+
+// ── Pack-bound names (1.11c) ───────────────────────────────────────────────
+// These used to be top-level `import { … } from '…/packages/v2024/fr/…'`
+// statements. They are now `let` bindings populated by `exportDocx` from the
+// active pack (`pkg`) before any helper runs. Helper functions in this module
+// reference these names through lexical scope, so the assignment must happen
+// at the very top of `exportDocx` and all helpers are reached only through
+// that entry point. Single-threaded JS + single entry point = safe.
+let SECTIONS, HIGHLIGHTING_RULES, isEnjeuEsssLabel;
+// `anchors` is the full namespace object — passed as-is to applyHighlightingRules.
+let anchors;
+let
   STATIC_GUIDE_ANCHORS,
   IS_13_5_VARIANTES_DELAIS_ANCHORS,
   IS_34_1_SOUS_TRAITANTS_ANCHORS,
   MARGE_PREFERENCE_HEADER_ANCHOR,
   NO_PREQUAL_GUIDE_ANCHORS,
   NO_PREQUAL_HEADER_ANCHOR,
-} from '../data/templateAnchors.js';
-import { isFilled } from '../utils/fieldStatus.js';
-import { isEnjeuEsssLabel } from '../data/enjeuxEsss.js';
-
-// ── CCAP Partie A — Notes jaunes "draft" à rougir si le champ est rempli ────
-// Règle : chaque note bracketée jaune devient rouge si le champ relié a une
-// valeur (= la décision est prise, la note guide n'est plus utile). Sinon le
-// jaune est conservé. Les regex sont appliquées au texte concaténé du
-// paragraphe (après normalisation NFC + apostrophes droites).
-const CCAP_YELLOW_DRAFTS = [
-  // SC 1.1.3.3 / 1.1.5.6 / 8.7&14.15(b) — "[Si des tranches sont utilisées...]"
-  { paraTextRe: /Si des [Tt]ranches sont utilisées, se référer au [Tt]ableau/,
-    isFilled: (fd) => isFilled(fd?.tranches_marche_existe), name: 'SC tranches refs' },
-  // SC 1.1.6.15 — Conditions Climatiques (long guide). Template: "SousClause" + NBSP.
-  { paraTextRe: /Conditions Climatiques Exceptionnellement Défavorables visées à l'alinéa c\) de la Sous-?Clause\s*8\.4/,
-    isFilled: (fd) => isFilled(fd?.conditions_climatiques_defavorables), name: 'SC 1.1.6.15 climat guide' },
-  // SC 2.1 — délai d'accès tranches
-  { paraTextRe: /Si plusieurs Tranches sont prévues, et si un seul délai d'accès/,
-    isFilled: (fd) => isFilled(fd?.delai_acces), name: 'SC 2.1 délai accès' },
-  // SC 3.1 — pouvoirs MOE
-  { paraTextRe: /Le Maître d'Ouvrage peut décider de limiter davantage les pouvoirs du Maître d'(?:Œ|œ)uvre/,
-    isFilled: (fd) => isFilled(fd?.obligations_moe), name: 'SC 3.1 pouvoirs MOE' },
-  // SC 4.1 — fourniture documents entrepreneur (paragraphe principal)
-  { paraTextRe: /Le Maître d'Ouvrage peut décider de demander la fourniture de documents/,
-    isFilled: (fd) => isFilled(fd?.obligations_entrepreneur), name: 'SC 4.1 docs entrepreneur' },
-  // SC 4.1 — "[cocher la / les case(s) correspondante(s)]" (marqueur court)
-  { paraTextRe: /cocher la \/ les case\(s\) correspondante\(s\)/,
-    isFilled: (fd) => isFilled(fd?.obligations_entrepreneur), name: 'SC 4.1 cocher cases' },
-  // SC 8.1 — Date de Commencement (3 lignes possibles dans le bracket). Template: "SousClause" + NBSP.
-  { paraTextRe: /Insérer la liste des conditions telles que spécifiées dans le Sous-?Clause\s*8\.1 des CCAG/,
-    isFilled: (fd) => isFilled(fd?.date_commencement), name: 'SC 8.1 commencement' },
-];
+  PRICE_FORMAT_ROW_ANCHORS,
+  PRICE_FORMAT_OR_RE,
+  TABLEAUX_DE_PRIX_GUIDE_ANCHORS,
+  MONNAIE_OPTION_ANCHOR_RE,
+  MONNAIE_OPTION_PRIVILEGIER_RE,
+  CONVERSION_OPTION_ANCHOR_RE,
+  OPTION_A_HEADER_RE,
+  OPTION_B_HEADER_RE,
+  SECTION_OR_IS_BOUNDARY_RE,
+  VARIANTES_TECH_INTRO_RE,
+  VARIANTES_TECH_TITLE_RE,
+  METHODOLOGIE_ESSS_HEADER_RE,
+  // CCAP helpers anchors (1.8)
+  CCAP_TRANCHES_CAPTION_RE,
+  CCAP_TRANCHES_TABLE_HEADER_RE,
+  CCAP_ESSS_CHECKBOXES_ANCHOR_TEXT,
+  CCAP_CONDITIONS_CLIMATIQUES_ANCHOR_RE,
+  CCAP_14_1_HEADING_TEXT_LC,
+  CCAP_14_1_REF_TEXT,
+  CCAP_14_1_HEADER_GUIDE_RE,
+  CCAP_14_1_OPT_FORFAITAIRE_RE,
+  CCAP_14_1_OPT_UNITAIRES_RE,
+  CCAP_14_1_OPT_COMBINAISON_RE,
+  CCAP_14_1_OU_SEPARATOR_RE,
+  CCAP_14_1_DESC_FORF_RE,
+  CCAP_14_1_DESC_UNIT_RE,
+  CCAP_14_1_SUB_REF_BOUNDARY_RE,
+  CCAP_13_5_B_II_HEADING_LC_INCLUDES,
+  CCAP_13_5_B_II_REF_PREFIX_LC,
+  CCAP_14_1_B_REF_TEXT,
+  CCAP_14_1_E_REF_TEXT,
+  CCAP_14_1_E_SUPPRIMER_SUFFIX_TEXT,
+  CCAP_14_2_HEADING_TEXT_LC,
+  CCAP_14_2_REF_TEXT,
+  CCAP_14_3_HEADING_TEXT_LC,
+  CCAP_14_3_REF_TEXT,
+  CCAP_14_5_HEADING_TEXT_LC,
+  CCAP_14_5_GUIDE_RE,
+  CCAP_14_5_FOB_REF_PREFIX_LC,
+  CCAP_14_5_ONSITE_REF_PREFIX_LC,
+  CCAP_14_5_NEXT_SUBCLAUSE_RE,
+  CCAP_18_1_HEADING_RE,
+  CCAP_18_1_REF_TEXT,
+  CCAP_18_1_ATTESTATION_LABEL_RE,
+  CCAP_18_1_POLICES_LABEL_RE,
+  CCAP_18_1_UNDERSCORE_JOURS_RE,
+  CCAP_18_1_UNDERSCORE_ONLY_RE,
+  CCAP_18_1_SUB_REF_BOUNDARY_RE,
+  CCAP_18_1_POLICES_OLD_LABEL_LC,
+  CCAP_18_1_POLICES_NEW_LABEL_TEXT,
+  CCAP_18_3_HEADING_RE,
+  CCAP_18_3_REF_TEXT,
+  CCAP_20_2_HEADING_RE,
+  CCAP_20_2_REF_TEXT,
+  CCAP_20_2_GUIDE_SOIT_UPPER_RE,
+  CCAP_20_2_OPT_UN_MEMBRE_RE,
+  CCAP_20_2_GUIDE_SOIT_LOWER_RE,
+  CCAP_20_2_OPT_TROIS_MEMBRES_RE,
+  CCAP_20_2_LISTE_BOUNDARY_RE,
+  CCAP_20_2_SUB_REF_BOUNDARY_RE;
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 
@@ -599,7 +639,7 @@ function replaceUnderscoreBeforeLabels(xml, search, value) {
 // line must remain visible (it's the label telling the reader what the line is).
 // Nom du Marché value = "Travaux de " + PREA-003 (identification_travaux),
 // unless PREA-003 already starts with "Travaux de ".
-// Called BEFORE the FIELD_MAP generic pass so the generic `[Nom du Maître
+// Called BEFORE the templateBinding generic pass so the generic `[Nom du Maître
 // d'Ouvrage]` replacement no longer touches the caption paragraph 3932.
 function fillCcagPageGarde(xml, nomMaitre, identTravaux) {
   const nomMarche = identTravaux
@@ -729,206 +769,22 @@ function replaceField(xml, search, nth, value, commentIds, global) {
   return r;
 }
 
-// ── Field map ─────────────────────────────────────────────────────────────
-
-// `ph` may be a string or an array of strings (multiple placeholder variants
-// that all map to the same field). Each variant is replaced independently.
-const FIELD_MAP = [
-  // ── Identification (global: propagés dans tout le document) ──────────
-  //  `captions` = raw labels (no brackets) that appear alone — possibly
-  //  followed by ":" — in a paragraph whose adjacent signature line should
-  //  be filled with the value.
-  { id: 'nom_projet',             global: true,
-    ph: ["[insérer le nom du Projet]", "[nom du Projet]", "[Nom du Projet]"],
-    captions: ["Nom du Projet"] },
-  { id: 'identification_travaux', global: true,
-    ph: ["[Insérer l'identification des Travaux]", "[insérer une brève description des travaux]", "[nom du Marché]"] },
-  { id: 'nom_maitrise_ouvrage',   global: true,
-    ph: ["[insérer le nom du Maître d'Ouvrage]", "[nom du Maître d'Ouvrage]", "[Nom du Maître d'Ouvrage]"],
-    captions: ["Nom du Maître d'Ouvrage"] },
-  { id: 'pays',                   global: true,
-    ph: ["[insérer le pays]", "[Pays]"] },
-  { id: 'ref_aoi',                global: true,
-    ph: ["[insérer la référence]", "[Référence de l'AOI]", "[référence de l'AOI]"] },
-  { id: 'date_emission',          global: true, isDate: true,
-    ph: ["[insérer la date]", "[Date de publication de l'AAO]"] },
-  { id: 'nombre_lots',            ph: "[indiquer si non applicable]",
-    // Sibling caption paragraph ends in a <w:tab/> with underscore leader;
-    // strip that line so it doesn't visually compete with the filled value.
-    stripUnderscores: { caption: "Nombre et numéro d'identification des lots" } },
-
-  // ── Préqualification ─────────────────────────────────────────────────
-  { id: 'prequalification',  ph: "[est / n'est pas]", nth: 1, choice: ["est", "n'est pas"] },
-  { id: 'max_groupement',    ph: '[insérer un nombre maximum, par exemple trois, sinon indiquer la mention "sans objet"]' },
-
-  // ── Coordonnées (label captions, pas de placeholder) ─────────────────
-  { id: 'contact_attention', captionInline: "A l'attention de" },
-  { id: 'contact_adresse',   captionInline: "Adresse" },
-  { id: 'contact_tel',       captionInline: "Numéro de téléphone" },
-  { id: 'contact_email',     captionInline: "Adresse électronique" },
-  { id: 'contact_web',       captionInline: "Adresse de la page Web" },
-
-  // ── Réunion ──────────────────────────────────────────────────────────
-  { id: 'reunion_prevue',  ph: ["[se tiendra / n'est pas prévue]", "[se tiendra/n'est pas prévue]"], choice: ["se tiendra", "n'est pas prévue"] },
-  { id: 'reunion_lieu',    captionInline: "Lieu" },
-  // reunion_date fills the "Date :" caption at IS 7.4 (nth=1 for Date captions).
-  // The standalone guide paragraph "[de préférence à mi-période ...]" stays as
-  // a yellow-highlighted guide for the MOA to delete manually.
-  { id: 'reunion_date',    captionInline: "Date", nth: 1, isDate: true },
-  { id: 'reunion_heure',   captionInline: "Heure", isTime: true },
-  { id: 'visite_site',     ph: "[sera / ne sera pas]", nth: 1, choice: ["sera", "ne sera pas"] },
-
-  // ── Offre ────────────────────────────────────────────────────────────
-  { id: 'type_prix',              ph: "[Rayer la mention inutile]", deleteHint: true },
-  { id: 'documents_additionnels', ph: "[insérer la liste des documents additionnels, le cas échéant]" },
-  { id: 'offres_variantes',       ph: "[sont / ne sont pas]", nth: 1, choice: ["sont", "ne sont pas"] },
-  { id: 'variantes_techniques',   ph: "[sont / ne sont pas]", nth: 2, choice: ["sont", "ne sont pas"] },
-  { id: 'variantes_delais',       ph: "[sont / ne sont pas]", nth: 3, choice: ["sont", "ne sont pas"] },
-  { id: 'ajustement_variante_montant', ph: "[insérer montant et monnaie]" },
-  { id: 'prix_revisables',        ph: "[révisables / fermes]", choice: ["révisables", "fermes"] },
-  // Template: "libellés en ____________" — 12 underscores.
-  { id: 'monnaie_nationale',      ph: "____________", nth: 1 },
-  // Template: "sera de _____________________ [insérer nombre entre 90 et 120] jours."
-  // Strip the leading underscores row that sits in the same paragraph.
-  { id: 'validite_offre',         ph: "[insérer nombre entre 90 et 120]", stripUnderscores: true },
-  { id: 'actualisation_prix',     ph: '[insérer formule ou "selon un coefficient d\'actualisation"]' },
-
-  // ── Garanties ────────────────────────────────────────────────────────
-  { id: 'garantie_soumission',  ph: "[est / n'est pas]", nth: 2, choice: ["est", "n'est pas"] },
-  // Template: "Déclaration de Garantie de Soumission ____________ [est / n'est pas] requise."
-  // The 12 underscores before the placeholder must be stripped on fill.
-  { id: 'declaration_garantie', ph: "[est / n'est pas]", nth: 3, choice: ["est", "n'est pas"], stripUnderscores: true },
-  { id: 'montant_garantie',     ph: "[insérer montant entre 1% et 3% de l'estimation du Montant du Marché et préciser la monnaie]" },
-  { id: 'autres_garanties',     ph: '[indiquer "Néant" si pas applicable]' },
-  // Template: "période de _________________ [insérer le nombre d'années] ans."
-  { id: 'exclusion_annees',     ph: "[insérer le nombre d'années]", stripUnderscores: true },
-
-  // ── Remise ───────────────────────────────────────────────────────────
-  { id: 'copies_offre',   ph: "[insérer le nombre]", nth: 1 },
-  { id: 'habilitation',   ph: '[insérer par exemple "un pouvoir de l\'autorité compétente établi au nom du signataire de l\'Offre".]' },
-  { id: 'remise_attention', captionInline: "A l'attention de", nth: 2 },
-  { id: 'remise_adresse',   captionInline: "Adresse complète", nth: 1 },
-  // IS 22.1 template has separate "Date :" / "Heure :" caption paragraphs,
-  // not a combined "[insérer la date et l'heure]" placeholder. date_limite is
-  // the 2nd "Date :" caption in document order (1st = IS 7.4 réunion).
-  { id: 'date_limite',    captionInline: "Date", nth: 2, isDate: true },
-  { id: 'heure_limite',   captionInline: "Heure", nth: 2, isTime: true },
-  { id: 'ouverture_adresse', captionInline: "Adresse complète", nth: 2 },
-  { id: 'ouverture_date', captionInline: "Date", nth: 3, isDate: true },
-  { id: 'ouverture_heure', captionInline: "Heure", nth: 3, isTime: true },
-
-  // ── Évaluation ───────────────────────────────────────────────────────
-  // Template placeholders include "du Maître d'Ouvrage" suffix — must match exactly.
-  // Template visually shows a trailing space before the closing bracket, but
-  // the actual <w:t> runs concatenate to `… du Maître d'Ouvrage]` with NO
-  // space. Match the real run text — otherwise the yellow placeholder never
-  // fills in IS 32.1.
-  { id: 'monnaie_evaluation',      ph: "[Insérer la monnaie, normalement la monnaie nationale du Maître d'Ouvrage]" },
-  { id: 'source_taux_change',      ph: "[habituellement on utilisera la banque centrale du pays du Maître d'Ouvrage]" },
-  { id: 'option_conversion',       ph: "[A / B]", choice: ["A", "B"] },
-  { id: 'marge_preference',        ph: "[sera / ne sera pas]", nth: 2, choice: ["sera", "ne sera pas"] },
-  { id: 'sous_traitants_designes', ph: "[prévoit / ne prévoit pas]", choice: ["prévoit", "ne prévoit pas"] },
-
-  // ── Qualification financière ──────────────────────────────────────────
-  // S03-001 — fills the long bracket in 3.1 row of the Section III table; the
-  // template wording is verbose ("au montant de trois à quatre mois … pour le
-  // marché"), distinct from the IS-level shorthand. Match the table form here.
-  { id: 'capacite_financiere', ph: "[insérer le montant en € correspondant au montant de trois à quatre mois de facturation de travaux pour le marché]" },
-  // S03-002 / S03-003 — `stripUnderscores` strips the 6–8 leading `____` runs
-  // ("d'au moins ________ [insérer montant…]" / "sur les ______ [insérer le
-  // nombre d'années…]") that sit immediately before each bracket in the 3.2
-  // template row. Without this flag the underscores remained visible next to
-  // the green-filled value.
-  { id: 'ca_minimum',          ph: "[insérer montant en équivalent € en toutes lettres et en chiffres]", stripUnderscores: true },
-  { id: 'ca_periode',          ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 1, stripUnderscores: true },
-  // 3.2 row — Groupement d'entreprises columns. Two yellow placeholders per
-  // column ([letters] + [digits%]). Each cell appears once in the template.
-  { id: 'ca_membre_pct_lettres', ph: "[vingt-cinq]" },
-  { id: 'ca_membre_pct_chiffre', ph: "[25%]", valueSuffix: '%' },
-  { id: 'ca_unique_pct_lettres', ph: "[quarante]" },
-  { id: 'ca_unique_pct_chiffre', ph: "[40%]", valueSuffix: '%' },
-
-  // ── Qualification expérience ──────────────────────────────────────────
-  // §4.1 row — `stripUnderscores` cleans the leading `____` runs around each
-  // bracket ("au cours des ______ [insérer le nombre d'années…]" and
-  // "à partir du 1er janvier de l'année _______ [insérer l'année]").
-  { id: 'exp_generale_annees',       ph: "[insérer le nombre d'années, généralement 5 ans et au minimum 3 ans]", nth: 2, stripUnderscores: true },
-  { id: 'exp_generale_annee_depart', ph: "[insérer l'année]", nth: 1, stripUnderscores: true },
-  { id: 'exp_specifique_n',          ph: "[insérer des valeurs pour N, normalement deux, et V]" },
-  { id: 'exp_specifique_v',          ph: "[insérer la valeur de V]" },
-  { id: 'exp_specifique_annee',      ph: "[insérer l'année, la période à considérer est généralement de 5 à 10 ans]" },
-  // §4.2(b) — the inline placeholder in the main "Condition Requise" cell ends
-  // with "tel qu'applicable]" in the template (was missing from the previous
-  // ph, so S03-009 was never filling). The "Un membre" column has its own
-  // placeholder ending in "minimum requis]".
-  { id: 'exp_activites_cles',        ph: "[fournir la liste des activités en indiquant le volume, le nombre ou le taux de production tel qu'applicable]" },
-  { id: 'exp_activites_un_membre',   ph: "[fournir la liste des activités en indiquant le minimum requis]" },
-  // §4.2(b)(ii) — Sous-traitant spécialisé. Filled only when the toggle
-  // `sst_specialise_autorise` is "Oui" (when "Non", the entire row is painted
-  // red downstream — see the dedicated branch in the export pipeline). When
-  // toggle is anything other than "Oui", export an empty value so the yellow
-  // placeholder stays untouched (and gets red-painted by the Non branch).
-  { id: 'sst_specialise_description',
-    ph: "[ajouter le critère suivant si un sous-traitant spécialisé est autorisé et décrire la nature et les caractéristiques des travaux spécialisés]",
-    valueOverrideIf: (fd) => fd.sst_specialise_autorise === 'Oui' ? fd.sst_specialise_description : '' },
-
-  // ── ESSS ─────────────────────────────────────────────────────────────
-  { id: 'exp_esss_nombre', ph: "[insérer nombre, normalement deux]" },
-  { id: 'exp_esss_annees', ph: "[insérer nombre d'années, entre 5 et 10 ans]" },
-
-  // ── CCAP ─────────────────────────────────────────────────────────────
-  // CCAP-005 (SC 1.1.3.3) — placeholder "_________ jours." (9 underscores) au para 5515.
-  // Le suffixe " jours." disparaît à la substitution; on le rétablit via valueSuffix.
-  // Si CCAP-003 = Non (pas de tranches) on saute le suffixe pour laisser
-  // l'utilisateur mettre une unité libre ("540 jours" ou "18 mois").
-  { id: 'delai_achevement_ouvrages', ph: "_________ jours.", valueSuffix: " jours.",
-    valueSuffixSkipIf: (formData) => formData.tranches_marche_existe === 'Non' },
-  // CCAP-006 (SC 1.1.3.7) — la valeur par défaut "365 jours." apparaît dans la
-  // définition (para 4180 "an signifie 365 jours.") puis dans la Partie A
-  // (para 5519). nth=2 vise le bon paragraphe.
-  { id: 'periode_garantie',          ph: "365 jours.", nth: 2, valueSuffix: " jours." },
-  { id: 'delai_acces',          ph: "__________ jours après la Date de Commencement", underscorePrefix: "__________ jours" },
-  { id: 'garantie_bonne_exec',  ph: "[indiquer un chiffre entre 5 et 10]" },
-  { id: 'heures_travail',       ph: "[Indiquer les heures normales de travail.]" },
-  { id: 'date_commencement',    ph: "[Insérer conditions, date, ou date de signature de l'Acte d'Engagement]" },
-  { id: 'penalites_max',        ph: "[Insérer un pourcentage ne dépassant pas 10]" },
-  // CCAP-028 (avance_demarrage, SC 14.2) — handled by fillCcap14_2_AvanceDemarrage:
-  // the template paragraph starts with "______ %" and the placeholder
-  // "[Insérer un nombre entre 10 et 20…]" sits at the END. Replacing the
-  // bracket alone would leave the underscores intact, so we rewrite the
-  // whole paragraph in the pipeline below.
-  { id: 'retenue_garantie',     ph: "[Insérer un pourcentage de retenue entre 5 et 10]" },
-  // CCAP-030 (plafond_retenue, SC 14.3) — same shape as 14.2: rewritten by
-  // fillCcap14_3_PlafondRetenue in the pipeline.
-  // CCAP-035 (delai_paiement, SC 14.7) — the cell reads "dans un délai de
-  // _______ [insérer un nombre s'il est différent de 56] jours.". Replacing
-  // just the bracket leaves the leading underscores; strip them after fill.
-  { id: 'delai_paiement',       ph: "[insérer un nombre s'il est différent de 56]", stripUnderscores: true },
-  // CCAP-036 (taux_interet_etrangere, SC 14.8) — single yellow run at end
-  // of the cell, no underscores around it.
-  { id: 'taux_interet_etrangere', ph: "[insérer EURIBOR + 200 pb]" },
-  // CCAP-037 (multiplicateur_responsabilite, SC 17.6) — yellow placeholder
-  // preceded by "_______ " in the same paragraph; clean up the underscores
-  // after the value lands.
-  { id: 'multiplicateur_responsabilite', ph: "[insérer un multiplicateur égal ou supérieur à un, n'excédant pas trois]", stripUnderscores: true },
-  { id: 'montant_min_decompte', ph: "[Insérer un montant, 10.000 EUR par exemple]" },
-  // CCAP-042 (crd_liste, SC 20.2) — template uses straight ASCII quotes
-  // around "aucun" and a NBSP before ";". When the user selected
-  // crd_composition = "Trois membres", auto-override the value to "aucun"
-  // (matches the lockedIf in the schema).
-  { id: 'crd_liste',
-    ph: '[Insérer la(les) liste(s) de membres potentiels, uniquement lorsque le CRD comprend un membre unique\u00a0; sinon, ins\u00e9rer "aucun".]',
-    valueOverrideIf: (formData) => formData.crd_composition === 'Trois membres' ? 'aucun' : null },
-  // CCAP-043 (nomination_crd, SC 20.3) — template ph ends with "ou une
-  // autre association régionale d'ingénieurs.]" (longer than the previous
-  // approximation that ended with "ou autre]").
-  { id: 'nomination_crd',
-    ph: "[Insérer le nom de la personne officielle ou de l'entité procédant à la désignation, i.e. Président du FIDIC ou une autre association régionale d'ingénieurs.]" },
-  { id: 'institution_arbitrage',
-    ph: "[Insérer le nom de l'institution arbitrale si elle est différente de la Chambre de Commerce Internationale.]" },
-  { id: 'lieu_arbitrage',
-    ph: "[Insérer le lieu de l'arbitrage\u00a0: il doit être neutre, c'est-à-dire être ni le pays du Maître d'Ouvrage ni le pays du siège de l'Entrepreneur.]" },
-];
+// ── Field bindings ─────────────────────────────────────────────────────────
+//
+// Phase 1.6 finished: every exportable field now carries its own
+// `templateBinding` directly on its sections.js entry. The export loop
+// iterates the flattened sections list (sections.flatMap(s => s.fields))
+// and operates on each field that has a templateBinding — order is the
+// file order in sections.js, which the phase 1.6 batches were composed to
+// preserve nth-share groups (cf. plans/reprends-le-refactor-du-tidy-quilt.md).
+//
+// CCAP §14.1, §14.1(b)/(e), §14.2, §14.3, §14.5, §18.1, §18.3, §20.2,
+// §1.1.6.11 (ESSS checkboxes), §1.1.6.15 (Conditions Climatiques), §13.5(b)(ii)
+// (Pourcentage Provisions) and the Tranches table are handled by dedicated
+// helpers that run BEFORE this loop. They never appear here. Phase 1.8 will
+// parametrize those helpers via the pack.
+// Computed inside `exportDocx` from the active pack (1.11c).
+let ORDERED_BINDING_FIELDS;
 
 // ── Inline caption fill (for fields without bracketed placeholders) ──────
 // Finds a paragraph whose content starts with "<caption>" (optionally followed
@@ -1039,19 +895,17 @@ function buildPartPositions(parts) {
   return positions;
 }
 
-const DELETION_MARKER_PATTERNS = [
-  /\[Rayer la mention inutile\s*:?\s*\]/gi,
-  /\[Supprimer la mention inutile\s*:?\s*\]/gi,
-  /\[à supprimer si [^\]]+\]/gi,
-  /\[Section à supprimer si [^\]]+\]/gi,
-  /Supprimer la mention inutile/g,
-  /rayer la mention inutile/g,
-];
+// DELETION_MARKER_PATTERNS lives in src/packages/v2024/fr/anchors.js
+// (consumed by HIGHLIGHTING_RULES rule 'deletion-markers-always').
 
-function highlightDeletionMarkers(xml) {
+// Generic inline-marker red-highlighter: for every paragraph (outside
+// Section I), scan run-text for any of the supplied global regex patterns
+// and red-highlight only the matching slices. The pre-filter heuristic
+// (`prefilter`, optional) lets callers skip paragraphs that obviously don't
+// contain the marker text — speeds up large XML scans. When omitted, every
+// paragraph with at least one run is scanned.
+function highlightInlineMarkers(xml, patterns, prefilter) {
   let count = 0;
-  // For each <w:p>, scan all runs, find matching text and replace that run
-  // fragment with a red-highlighted version.
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   // Règle d'or: Section I "Instructions aux Soumissionnaires" is off-limits
   // to every red-highlight intervention. Compute its byte bounds once and
@@ -1061,7 +915,7 @@ function highlightDeletionMarkers(xml) {
   for (let i = 1; i < parts.length; i += 2) {
     if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
     let para = parts[i];
-    if (!/[Ss]upprimer|[Rr]ayer/.test(para)) continue;
+    if (prefilter && !prefilter.test(para)) continue;
     const runs = extractRunNodes(para);
     if (runs.length === 0) continue;
     let combined = '';
@@ -1071,7 +925,7 @@ function highlightDeletionMarkers(xml) {
       return { ...r, cStart: start, cEnd: combined.length };
     });
     const hits = [];
-    for (const pat of DELETION_MARKER_PATTERNS) {
+    for (const pat of patterns) {
       pat.lastIndex = 0;
       let m;
       while ((m = pat.exec(combined)) !== null) {
@@ -1504,58 +1358,9 @@ function stripSpecsGuideBlock(xml) {
   };
 }
 
-// ── IS 7.4 reunion block when "n'est pas prévue" ─────────────────────────
-// IS 7.4 sits inside Section I. Per règle d'or, Section I must not receive
-// any red-highlight intervention, so this function is now a no-op whenever
-// the "Une réunion préparatoire" anchor falls inside Section I bounds. If
-// the user later wants the Lieu/Date/Heure lines removed in the
-// "n'est pas prévue" case, they should be physically stripped rather than
-// surligned.
-function highlightReunionBlock(xml) {
-  const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
-  const sectI = findSectionIBounds(xml);
-  const positions = buildPartPositions(parts);
-  let startIdx = -1;
-  for (let i = 1; i < parts.length; i += 2) {
-    if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
-    const combined = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (/Une réunion préparatoire/.test(combined)) { startIdx = i; break; }
-  }
-  if (startIdx === -1) return { xml, paraCount: 0, runCount: 0 };
-
-  let paraCount = 0;
-  let runCount = 0;
-  for (let j = startIdx + 2; j < parts.length; j += 2) {
-    const para = parts[j];
-    const runs = extractRunNodes(para);
-    if (runs.length === 0) continue;
-    const combined = normApos(runs.map(r => r.text).join(''));
-    if (/Une visite du Site/.test(combined)) break;
-    // Safety: don't walk past the reunion block indefinitely.
-    if (paraCount >= 8) break;
-
-    let out = '';
-    let lastEnd = 0;
-    let changed = false;
-    for (const r of runs) {
-      out += para.slice(lastEnd, r.start);
-      lastEnd = r.end;
-      if (r.text) {
-        out += makeRedRun(r.rPr, r.text);
-        runCount++;
-        changed = true;
-      } else {
-        out += r.xml;
-      }
-    }
-    out += para.slice(lastEnd);
-    if (changed) {
-      parts[j] = out;
-      paraCount++;
-    }
-  }
-  return { xml: parts.join(''), paraCount, runCount };
-}
+// (highlightReunionBlock supprimé en 1.7.5 — remplacé par l'op déclaratif
+// `highlight-range` de la rule 'is-7-4-reunion-block' qui appelle
+// directement highlightParagraphRange avec REUNION_START_RE/END_RE.)
 
 // ── IS 11.1(b) — red-highlight unselected price-format alternatives ──────
 // The Section II DPAO cell for IS 11.1(b) lists three price schedule
@@ -1580,12 +1385,8 @@ function highlightUnselectedPriceFormats(xml, typePrix) {
   const selectedIdx = optionMap[typePrix];
   if (selectedIdx === undefined) return { xml, count: 0 };
 
-  const rowRes = [
-    /\[pour les march[eé]s [aà] prix unitaires\]/i,
-    /\[pour les march[eé]s [aà] prix global et forfaitaire\]/i,
-    /\[pour les march[eé]s combinant/i,
-  ];
-  const orRe = /^\s*\[ou\]\s*$/i;
+  const rowRes = PRICE_FORMAT_ROW_ANCHORS;
+  const orRe = PRICE_FORMAT_OR_RE;
 
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const sectI = findSectionIBounds(xml);
@@ -1680,14 +1481,7 @@ function highlightUnselectedTableauxDePrixGuide(xml, typePrix) {
   const keep = KEEP_YELLOW[typePrix];
   if (!keep) return { xml, count: 0 };
 
-  const expected = [
-    /Insérer.*formulaire de Bordereau des prix.*Détail quantitatif/i,
-    /^ou$/i,
-    /un formulaire de Prix Global et Forfaitaire et de décomposition/i,
-    /^ou$/i,
-    /les deux formulaires pour un march[ée] combinant/i,
-    /Et insérer le texte ci-dessous comme introduction\]/i,
-  ];
+  const expected = TABLEAUX_DE_PRIX_GUIDE_ANCHORS;
 
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
@@ -1753,7 +1547,7 @@ function highlightUnselectedMonnaieOption(xml, optionMonnaie) {
   for (let i = 1; i < parts.length; i += 2) {
     if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (/L'Option B refl[eè]te mieux les besoins/i.test(t)) { anchorIdx = i; break; }
+    if (MONNAIE_OPTION_ANCHOR_RE.test(t)) { anchorIdx = i; break; }
   }
   if (anchorIdx === -1) return { xml, count: 0 };
 
@@ -1762,10 +1556,10 @@ function highlightUnselectedMonnaieOption(xml, optionMonnaie) {
   let optAHead = -1, priviLabel = -1, optBHead = -1, endIdx = parts.length;
   for (let i = anchorIdx + 2; i < parts.length; i += 2) {
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (optAHead === -1 && /^Option A \(/i.test(t)) { optAHead = i; continue; }
-    if (priviLabel === -1 && /^\[Option [aà] privil[eé]gier\]\s*$/i.test(t)) { priviLabel = i; continue; }
-    if (optBHead === -1 && /^Option B \(/i.test(t)) { optBHead = i; continue; }
-    if (optBHead !== -1 && (/^IS\s+\d/.test(t) || /^Section\s+[IVX]/i.test(t))) { endIdx = i; break; }
+    if (optAHead === -1 && OPTION_A_HEADER_RE.test(t)) { optAHead = i; continue; }
+    if (priviLabel === -1 && MONNAIE_OPTION_PRIVILEGIER_RE.test(t)) { priviLabel = i; continue; }
+    if (optBHead === -1 && OPTION_B_HEADER_RE.test(t)) { optBHead = i; continue; }
+    if (optBHead !== -1 && SECTION_OR_IS_BOUNDARY_RE.test(t)) { endIdx = i; break; }
     if (i - anchorIdx > 40) { endIdx = i; break; } // safety rail
   }
   if (optAHead === -1 || optBHead === -1) return { xml, count: 0 };
@@ -1819,16 +1613,16 @@ function highlightUnselectedConversionOption(xml, optionConversion) {
   for (let i = 1; i < parts.length; i += 2) {
     if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (/conform[eé]ment [aà] la proc[eé]dure correspondant [aà] l'Option/i.test(t)) { anchorIdx = i; break; }
+    if (CONVERSION_OPTION_ANCHOR_RE.test(t)) { anchorIdx = i; break; }
   }
   if (anchorIdx === -1) return { xml, count: 0 };
 
   let optAHead = -1, optBHead = -1, endIdx = parts.length;
   for (let i = anchorIdx + 2; i < parts.length; i += 2) {
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (optAHead === -1 && /^Option A \(/i.test(t)) { optAHead = i; continue; }
-    if (optBHead === -1 && /^Option B \(/i.test(t)) { optBHead = i; continue; }
-    if (optBHead !== -1 && (/^IS\s+\d/.test(t) || /^Section\s+[IVX]/i.test(t))) { endIdx = i; break; }
+    if (optAHead === -1 && OPTION_A_HEADER_RE.test(t)) { optAHead = i; continue; }
+    if (optBHead === -1 && OPTION_B_HEADER_RE.test(t)) { optBHead = i; continue; }
+    if (optBHead !== -1 && SECTION_OR_IS_BOUNDARY_RE.test(t)) { endIdx = i; break; }
     if (i - anchorIdx > 40) { endIdx = i; break; }
   }
   if (optAHead === -1 || optBHead === -1) return { xml, count: 0 };
@@ -1857,16 +1651,13 @@ function highlightUnselectedConversionOption(xml, optionConversion) {
   return { xml: parts.join(''), count };
 }
 
-// ── Static template guides that are always red-highlighted ──────────────
-// Paragraphs the MOA should delete once the DPAO cell is finalized. We paint
-// them red (not strip) so the MOA can read the instruction, confirm the
-// underlying info is captured elsewhere, and then delete them manually.
-//
-// Matching uses normalized whitespace so Word's stray spaces (e.g. "mi
-// période" with a space instead of the expected hyphen) still match.
-function highlightStaticGuides(xml) {
-  return highlightParagraphsByAnchors(xml, STATIC_GUIDE_ANCHORS);
-}
+// (Wrappers orphelins supprimés en 1.7.5 — leurs rules respectives utilisent
+// désormais l'op `highlight-matching` du dispatcher qui appelle
+// highlightParagraphsByAnchors directement avec l'anchor array nommé :
+//   - highlightStaticGuides (STATIC_GUIDE_ANCHORS) → rule #25 'static-guides-always-red'
+//   - highlightVariantesDelaisBlock (IS_13_5_VARIANTES_DELAIS_ANCHORS) → rule #6
+//   - highlightSousTraitantsBlock (IS_34_1_SOUS_TRAITANTS_ANCHORS) → rule #7
+//   - highlightNoPrequalGuide (NO_PREQUAL_GUIDE_ANCHORS) → rule #23)
 
 // ── Generic helper — red-highlight every paragraph whose text matches any
 //    of the supplied anchor regexes (scoped to Section II+). Used for blocks
@@ -1895,23 +1686,6 @@ function highlightParagraphsByAnchors(xml, anchors) {
     if (changed) { parts[i] = out; paraCount++; }
   }
   return { xml: parts.join(''), paraCount, runCount };
-}
-
-// ── IS 13.5 variantes délais — red-highlight ajustement block ──────────
-// When time-schedule variants are NOT authorized (variantes_delais === "ne
-// sont pas"), the two following paragraphs become inapplicable:
-//   "Si les variantes sont autorisées, le montant d'ajustement … : [insérer montant et monnaie] par [insérer jour ou semaine]"
-//   "[Le Marché devra mentionner une pénalité de retard (voir Sous-Clause 8.7 du CCAP) …]"
-function highlightVariantesDelaisBlock(xml) {
-  return highlightParagraphsByAnchors(xml, IS_13_5_VARIANTES_DELAIS_ANCHORS);
-}
-
-// ── IS 34.1 sous-traitants désignés — red-highlight listing guide ──────
-// When sous_traitants_designes === "ne prévoit pas", the follow-up guide
-// "[si la mention retenue ci-dessus est "prévoit", alors lister …]" is
-// inapplicable. Red it so the MOA can delete it.
-function highlightSousTraitantsBlock(xml) {
-  return highlightParagraphsByAnchors(xml, IS_34_1_SOUS_TRAITANTS_ANCHORS);
 }
 
 // ── IS 33.1 marge de préférence — red-highlight the entire block ──────
@@ -1968,16 +1742,6 @@ function highlightMargePreferenceBlock(xml, margePreference) {
   return { xml: parts.join(''), paraCount, runCount };
 }
 
-// ── IS 4.5 pré-qualification — red-highlight the "supprimer" guide ────
-// When prequalification === "n'est pas", the yellow guide
-// "[sinon supprimer toute cette section]" that sits between the
-// "3.3 Qualification si une Pré-qualification n'a pas été effectuée" heading
-// and the detailed criteria is no longer actionable (the section applies),
-// so we paint it red for the MO to clean up.
-function highlightNoPrequalGuide(xml) {
-  return highlightParagraphsByAnchors(xml, NO_PREQUAL_GUIDE_ANCHORS);
-}
-
 // ── Generic helper: paint every paragraph in [startRe .. endRe) red ────
 // Finds the first paragraph matching `startRe`, then red-highlights every
 // paragraph (including those nested inside tables) up to — but not including —
@@ -2023,44 +1787,12 @@ function highlightParagraphRange(xml, startRe, endRe) {
   return { xml: parts.join(''), paraCount, runCount };
 }
 
-// ── Annexe 1 (Révision des prix) — red if prix fermes ──────────────────
-// If the user chose "fermes" for S02-019 (nature des prix), the entire
-// "Annexe 1 à la Soumission — Données relatives à la révision des prix"
-// becomes inapplicable and must be deleted by the MOA. Paint the whole
-// block red from the Annexe 1 title to just before Annexe 2.
-function highlightAnnexe1Revisions(xml, natureDesPrix) {
-  if (natureDesPrix !== 'fermes') return { xml, paraCount: 0, runCount: 0 };
-  return highlightParagraphRange(
-    xml,
-    /^Annexe 1 [aà] la Soumission\b.*r[eé]vision des prix/i,
-    /^Annexe 2 [aà] la Soumission\b/i,
-  );
-}
-
-// ── Annexe 2 (Libellé du prix) — red the non-retained Alternative ──────
-// S02-020 picks either Option A (monnaie nationale) or Option B (monnaies
-// nationale + étrangères). The template carries both Alternative A and
-// Alternative B sub-tables; the non-retained one must be deleted.
-//   Option A → red Alternative B
-//   Option B → red Alternative A
-function highlightAnnexe2Alternative(xml, optionMonnaie) {
-  if (!optionMonnaie) return { xml, paraCount: 0, runCount: 0 };
-  const isA = /Option\s*A/i.test(optionMonnaie);
-  const isB = /Option\s*B/i.test(optionMonnaie);
-  if (!isA && !isB) return { xml, paraCount: 0, runCount: 0 };
-  if (isA) {
-    return highlightParagraphRange(
-      xml,
-      /Tableau\s*:\s*Alternative\s*B/i,
-      /^Annexe 3 [aà] la Soumission\b/i,
-    );
-  }
-  return highlightParagraphRange(
-    xml,
-    /Tableau\s*:\s*Alternative\s*A/i,
-    /Tableau\s*:\s*Alternative\s*B/i,
-  );
-}
+// Annexe 1 / Annexe 2 (rules 'annexe-1-revisions-prix-fermes' /
+// 'annexe-2-alternative-non-retenue') sont désormais déclarées dans
+// HIGHLIGHTING_RULES — voir src/packages/v2024/fr/highlightingRules.js.
+// Annexe 1 utilise un op `highlight-range` déclaratif ; Annexe 2 utilise un
+// `apply` court qui sélectionne le range A/B avant d'appeler
+// highlightParagraphRange.
 
 // ── Variantes techniques form — red if variantes not authorized ────────
 // S02-016 controls whether technical variants are authorized. When set to
@@ -2078,13 +1810,12 @@ function highlightVariantesTechniquesForm(xml, variantesTechniques) {
   const sectI = findSectionIBounds(xml);
   const positions = buildPartPositions(parts);
 
-  const introRe = /^Proposition pour les [eé]l[eé]ments d\s*es ouvrages pour lesquels des variantes technique\s*s sont autoris[eé]es/i;
   let introIdx = -1;
   for (let i = 1; i < parts.length; i += 2) {
     if (sectI.startPos !== -1 && positions[i] >= sectI.startPos && positions[i] < sectI.endPos) continue;
     if (isTocParagraph(parts[i])) continue;
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (introRe.test(t)) { introIdx = i; break; }
+    if (VARIANTES_TECH_INTRO_RE.test(t)) { introIdx = i; break; }
   }
   if (introIdx === -1) return { xml, paraCount: 0, runCount: 0 };
 
@@ -2094,13 +1825,13 @@ function highlightVariantesTechniquesForm(xml, variantesTechniques) {
     const k = introIdx - 2 * j;
     if (k < 1) break;
     const t = normApos(extractRunNodes(parts[k]).map(r => r.text).join(''));
-    if (/^Variantes techniques\s*$/i.test(t)) { startIdx = k; break; }
+    if (VARIANTES_TECH_TITLE_RE.test(t)) { startIdx = k; break; }
   }
   // End: next form heading (Méthodologie ESSS).
   let endIdx = -1;
   for (let i = introIdx + 2; i < parts.length; i += 2) {
     const t = normApos(extractRunNodes(parts[i]).map(r => r.text).join(''));
-    if (/M[eé]thodologie\s+environnementale/i.test(t)) { endIdx = i; break; }
+    if (METHODOLOGIE_ESSS_HEADER_RE.test(t)) { endIdx = i; break; }
   }
   if (endIdx === -1) return { xml, paraCount: 0, runCount: 0 };
 
@@ -2474,17 +2205,13 @@ function fillCcapTranchesTable(xml, tranchesRows) {
 
   // Locate the LAST occurrence of "Résumé des Tranches" (earlier ones are
   // guide notes inside CCAP paragraphs); the table itself follows shortly.
-  const captionRe = /Résumé des Tranches/g;
+  const captionRe = new RegExp(CCAP_TRANCHES_CAPTION_RE.source, CCAP_TRANCHES_CAPTION_RE.flags);
   let captionByte = -1;
   let cm;
   while ((cm = captionRe.exec(xml)) !== null) captionByte = cm.index;
   if (captionByte === -1) return { xml, rowCount: 0 };
 
-  const tbl = findTableAfter(
-    xml,
-    captionByte,
-    /Nom\/Description des Tranches[\s\S]*Article 1\.1\.3\.3[\s\S]*Pénalités de retard/,
-  );
+  const tbl = findTableAfter(xml, captionByte, CCAP_TRANCHES_TABLE_HEADER_RE);
   if (!tbl) return { xml, rowCount: 0 };
 
   const rowRe = /<w:tr\b[\s\S]*?<\/w:tr>/g;
@@ -2590,7 +2317,7 @@ function setCcapEsssCheckboxes(xml, choice) {
   if (choice !== 'Oui' && choice !== 'Non') return { xml, applied: false };
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
-  const anchorNorm = normApos("Les Spécifications ESSS sont applicables :");
+  const anchorNorm = normApos(CCAP_ESSS_CHECKBOXES_ANCHOR_TEXT);
   // Find the last anchor paragraph
   let lastAnchor = -1;
   for (let i = 1; i < parts.length; i += 2) {
@@ -2636,9 +2363,8 @@ function fillCcapConditionsClimatiques(xml, value) {
   if (!v) return { xml, applied: false };
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
-  const anchorRe = /^"?Conditions Climatiques Exceptionnellement D[ée]favorables"?\s+signifie\s*:/i;
   for (let i = 1; i < parts.length; i += 2) {
-    if (!anchorRe.test(paraText(parts[i]))) continue;
+    if (!CCAP_CONDITIONS_CLIMATIQUES_ANCHOR_RE.test(paraText(parts[i]))) continue;
     // Collect up to 4 following yellow-highlighted bullet paragraphs.
     const bulletIdx = [];
     for (let j = i + 2; j < parts.length && bulletIdx.length < 4; j += 2) {
@@ -2819,11 +2545,11 @@ function applyCcap14_1(xml, choice, descForf, descUnit) {
   // Find anchor: heading "Montant du Marché" followed by ref "14.1"
   let refAt = -1;
   for (let i = 1; i < parts.length; i += 2) {
-    if (paraText(parts[i]).toLowerCase() !== 'montant du marché') continue;
+    if (paraText(parts[i]).toLowerCase() !== CCAP_14_1_HEADING_TEXT_LC) continue;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '14.1') { refAt = j; break; }
+      if (tj === CCAP_14_1_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt !== -1) break;
@@ -2835,18 +2561,18 @@ function applyCcap14_1(xml, choice, descForf, descUnit) {
   for (let k = refAt + 2; k < Math.min(parts.length, refAt + 26); k += 2) {
     const t = paraText(parts[k]);
     if (!t) continue;
-    if (/^\[Choisir l[''']option correspondant/i.test(t)) labels.header = k;
-    else if (/^Le march[ée] est [àa] Prix Global et Forfaitaire$/i.test(t)) labels.optForf = k;
-    else if (/^Le March[ée] est [àa] Prix Unitaires$/i.test(t)) labels.optUnit = k;
-    else if (/^Le March[ée] est une combinaison/i.test(t)) labels.optComb = k;
-    else if (/^\[ou\]$/i.test(t)) {
+    if (CCAP_14_1_HEADER_GUIDE_RE.test(t)) labels.header = k;
+    else if (CCAP_14_1_OPT_FORFAITAIRE_RE.test(t)) labels.optForf = k;
+    else if (CCAP_14_1_OPT_UNITAIRES_RE.test(t)) labels.optUnit = k;
+    else if (CCAP_14_1_OPT_COMBINAISON_RE.test(t)) labels.optComb = k;
+    else if (CCAP_14_1_OU_SEPARATOR_RE.test(t)) {
       if (labels.ou1 === undefined) labels.ou1 = k;
       else if (labels.ou2 === undefined) labels.ou2 = k;
     }
-    else if (/^La Composante [àa] Prix Global et Forfaitaire consiste/i.test(t)) labels.descForf = k;
-    else if (/^La Composante [àa] Prix Unitaires consiste/i.test(t)) labels.descUnit = k;
+    else if (CCAP_14_1_DESC_FORF_RE.test(t)) labels.descForf = k;
+    else if (CCAP_14_1_DESC_UNIT_RE.test(t)) labels.descUnit = k;
     // Stop if we've gone past — next sub-clause ref like "14.1(b)" etc.
-    if (/^14\.1\(/i.test(t)) break;
+    if (CCAP_14_1_SUB_REF_BOUNDARY_RE.test(t)) break;
   }
 
   // Decide which paragraph indices to paint red based on choice.
@@ -2917,12 +2643,12 @@ function fillCcapPourcentageProvisions(xml, value, isNA) {
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]).toLowerCase();
-    if (!t.includes("pourcentage pour l'ajustement des sommes provisionnelles")) continue;
+    if (!t.includes(CCAP_13_5_B_II_HEADING_LC_INCLUDES)) continue;
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 8); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj.toLowerCase().startsWith("13.5(b)(ii)")) { refAt = j; break; }
+      if (tj.toLowerCase().startsWith(CCAP_13_5_B_II_REF_PREFIX_LC)) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -2995,7 +2721,7 @@ function fillCcap14_1_b_Exemptions(xml, value) {
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
-    if (paraText(parts[i]) !== '14.1(b)') continue;
+    if (paraText(parts[i]) !== CCAP_14_1_B_REF_TEXT) continue;
     const yIdx = findNextYellowParaIdx(parts, i, 4);
     if (yIdx === -1) return { xml, replaced: false };
     parts[yIdx] = rewriteParaWithHighlightedLines(parts[yIdx], lines, 'green');
@@ -3014,7 +2740,7 @@ function applyCcap14_1_e(xml, choice) {
   const parts = xml.split(/(<w:p[ >][\s\S]*?<\/w:p>)/g);
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
-    if (paraText(parts[i]) !== '14.1(e)') continue;
+    if (paraText(parts[i]) !== CCAP_14_1_E_REF_TEXT) continue;
     const yIdx = findNextYellowParaIdx(parts, i, 4);
     if (yIdx === -1) return { xml, replaced: false };
     const tpl = parts[yIdx];
@@ -3029,7 +2755,7 @@ function applyCcap14_1_e(xml, choice) {
       makeRun('', ' / ') +
       makeRedRun('', dropped) +
       makeRun('', ' ') +
-      makeRedRun('', '[Supprimer la mention inutile]');
+      makeRedRun('', CCAP_14_1_E_SUPPRIMER_SUFFIX_TEXT);
     parts[yIdx] = `${openTag}${pPr}${body}</w:p>`;
     return { xml: parts.join(''), replaced: true };
   }
@@ -3047,12 +2773,12 @@ function fillCcap14_2_AvanceDemarrage(xml, value) {
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]);
-    if (t.toLowerCase() !== "paiement de l'avance de démarrage") continue;
+    if (t.toLowerCase() !== CCAP_14_2_HEADING_TEXT_LC) continue;
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '14.2') { refAt = j; break; }
+      if (tj === CCAP_14_2_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -3078,12 +2804,12 @@ function fillCcap14_3_PlafondRetenue(xml, value) {
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim();
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]);
-    if (t.toLowerCase() !== 'plafond de la retenue de garantie') continue;
+    if (t.toLowerCase() !== CCAP_14_3_HEADING_TEXT_LC) continue;
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '14.3') { refAt = j; break; }
+      if (tj === CCAP_14_3_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -3117,11 +2843,11 @@ function applyCcap14_5(xml, applique, fobText, onsiteText) {
   // paragraphs) by yellow "[Si la SousClause 14.5 s'applique :]".
   let headIdx = -1, guideIdx = -1;
   for (let i = 1; i < parts.length; i += 2) {
-    if (paraText(parts[i]).toLowerCase() !== 'equipements et matériaux') continue;
+    if (paraText(parts[i]).toLowerCase() !== CCAP_14_5_HEADING_TEXT_LC) continue;
     for (let j = i + 2; j < Math.min(parts.length, i + 10); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (/^\[Si la Sous[- ]?Clause\s*14\.5\s*s/i.test(tj)) {
+      if (CCAP_14_5_GUIDE_RE.test(tj)) {
         headIdx = i;
         guideIdx = j;
         break;
@@ -3141,16 +2867,16 @@ function applyCcap14_5(xml, applique, fobText, onsiteText) {
   for (let k = guideIdx + 2; k < Math.min(parts.length, guideIdx + 24); k += 2) {
     const tk = paraText(parts[k]);
     if (!tk) continue;
-    if (tk.toLowerCase().startsWith('14.5(b)(i)') && fobRefIdx === -1) {
+    if (tk.toLowerCase().startsWith(CCAP_14_5_FOB_REF_PREFIX_LC) && fobRefIdx === -1) {
       fobRefIdx = k;
       fobYIdx = findNextYellowParaIdx(parts, k, 4);
-    } else if (tk.toLowerCase().startsWith('14.5(c)(i)') && onsiteRefIdx === -1) {
+    } else if (tk.toLowerCase().startsWith(CCAP_14_5_ONSITE_REF_PREFIX_LC) && onsiteRefIdx === -1) {
       onsiteRefIdx = k;
       onsiteYIdx = findNextYellowParaIdx(parts, k, 4);
     }
     // Stop once we've passed both, or when we hit the next unrelated cell.
     if (fobRefIdx !== -1 && onsiteRefIdx !== -1) break;
-    if (/^14\.6(\b|$)/i.test(tk)) break;
+    if (CCAP_14_5_NEXT_SUBCLAUSE_RE.test(tk)) break;
   }
 
   let painted = 0, filled = 0;
@@ -3219,14 +2945,14 @@ function fillCcap18_1_Delais(xml, valAttestation, valPolice) {
     const t = paraText(parts[i]);
     // Use regex (with optional accent decomposition) so we don't trip over
     // NFC vs NFD normalization of "é" between source code and Word XML.
-    if (!/^d[ée]lais de pr[ée]sentation des assurances\s*:?\s*$/i.test(t)) continue;
+    if (!CCAP_18_1_HEADING_RE.test(t)) continue;
 
     // Find ref "18.1" within next 4 paras
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 8); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '18.1') { refAt = j; break; }
+      if (tj === CCAP_18_1_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -3240,17 +2966,17 @@ function fillCcap18_1_Delais(xml, valAttestation, valPolice) {
         labels.guide = k;
         continue;
       }
-      if (/^Attestation\s+d'assurance/i.test(tk) && labels.labelA === undefined) {
+      if (CCAP_18_1_ATTESTATION_LABEL_RE.test(tk) && labels.labelA === undefined) {
         labels.labelA = k;
         continue;
       }
-      if (/^Polices\b.*applicables?/i.test(tk) && labels.labelP === undefined) {
+      if (CCAP_18_1_POLICES_LABEL_RE.test(tk) && labels.labelP === undefined) {
         labels.labelP = k;
         continue;
       }
       // Yellow heading "Montant minimum…" or any "18.x" ref means we've left the cell.
-      if (/^18\.\d/.test(tk) && tk !== '18.1') break;
-      if (/^Montant minimum de l'assurance/i.test(tk)) break;
+      if (CCAP_18_1_SUB_REF_BOUNDARY_RE.test(tk) && tk !== CCAP_18_1_REF_TEXT) break;
+      if (CCAP_18_3_HEADING_RE.test(tk)) break;
     }
 
     // Helper: from a label paragraph, find the next non-empty para that
@@ -3259,7 +2985,7 @@ function fillCcap18_1_Delais(xml, valAttestation, valPolice) {
       for (let k = startIdx + 2; k < Math.min(parts.length, startIdx + 14); k += 2) {
         const tk = paraText(parts[k]);
         if (!tk) continue;
-        if (/^_+\s*jours\.?$/i.test(tk) || /^_+$/i.test(tk)) return k;
+        if (CCAP_18_1_UNDERSCORE_JOURS_RE.test(tk) || CCAP_18_1_UNDERSCORE_ONLY_RE.test(tk)) return k;
         // Stop at the next label or anything non-trivial.
         return -1;
       }
@@ -3274,9 +3000,9 @@ function fillCcap18_1_Delais(xml, valAttestation, valPolice) {
       // body to "Polices d'assurance applicables", inheriting the rPr of the
       // first run.
       if (runs.length > 0) {
-        const newText = "Polices d'assurance applicables";
+        const newText = CCAP_18_1_POLICES_NEW_LABEL_TEXT;
         const tCombined = normApos(runs.map(r => r.text).join('')).trim();
-        if (tCombined.toLowerCase() === 'polices applicables') {
+        if (tCombined.toLowerCase() === CCAP_18_1_POLICES_OLD_LABEL_LC) {
           const openMatch = para.match(/^<w:p\b[^>]*>/);
           const openTag = openMatch ? openMatch[0] : '<w:p>';
           const pPrMatch = para.match(/<w:pPr>[\s\S]*?<\/w:pPr>/);
@@ -3340,11 +3066,11 @@ function applyCcap20_2_Composition(xml, choice) {
   let refAt = -1;
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]);
-    if (!/^Le CRD doit comprendre$/i.test(t)) continue;
+    if (!CCAP_20_2_HEADING_RE.test(t)) continue;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '20.2') { refAt = j; break; }
+      if (tj === CCAP_20_2_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt !== -1) break;
@@ -3356,13 +3082,13 @@ function applyCcap20_2_Composition(xml, choice) {
   for (let k = refAt + 2; k < Math.min(parts.length, refAt + 22); k += 2) {
     const t = paraText(parts[k]);
     if (!t) continue;
-    if (/^\[Soit\s*:?\s*\]$/i.test(t) && labels.guide1 === undefined) { labels.guide1 = k; continue; }
-    if (/^Un membre unique$/i.test(t) && labels.unique === undefined) { labels.unique = k; continue; }
-    if (/^\[soit\s*:?\s*\]$/i.test(t) && labels.guide2 === undefined) { labels.guide2 = k; continue; }
-    if (/^Trois membres$/i.test(t) && labels.trois === undefined) { labels.trois = k; continue; }
+    if (CCAP_20_2_GUIDE_SOIT_UPPER_RE.test(t) && labels.guide1 === undefined) { labels.guide1 = k; continue; }
+    if (CCAP_20_2_OPT_UN_MEMBRE_RE.test(t) && labels.unique === undefined) { labels.unique = k; continue; }
+    if (CCAP_20_2_GUIDE_SOIT_LOWER_RE.test(t) && labels.guide2 === undefined) { labels.guide2 = k; continue; }
+    if (CCAP_20_2_OPT_TROIS_MEMBRES_RE.test(t) && labels.trois === undefined) { labels.trois = k; continue; }
     // Stop once we've hit the next ref or "Liste de membres potentiels".
-    if (/^Liste de membres potentiels/i.test(t)) break;
-    if (/^20\.\d/.test(t) && t !== '20.2') break;
+    if (CCAP_20_2_LISTE_BOUNDARY_RE.test(t)) break;
+    if (CCAP_20_2_SUB_REF_BOUNDARY_RE.test(t) && t !== CCAP_20_2_REF_TEXT) break;
   }
 
   // Decide which paragraphs to paint red.
@@ -3408,12 +3134,12 @@ function fillCcap18_3_Montant(xml, value) {
   const paraText = (p) => normApos(extractRunNodes(p).map(r => r.text).join('')).trim().normalize('NFC');
   for (let i = 1; i < parts.length; i += 2) {
     const t = paraText(parts[i]);
-    if (!/^Montant minimum de l'assurance contre les atteintes/i.test(t)) continue;
+    if (!CCAP_18_3_HEADING_RE.test(t)) continue;
     let refAt = -1;
     for (let j = i + 2; j < Math.min(parts.length, i + 6); j += 2) {
       const tj = paraText(parts[j]);
       if (!tj) continue;
-      if (tj === '18.3') { refAt = j; break; }
+      if (tj === CCAP_18_3_REF_TEXT) { refAt = j; break; }
       break;
     }
     if (refAt === -1) continue;
@@ -3532,6 +3258,147 @@ function removeNoPrequalQualificationBlock(xml, prequalification) {
   const newXml = before + keptSectPrPara + after;
 
   return { xml: newXml, removed: removedParaCount, preservedSectPr: !!keptSectPrPara };
+}
+
+// ── Highlighting-rules dispatcher ─────────────────────────────────────────
+//
+// Walks `HIGHLIGHTING_RULES` (FR pack) in order, fires triggers, and dispatches
+// each op to the matching engine helper. See
+// `src/packages/v2024/fr/highlightingRules.js` for the rule schema.
+//
+// Returns the (possibly updated) docXml + footnotesXml. footnotesXml may be
+// undefined if the export hasn't loaded word/footnotes.xml yet — rules that
+// touch footnotes simply skip when it's missing.
+
+function shouldFireRule(rule, formData) {
+  const t = rule?.trigger;
+  if (!t) return false;
+  if (t.always) return true;
+  if (t.field) return formData?.[t.field] === t.equals;
+  if (t.fieldIn) return Array.isArray(t.values) && t.values.includes(formData?.[t.fieldIn]);
+  if (t.fieldExists) {
+    const v = formData?.[t.fieldExists];
+    return v != null && v !== '';
+  }
+  if (t.fieldFilled) return isFilled(formData?.[t.fieldFilled]);
+  return false;
+}
+
+function resolveAnchor(name, ctx) {
+  const v = ctx.anchors?.[name];
+  if (v === undefined) {
+    throw new Error(`[applyHighlightingRules] unknown anchor "${name}"`);
+  }
+  return v;
+}
+
+function applyRuleOp(op, docXml, footnotesXml, ctx) {
+  switch (op.type) {
+    case 'highlight-range': {
+      const r = highlightParagraphRange(docXml, resolveAnchor(op.startAnchor, ctx), resolveAnchor(op.endAnchor, ctx));
+      return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+    }
+    case 'highlight-matching': {
+      if (op.matchAnchor) {
+        // Array-valued anchor (e.g. STATIC_GUIDE_ANCHORS) → OR-of-patterns
+        // via highlightParagraphsByAnchors. Single regex → single match.
+        const value = resolveAnchor(op.matchAnchor, ctx);
+        if (Array.isArray(value)) {
+          const r = highlightParagraphsByAnchors(docXml, value);
+          return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+        }
+        const r = highlightParagraphsMatching(docXml, value);
+        return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+      }
+      if (Array.isArray(op.matchAnchors)) {
+        let xml = docXml, paraCount = 0, runCount = 0;
+        for (const name of op.matchAnchors) {
+          const r = highlightParagraphsMatching(xml, resolveAnchor(name, ctx));
+          xml = r.xml; paraCount += r.paraCount; runCount += r.runCount;
+        }
+        return { docXml: xml, paraCount, runCount };
+      }
+      throw new Error('[applyHighlightingRules] highlight-matching requires matchAnchor or matchAnchors');
+    }
+    case 'yellow-to-red-range': {
+      // requireHeading: true → use the heading-aware variant (TITLESECTION /
+      // Formulaire / Titre / Heading styles only), used e.g. for Sections V&VI.
+      const fn = op.requireHeading ? convertYellowToRedInRange : convertYellowToRedInParaRange;
+      const r = fn(docXml, resolveAnchor(op.startAnchor, ctx), resolveAnchor(op.endAnchor, ctx));
+      return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+    }
+    case 'yellow-to-red-matching': {
+      const r = convertYellowToRedInMatchingParagraphs(docXml, resolveAnchor(op.matchAnchor, ctx));
+      return { docXml: r.xml, paraCount: r.paraCount, runCount: r.runCount };
+    }
+    case 'yellow-to-red-footnotes': {
+      if (!footnotesXml) return {};
+      const r = convertYellowToRedInFootnoteIds(footnotesXml, op.footnoteIds);
+      return { footnotesXml: r.xml, footnoteCount: r.footnoteCount, runCount: r.runCount };
+    }
+    case 'replace-yellow-guide': {
+      const value = ctx.formData?.[op.fieldId];
+      const r = replaceYellowGuideParagraph(docXml, resolveAnchor(op.matchAnchor, ctx), value);
+      return { docXml: r.xml, replaced: r.replaced };
+    }
+    case 'replace': {
+      const r = replaceInlinePhrase(docXml, op.find, op.replace);
+      return { docXml: r.xml, replaced: r.replaced };
+    }
+    case 'highlight-inline-markers': {
+      const patterns = resolveAnchor(op.patternsAnchor, ctx);
+      const prefilter = op.prefilterAnchor ? resolveAnchor(op.prefilterAnchor, ctx) : op.prefilter;
+      const r = highlightInlineMarkers(docXml, patterns, prefilter);
+      return { docXml: r.xml, count: r.count };
+    }
+    case 'delete-block': {
+      const r = removeNoPrequalQualificationBlock(docXml, ctx.formData?.prequalification);
+      return { docXml: r.xml, removed: r.removed, preservedSectPr: r.preservedSectPr };
+    }
+    default:
+      throw new Error(`[applyHighlightingRules] unknown op type "${op.type}"`);
+  }
+}
+
+function applyHighlightingRules(docXml, footnotesXml, ctx) {
+  let xml = docXml;
+  let fnXml = footnotesXml;
+  for (const rule of HIGHLIGHTING_RULES) {
+    if (!shouldFireRule(rule, ctx.formData)) continue;
+    try {
+      if (typeof rule.apply === 'function') {
+        // Custom apply: rule returns { docXml?, footnotesXml?, message? }.
+        const result = rule.apply(xml, ctx.formData, { ...ctx, footnotesXml: fnXml });
+        if (result?.docXml !== undefined) xml = result.docXml;
+        if (result?.footnotesXml !== undefined) fnXml = result.footnotesXml;
+        if (result?.message) console.log(result.message);
+      } else if (Array.isArray(rule.ops)) {
+        // Declarative ops: dispatch each op, aggregate counts, then call
+        // optional rule.log(aggregate, formData) → string | null.
+        const agg = { paraCount: 0, runCount: 0, count: 0, footnoteCount: 0, replaced: false, removed: 0 };
+        for (const op of rule.ops) {
+          const r = applyRuleOp(op, xml, fnXml, ctx);
+          if (r?.docXml !== undefined) xml = r.docXml;
+          if (r?.footnotesXml !== undefined) fnXml = r.footnotesXml;
+          if (typeof r?.paraCount === 'number') agg.paraCount += r.paraCount;
+          if (typeof r?.runCount === 'number') agg.runCount += r.runCount;
+          if (typeof r?.count === 'number') agg.count += r.count;
+          if (typeof r?.footnoteCount === 'number') agg.footnoteCount += r.footnoteCount;
+          if (r?.replaced) agg.replaced = true;
+          if (typeof r?.removed === 'number') agg.removed += r.removed;
+        }
+        if (typeof rule.log === 'function') {
+          const message = rule.log(agg, ctx.formData);
+          if (message) console.log(message);
+        }
+      } else {
+        console.warn(`[applyHighlightingRules] rule "${rule.id}" has neither apply nor ops — skipped`);
+      }
+    } catch (err) {
+      console.error(`[applyHighlightingRules] rule "${rule.id}" failed:`, err);
+    }
+  }
+  return { docXml: xml, footnotesXml: fnXml };
 }
 
 // ── AAO letter placeholders (Modèle d'Avis d'Appel d'Offres) ─────────────
@@ -4065,6 +3932,7 @@ function stripEmptyTables(xml) {
 // ── Main export ───────────────────────────────────────────────────────────
 
 export async function exportDocx({
+  pkg,
   formData,
   actorAssignments,
   fieldComments,
@@ -4077,6 +3945,82 @@ export async function exportDocx({
   tranchesRows = [],
   cleanMode = false,
 }) {
+  // ── Bind module-level pack-dependent names from the active pack (1.11c) ──
+  SECTIONS = pkg.sections;
+  HIGHLIGHTING_RULES = pkg.highlightingRules;
+  isEnjeuEsssLabel = pkg.enjeux.isLabel;
+  anchors = pkg.anchors;
+  ({
+    STATIC_GUIDE_ANCHORS,
+    IS_13_5_VARIANTES_DELAIS_ANCHORS,
+    IS_34_1_SOUS_TRAITANTS_ANCHORS,
+    MARGE_PREFERENCE_HEADER_ANCHOR,
+    NO_PREQUAL_GUIDE_ANCHORS,
+    NO_PREQUAL_HEADER_ANCHOR,
+    PRICE_FORMAT_ROW_ANCHORS,
+    PRICE_FORMAT_OR_RE,
+    TABLEAUX_DE_PRIX_GUIDE_ANCHORS,
+    MONNAIE_OPTION_ANCHOR_RE,
+    MONNAIE_OPTION_PRIVILEGIER_RE,
+    CONVERSION_OPTION_ANCHOR_RE,
+    OPTION_A_HEADER_RE,
+    OPTION_B_HEADER_RE,
+    SECTION_OR_IS_BOUNDARY_RE,
+    VARIANTES_TECH_INTRO_RE,
+    VARIANTES_TECH_TITLE_RE,
+    METHODOLOGIE_ESSS_HEADER_RE,
+    CCAP_TRANCHES_CAPTION_RE,
+    CCAP_TRANCHES_TABLE_HEADER_RE,
+    CCAP_ESSS_CHECKBOXES_ANCHOR_TEXT,
+    CCAP_CONDITIONS_CLIMATIQUES_ANCHOR_RE,
+    CCAP_14_1_HEADING_TEXT_LC,
+    CCAP_14_1_REF_TEXT,
+    CCAP_14_1_HEADER_GUIDE_RE,
+    CCAP_14_1_OPT_FORFAITAIRE_RE,
+    CCAP_14_1_OPT_UNITAIRES_RE,
+    CCAP_14_1_OPT_COMBINAISON_RE,
+    CCAP_14_1_OU_SEPARATOR_RE,
+    CCAP_14_1_DESC_FORF_RE,
+    CCAP_14_1_DESC_UNIT_RE,
+    CCAP_14_1_SUB_REF_BOUNDARY_RE,
+    CCAP_13_5_B_II_HEADING_LC_INCLUDES,
+    CCAP_13_5_B_II_REF_PREFIX_LC,
+    CCAP_14_1_B_REF_TEXT,
+    CCAP_14_1_E_REF_TEXT,
+    CCAP_14_1_E_SUPPRIMER_SUFFIX_TEXT,
+    CCAP_14_2_HEADING_TEXT_LC,
+    CCAP_14_2_REF_TEXT,
+    CCAP_14_3_HEADING_TEXT_LC,
+    CCAP_14_3_REF_TEXT,
+    CCAP_14_5_HEADING_TEXT_LC,
+    CCAP_14_5_GUIDE_RE,
+    CCAP_14_5_FOB_REF_PREFIX_LC,
+    CCAP_14_5_ONSITE_REF_PREFIX_LC,
+    CCAP_14_5_NEXT_SUBCLAUSE_RE,
+    CCAP_18_1_HEADING_RE,
+    CCAP_18_1_REF_TEXT,
+    CCAP_18_1_ATTESTATION_LABEL_RE,
+    CCAP_18_1_POLICES_LABEL_RE,
+    CCAP_18_1_UNDERSCORE_JOURS_RE,
+    CCAP_18_1_UNDERSCORE_ONLY_RE,
+    CCAP_18_1_SUB_REF_BOUNDARY_RE,
+    CCAP_18_1_POLICES_OLD_LABEL_LC,
+    CCAP_18_1_POLICES_NEW_LABEL_TEXT,
+    CCAP_18_3_HEADING_RE,
+    CCAP_18_3_REF_TEXT,
+    CCAP_20_2_HEADING_RE,
+    CCAP_20_2_REF_TEXT,
+    CCAP_20_2_GUIDE_SOIT_UPPER_RE,
+    CCAP_20_2_OPT_UN_MEMBRE_RE,
+    CCAP_20_2_GUIDE_SOIT_LOWER_RE,
+    CCAP_20_2_OPT_TROIS_MEMBRES_RE,
+    CCAP_20_2_LISTE_BOUNDARY_RE,
+    CCAP_20_2_SUB_REF_BOUNDARY_RE,
+  } = pkg.anchors);
+  ORDERED_BINDING_FIELDS = SECTIONS
+    .flatMap(sec => (sec.fields || []))
+    .filter(f => f.templateBinding);
+
   // 1. Load template — with one retry for transient failures.
   // Vite HMR briefly drops static asset serving while rebuilding, and the
   // template file lives on Google Drive which can momentarily de-materialise
@@ -4085,9 +4029,9 @@ export async function exportDocx({
     let lastErr;
     for (let i = 0; i < 2; i++) {
       try {
-        const r = await fetch('/template-DTAO.docx', { cache: 'no-store' });
+        const r = await fetch('/templates/v2024/fr/template-DTAO.docx', { cache: 'no-store' });
         if (r.ok) return r;
-        lastErr = new Error(`Template introuvable : /template-DTAO.docx (HTTP ${r.status})`);
+        lastErr = new Error(`Template introuvable : /templates/v2024/fr/template-DTAO.docx (HTTP ${r.status})`);
       } catch (e) {
         lastErr = e;
       }
@@ -4195,7 +4139,7 @@ export async function exportDocx({
   // 2b. CCAG page de garde (Section VIII) — fill the two centered italic
   // placeholders in bold / centered / size 14 / green-highlight, with
   // `[Nom du Marché]` populated as "Travaux de " + PREA-003. Runs BEFORE
-  // the generic FIELD_MAP pass so the literal placeholders still exist.
+  // the generic templateBinding pass so the literal placeholders still exist.
   {
     const { xml: out, filled } = fillCcagPageGarde(
       docXml,
@@ -4481,8 +4425,10 @@ export async function exportDocx({
   // `[sont / ne sont pas]` with nth=1,2,3. After replacing nth=1 the
   // occurrence is gone, so the 2nd field's effective nth becomes 2-1=1.
   const replacedCountByPh = new Map();
-  for (const field of FIELD_MAP) {
-    const { id, ph, nth = 1, isDate = false, isTime = false, global = false, captions, captionInline, stripUnderscores, valueSuffix, valueSuffixSkipIf, valueOverrideIf } = field;
+  for (const field of ORDERED_BINDING_FIELDS) {
+    const binding = field.templateBinding;
+    const { ph, nth = 1, isDate = false, isTime = false, global = false, captions, captionInline, stripUnderscores, valueSuffix, valueSuffixSkipIf, valueOverrideIf } = binding;
+    const id = field.id;
     // `valueOverrideIf(formData)` returns a string to use INSTEAD of the
     // raw form value (or null to fall back to formData[id]). Used by
     // crd_liste, which must export "aucun" when crd_composition = "Trois
@@ -4586,162 +4532,14 @@ export async function exportDocx({
     if (docXml !== before) console.log(`[exportDocx] Liste « ${fieldId} » rebâtie (${items.length} item(s))`);
   }
 
-  // 3c. Red-highlight the non-selected OPTION block for date_convention
-  const dateConv = formData.date_convention;
-  if (dateConv) {
-    const selected = /A/i.test(dateConv) && /avant|OPTION A/i.test(dateConv) ? 'A'
-                    : /B/i.test(dateConv) && /après|apres|OPTION B/i.test(dateConv) ? 'B'
-                    : /^A$/.test(dateConv) ? 'A'
-                    : /^B$/.test(dateConv) ? 'B'
-                    : null;
-    if (selected) {
-      const { xml: out, count } = highlightUnselectedOption(docXml, selected);
-      docXml = out;
-      if (count > 0) console.log(`[exportDocx] OPTION ${selected === 'A' ? 'B' : 'A'} surlignée rouge (${count} run(s))`);
-    }
-  }
-
-  // 3b-ter. IS 11.1(b) — red-highlight the two price formats NOT picked.
-  if (formData.type_prix) {
-    const { xml: out, count } = highlightUnselectedPriceFormats(docXml, formData.type_prix);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] IS 11.1(b) formats non retenus surlignés rouge (${count} run(s))`);
-  }
-
-  // 3b-ter-bis. Section IV "Tableaux de prix" — red on the 5 paragraphes non
-  // retenus du guide jaune (page 60), selon le choix `type_prix`.
-  if (formData.type_prix) {
-    const { xml: out, count } = highlightUnselectedTableauxDePrixGuide(docXml, formData.type_prix);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] Section IV "Tableaux de prix" : ${count} run(s) jaune→rouge selon type_prix`);
-  }
-
-  // 3b-quater. IS 15.1 — red-highlight the unselected monnaie option block.
-  if (formData.option_monnaie) {
-    const { xml: out, count } = highlightUnselectedMonnaieOption(docXml, formData.option_monnaie);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] IS 15.1 option monnaie non retenue surlignée rouge (${count} run(s))`);
-  }
-
-  // 3b-quinquies. IS 32.1 — red-highlight the unselected conversion option block.
-  if (formData.option_conversion) {
-    const { xml: out, count } = highlightUnselectedConversionOption(docXml, formData.option_conversion);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] IS 32.1 option de conversion non retenue surlignée rouge (${count} run(s))`);
-  }
-
-  // 3b-sexies. IS 13.5 — red-highlight the "si variantes autorisées" block
-  // when variantes délais are NOT authorized.
-  if (formData.variantes_delais === "ne sont pas") {
-    const { xml: out, paraCount, runCount } = highlightVariantesDelaisBlock(docXml);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] IS 13.5 bloc ajustement variantes délais surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis. IS 34.1 — red-highlight the "lister les sous-traitants"
-  // guide when the MOA does NOT plan designated subcontractors.
-  if (formData.sous_traitants_designes === "ne prévoit pas") {
-    const { xml: out, paraCount, runCount } = highlightSousTraitantsBlock(docXml);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] IS 34.1 guide sous-traitants désignés surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-II. Section IV Annexe 1 — red-highlight the whole
-  // "Annexe 1 à la Soumission — Données relatives à la révision des prix"
-  // block when the MOA chose prix fermes (S02-019 = "fermes").
-  if (formData.prix_revisables === "fermes") {
-    const { xml: out, paraCount, runCount } = highlightAnnexe1Revisions(docXml, formData.prix_revisables);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Annexe 1 (révision des prix) surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-III. Section IV Annexe 2 — red-highlight the Alternative
-  // (A or B) that was NOT retained, based on S02-020 option_monnaie.
-  if (formData.option_monnaie) {
-    const { xml: out, paraCount, runCount } = highlightAnnexe2Alternative(docXml, formData.option_monnaie);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Annexe 2 alternative non retenue surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-IV. Section IV "Variantes techniques" form — red-highlight
-  // the whole form page when S02-016 = "ne sont pas".
-  if (formData.variantes_techniques === "ne sont pas") {
-    const { xml: out, paraCount, runCount } = highlightVariantesTechniquesForm(docXml, formData.variantes_techniques);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV formulaire "Variantes techniques" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-V. Section IV "Modèle de Garantie de Soumission" block —
-  // red-highlight the whole block (Garantie bancaire letter) when S02-024
-  // garantie_soumission = "n'est pas", since no bid security is required.
-  if (formData.garantie_soumission === "n'est pas") {
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(
-      docXml,
-      /^Modèle de Garantie de Soumission\s*$/i,
-      /^Modèle de Déclaration de Garantie de Soumission\s*$/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Modèle de Garantie de Soumission surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-VI. Section IV "Modèle de Déclaration de Garantie" block —
-  // red-highlight the whole block when S02-025 declaration_garantie = "n'est
-  // pas", since no bid-security declaration is required.
-  if (formData.declaration_garantie === "n'est pas") {
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(
-      docXml,
-      /^Modèle de Déclaration de Garantie de Soumission\s*$/i,
-      /^Section V\b|Critères d[’']éligibilité/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Modèle de Déclaration de Garantie surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-VI-bis. ESSS — when S-ESSS-01 esss_applicable = "Non", the
-  // entire ESSS block is inapplicable. Two regions must be red-highlighted:
-  //   (1) The "Contenu" reference line listing the ESSS specs chapter.
-  //       Note: template has a typo — singular "Environnementale" on this line.
-  //   (2) The full ESSS chapter introduction down to and including the closing
-  //       sentence "…énumérées ci-avant." (last paragraph of the hazardous-
-  //       substances enumeration). The next paragraph (starting "[A insérer
-  //       en cas de Travaux en zone classée orange…") is the start of the
-  //       following block and must NOT be highlighted.
-  if (formData.esss_applicable === "Non") {
-    // (1) Contenu reference line — single paragraph; tolerate both the typo
-    // singular form "Environnementale" and the correct plural.
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Spécifications Environnementales?,\s+Sociales?,\s+Santé et Sécurité \(ESSS\) de gestion des travaux\s*$/i,
-        /^Spécifications s[ûu]ret[ée]\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] ESSS: ligne Contenu surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // (2) Full ESSS chapter — from the guide intro "[Dans le cas de travaux…"
-    // (which sits right above "Table des matières" of the ESSS sub-TOC) down
-    // to and including the paragraph ending "…énumérées ci-avant." The range
-    // is inclusive of that last paragraph, so we anchor the end on the NEXT
-    // paragraph "[A insérer en cas de Travaux en zone classée orange…".
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^\[Dans le cas de travaux pour lesquels la gestion du Chantier/i,
-        /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] ESSS: chapitre complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-  }
-
-  // 3b-sexies-bis-VI-ter. ESSS — when S-ESSS-01 esss_applicable = "Oui", the
-  // ESSS chapter remains applicable but the template's yellow drafting notes
-  // (guide paragraphs, "[faire un choix]" row markers, table placeholder
-  // phrases, "[Un exemple est donné ci-dessous…]") must be flagged for the
-  // MOA to resolve/remove. In addition, the example block "Exemple de
-  // situation de travaux et suppression de certaines clauses…" (rendered in
-  // a blue rectangle in the reference doc) is purely illustrative and must
-  // be red-highlighted in its entirety so the MOA deletes it.
+  // 3b-zero-pre. ESSS fills (Enjeux + Articles tables) — exécutés AVANT le
+  // dispatcher pour préserver le contrat de comptage de la rule
+  // 'esss-oui-chapter-yellow-to-red' : les placeholder rows du tableau
+  // Articles contiennent ~4 yellow runs que la rule yellow-to-red comptait
+  // dans le baseline OLD seulement quand fills tournaient AVANT. Ces fills
+  // n'écrivent jamais de jaune (Enjeux écrit du red direct, Articles
+  // remplace les rows placeholder par des rows utilisateur sans highlight),
+  // donc déplacer les fills avant n'a pas d'effet sur les autres rules.
   if (formData.esss_applicable === "Oui") {
     // (0a) Fill the 15-row Enjeux table from S-ESSS-02 (formData.enjeux_esss):
     //      per row, keep the chosen OUI/NON and red-highlight the other.
@@ -4757,482 +4555,94 @@ export async function exportDocx({
       docXml = out;
       if (rowCount > 0) console.log(`[exportDocx] ESSS (Oui): tableau Articles non applicables rempli (${rowCount} ligne(s))`);
     }
-    // (1) Convert yellow → red inside the ESSS chapter range (paras 2868..3728).
-    {
-      const { xml: out, paraCount, runCount } = convertYellowToRedInParaRange(
-        docXml,
-        /^\[Dans le cas de travaux pour lesquels la gestion du Chantier/i,
-        /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] ESSS (Oui): ${paraCount} paragraphe(s) jaunes convertis en rouge (${runCount} run(s))`);
-    }
-    // (2) Red-highlight the full "Exemple de situation" example block
-    //     (para 2919 → para 2945 "Dans les présentes Spécifications ESSS" exclusive).
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Exemple de situation de travaux et suppression de certaines clauses/i,
-        /^Dans les présentes Spécifications ESSS/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] ESSS (Oui): bloc "Exemple de situation" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
   }
 
-  // 3b-sexies-bis-VI-quinquies. Section IV — "Prix Environnemental, Social,
-  // Santé et Sécurité (ESSS)" form (page 61-62) selon S-ESSS-01 :
-  //   • Oui → rougir les 2 notes draft jaunes du haut (le bordereau reste
-  //     applicable mais ces paragraphes guides doivent être nettoyés).
-  //   • Non → rougir TOUT le bloc Prix ESSS (titre + drafts + tableau + textes
-  //     de clôture) pour suppression complète.
-  if (formData.esss_applicable === 'Oui') {
-    const matchRe = /^\[(?:Ce bordereau de prix unitaires est à insérer|Si des Spécifications ESSS ne sont pas incluses dans les Documents d'Appel d'Offres, ce prix ESSS doit être supprimé)/i;
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(docXml, matchRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Prix ESSS (Oui): ${paraCount} note(s) draft jaune→rouge (${runCount} run(s))`);
-  } else if (formData.esss_applicable === 'Non') {
-    // Le titre puis end anchor sur le titre suivant ("Bordereau de Prix
-    // Unitaires Sûreté") qui sera exclusif — tout le bloc ESSS prix devient
-    // rouge (titre, 2 drafts jaunes, table complète, textes de clôture).
-    const startRe = /^Prix Environnemental,?\s*Social,?\s*Santé et Sécurité\s*\(ESSS\)\s*$/i;
-    const endRe = /^Bordereau de Prix Unitaires S[ûu]ret[ée]\s*$/i;
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(docXml, startRe, endRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Prix ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-VI-sexies. Section IV — "Bordereau de Prix Unitaires Sûreté"
-  // (page 63) selon S07-001 (`surete_applicable`) :
-  //   • "Oui – inclure sûreté" → rougir les 2 notes draft jaunes du haut.
-  //   • "Non" → rougir TOUT le bloc Bordereau Sûreté (titre + drafts + tableau
-  //     + textes de clôture) pour suppression complète.
-  if (formData.surete_applicable === 'Oui – inclure sûreté') {
-    const matchRe = /^\[(?:Ce bordereau de prix unitaires est à insérer dans le Bordereau des Prix|Si des spécifications sûreté ne sont pas incluses dans les Documents d'Appel d'Offres, ce bordereau)/i;
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(docXml, matchRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Bordereau Sûreté (Oui): ${paraCount} note(s) draft jaune→rouge (${runCount} run(s))`);
-  } else if (formData.surete_applicable === 'Non') {
-    const startRe = /^Bordereau de Prix Unitaires S[ûu]ret[ée]\s*$/i;
-    const endRe = /^Formulaires de la Proposition Technique\s*$/i;
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(docXml, startRe, endRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Section IV Bordereau Sûreté (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
-
-  // 3b-sexies-bis-VI-septies. Section IV — formulaires "Méthodologie ESSS" et
-  // "Engagement ESSS du sous-traitant" (pages 66 à 68) selon S-ESSS-01.
-  // Quand `esss_applicable === "Non"`, trois zones doivent être surlignées rouge :
-  //   (1) Tout le formulaire "Méthodologie environnementale, sociale, santé et
-  //       sécurité (ESSS)" (page 66) — du titre jusqu'à la "Liste des Sous-
-  //       traitants" (exclusive).
-  //   (2) Le paragraphe d'introduction au formulaire d'engagement ("Les
-  //       Soumissionnaires devront fournir, pour chaque sous-traitant
-  //       proposé…") situé sous le tableau Liste des Sous-traitants (page 67).
-  //   (3) Tout le formulaire "Formulaire d'engagement ESSS du sous-traitant"
-  //       (pages 67-68) — du titre jusqu'au formulaire suivant "Organisation
-  //       des travaux sur site et Méthode de réalisation" (exclusive).
-  // Note : le template peut rendre "Sous-traitants"/"sous-traitant" sans trait
-  // d'union dans certains paragraphes (artéfact d'édition Word, similaire à
-  // "mi-période" → "mipériode"). Les regex tolèrent les deux formes via
-  // `Sous-?traitants` / `sous-?traitant`. De même, le titre Méthodologie peut
-  // ne pas avoir d'espace avant "(ESSS)" — `\s*` couvre les deux cas.
-  if (formData.esss_applicable === 'Non') {
-    // (1) Méthodologie ESSS — formulaire complet (page 66).
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Méthodologie environnementale,\s*sociale,\s*santé et sécurité\s*\(ESSS\)\s*$/i,
-        /^Liste des Sous-?traitants\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Section IV Méthodologie ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // (2) Paragraphe d'intro du formulaire d'engagement (page 67).
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphsMatching(
-        docXml,
-        /^Les Soumissionnaires devront fournir, pour chaque sous-?traitant proposé, l'engagement que ce dernier a lu, compris et se conformera aux exigences ESSS/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Section IV Engagement ESSS (Non): paragraphe d'intro surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // (3) Formulaire d'engagement ESSS du sous-traitant — bloc complet (pages 67-68).
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Formulaire d'engagement ESSS du sous-?traitant\s*$/i,
-        /^Organisation des travaux sur site et Méthode de réalisation\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Section IV Formulaire engagement ESSS (Non): bloc complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-  }
-
-  // 3b-sexies-bis-VI-quater-pre. Spécifications Sûreté — when S07-001
-  // (surete_applicable) is "Oui – inclure sûreté":
-  //   (a) Red-highlight the two opening drafting-note paragraphs
-  //       "[A insérer en cas de Travaux en zone classée orange…" and
-  //       "Pour finaliser ces spécifications, le Maître d'Ouvrage…" (the
-  //       blue-circled range in the reference doc). End anchor is the
-  //       "Spécifications Sûreté" heading (exclusive), so only the two
-  //       guide paragraphs above the title are painted.
-  //   (b) Replace each of the three yellow guide paragraphs in the
-  //       Préambule with the user's textarea value (S07-002 / S07-003 /
-  //       S07-004). If the user left a field blank the yellow guide
-  //       stays in place as an unfilled reminder.
-  if (formData.surete_applicable === "Oui – inclure sûreté") {
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i,
-        /^Sp[ée]cifications\s+S[ûu]ret[ée]\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Sûreté (Oui): bloc d'ouverture surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // S07-002 → "[Insérer une description du contexte sécuritaire…]"
-    {
-      const r = replaceYellowGuideParagraph(
-        docXml,
-        /^\[Ins[ée]rer une description du contexte s[ée]curitaire\b/i,
-        formData.contexte_securitaire,
-      );
-      docXml = r.xml;
-      if (r.replaced) console.log('[exportDocx] Sûreté (Oui): S07-002 contexte sécuritaire inséré');
-    }
-    // S07-003 → "[Décrire les rôles et responsabilités, tâches et mise à disposition de moyens par le Maître d'Ouvrage…]"
-    {
-      const r = replaceYellowGuideParagraph(
-        docXml,
-        /^\[D[ée]crire les r[ôo]les et responsabilit[ée]s, t[âa]ches et mise [àa] disposition de moyens par le Ma[îi]tre d'Ouvrage\b/i,
-        formData.roles_moa_surete,
-      );
-      docXml = r.xml;
-      if (r.replaced) console.log('[exportDocx] Sûreté (Oui): S07-003 rôles MO inséré');
-    }
-    // S07-004 → "[Il conviendra le cas échéant de préciser les rôles… en cas de marchés par lots.]"
-    {
-      const r = replaceYellowGuideParagraph(
-        docXml,
-        /^\[Il conviendra le cas [ée]ch[ée]ant de pr[ée]ciser les r[ôo]les\b/i,
-        formData.roles_pilotage_surete_entreprise,
-      );
-      docXml = r.xml;
-      if (r.replaced) console.log('[exportDocx] Sûreté (Oui): S07-004 pilotage entreprise principale inséré');
-    }
-    // S07-005 Option N°1 vs N°2 (section 4.1 Organisation Sûreté).
-    //   Always paint the yellow "[Cocher l'Option N°1 en cas de contexte
-    //   sécuritaire très dégradé ; sinon cocher l'Option N°2]" guide red.
-    //   Then red-highlight the non-retained option block:
-    //     Oui (contexte très dégradé)  → Option N°1 is picked → paint Option N°2
-    //     Non                          → Option N°2 is picked → paint Option N°1
-    {
-      const r = highlightParagraphRange(
-        docXml,
-        /^\[Cocher l'Option N°1 en cas de contexte s[ée]curitaire tr[èe]s d[ée]grad[ée]/i,
-        /^Option N°1\s*:?\s*$/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.1: guide Option cochée surligné rouge (${r.paraCount} para)`);
-    }
-    if (formData.conditions_tres_degradees === 'Oui') {
-      const r = highlightParagraphRange(
-        docXml,
-        /^Option N°2\s*:?\s*$/i,
-        /^4\.2\s*D[ée]placement\b/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.1: Option N°2 surlignée rouge (${r.paraCount} para, ${r.runCount} run)`);
-    } else if (formData.conditions_tres_degradees === 'Non') {
-      const r = highlightParagraphRange(
-        docXml,
-        /^Option N°1\s*:?\s*$/i,
-        /^Option N°2\s*:?\s*$/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.1: Option N°1 surlignée rouge (${r.paraCount} para, ${r.runCount} run)`);
-    }
-    // S07-005 also governs the four scattered bullets prefixed by the yellow
-    // guide "[à insérer en cas de contexte sécuritaire très dégradé ; sinon
-    // supprimer]" across §4.2-satellitaire, §4.3 Hébergement, §4.4 Sites de
-    // chantier and §5 Information/Sensibilisation.
-    //   Oui (contexte très dégradé) → these bullets apply → keep content,
-    //       only the yellow marker flips red so the MOA notices it.
-    //   Non (contexte normal)       → these bullets are inapplicable → paint
-    //       the whole paragraph red so the MOA deletes it.
-    {
-      const markerRe = /^\[[àa]\s+ins[ée]rer en cas de contexte s[ée]curitaire tr[èe]s d[ée]grad[ée]\s*;\s*sinon supprimer\]/i;
-      if (formData.conditions_tres_degradees === 'Oui') {
-        const r = convertYellowToRedInMatchingParagraphs(docXml, markerRe);
-        docXml = r.xml;
-        if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) contexte très dégradé: ${r.paraCount} marqueur(s) jauni→rouge (${r.runCount} run)`);
-      } else if (formData.conditions_tres_degradees === 'Non') {
-        const r = highlightParagraphsMatching(docXml, markerRe);
-        docXml = r.xml;
-        if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) contexte très dégradé: ${r.paraCount} bullet(s) surlignés rouge (${r.runCount} run)`);
-      }
-    }
-    // S07-006 Escortes (section 4.2 Déplacement). The bullet mixes a yellow
-    // "[à insérer en cas d'escortes…]" marker with plain text "Identification
-    // du prestataire chargé…" in a single paragraph.
-    //   Oui → only the yellow marker becomes red (rest of the sentence stays
-    //         applicable since escortes ARE needed and the prestataire ID is
-    //         relevant).
-    //   Non → the whole paragraph becomes red (escortes not needed → the
-    //         whole requirement is inapplicable).
-    if (formData.escortes_non_prises_en_charge === 'Oui') {
-      const r = convertYellowToRedInParaRange(
-        docXml,
-        /^\[[àa]\s+ins[ée]rer en cas d'escortes jug[ée]es n[ée]cessaires/i,
-        /^H[ée]bergement lors des missions\s*$/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.2: marqueur escortes jauni→rouge (${r.paraCount} para, ${r.runCount} run)`);
-    } else if (formData.escortes_non_prises_en_charge === 'Non') {
-      const r = highlightParagraphRange(
-        docXml,
-        /^\[[àa]\s+ins[ée]rer en cas d'escortes jug[ée]es n[ée]cessaires/i,
-        /^H[ée]bergement lors des missions\s*$/i,
-      );
-      docXml = r.xml;
-      if (r.paraCount > 0) console.log(`[exportDocx] Sûreté (Oui) 4.2: ligne escortes surlignée rouge (${r.paraCount} para, ${r.runCount} run)`);
-    }
-  }
-
-  // 3b-sexies-bis-VI-quater. Spécifications Sûreté — when S07-001
-  // (surete_applicable) is "Non", the whole Sûreté chapter of Section VII
-  // is inapplicable. Red-highlight the range from the chapter's opening
-  // guide "[A insérer en cas de Travaux en zone classée orange…" through
-  // the very last bullet of section 6 "Gestion des alertes et gestion de
-  // crise" ("…identification des éléments déclencheurs, des rôles et
-  // responsabilités."). End anchor is the next non-empty paragraph
-  // "TROISIEME PARTIE – Marché" (exclusive), so everything up to and
-  // including the last Sûreté bullet is painted.
-  if (formData.surete_applicable === "Non") {
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^\[A\s+ins[ée]rer en cas de Travaux en zone class[ée]e orange/i,
-        /^TROISIEME\s+PARTIE\b/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Sûreté (Non): chapitre complet surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // Section VII — sommaire "Contenu" : ligne `Spécifications sûreté` (ligne
-    // basse-casse, distincte du heading `Spécifications Sûreté` qui apparaît
-    // plus loin). Match strict casse pour éviter de toucher le heading.
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphsMatching(
-        docXml,
-        /^Spécifications sûreté\s*$/,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Sûreté (Non): ligne "Spécifications sûreté" du sommaire Contenu surlignée rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // Section III — tableau "6. Sûreté" (critères 6.1 à 6.5). Le titre du
-    // groupe est rendu comme un paragraphe contenant uniquement "Sûreté"
-    // (l'auto-numérotation "6." est portée par le style de liste). Anchor de
-    // fin = heading suivant "Section IV Formulaires de Soumission".
-    {
-      const { xml: out, paraCount, runCount } = highlightParagraphRange(
-        docXml,
-        /^Sûreté\s*$/,
-        /^Section IV\s+Formulaires de Soumission\s*$/i,
-      );
-      docXml = out;
-      if (paraCount > 0) console.log(`[exportDocx] Sûreté (Non): tableau Section III "6. Sûreté" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-    // Notes de bas de page jaunes (footnotes 26/27/28) attachées au tableau
-    // 6. Sûreté : convertir leur surlignage jaune → rouge dans
-    // `word/footnotes.xml`. Ces 3 ids sont stables dans le template AFD PAY.
-    if (footnotesXml) {
-      const { xml: outFn, footnoteCount, runCount } = convertYellowToRedInFootnoteIds(
-        footnotesXml,
-        ['26', '27', '28'],
-      );
-      footnotesXml = outFn;
-      if (footnoteCount > 0) console.log(`[exportDocx] Sûreté (Non): notes de bas de page 26/27/28 jaune→rouge (${footnoteCount} note(s), ${runCount} run(s))`);
-    }
-  }
-
-  // 3b-sexies-bis-VII-bis. Section V & VI — convert yellow-highlighted guide
-  // paragraphs (e.g. "[Le contenu de la Section V dépend…]" and the two
-  // OPTION-selection instructions) to red highlight so the MOA notices them
-  // as decisions to resolve before signing.
+  // 3b-zero. Run declarative highlighting rules (FR pack). All conditional
+  // highlighting/yellow-conversion logic lives in HIGHLIGHTING_RULES (50
+  // sub-rules covering 33 logical rules from the original inline blocks).
   {
-    const { xml: out, paraCount, runCount } = convertYellowToRedInRange(
-      docXml,
-      /^Section V\b.*Critères d[’']éligibilité/i,
-      /^Section VII\b.*Spécifications des Travaux/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] Sections V & VI: ${paraCount} paragraphe(s) jaunes convertis en rouge (${runCount} run(s))`);
+    // Engine helpers exposed to rule.apply functions (used for cases that
+    // can't be expressed as a simple op — dynamic regex, multi-branch, etc).
+    const helpers = {
+      highlightParagraphRange,
+      highlightParagraphsMatching,
+      highlightParagraphsByAnchors,
+      convertYellowToRedInRange,
+      convertYellowToRedInParaRange,
+      convertYellowToRedInMatchingParagraphs,
+      convertYellowToRedInFootnoteIds,
+      replaceYellowGuideParagraph,
+      replaceInlinePhrase,
+      highlightInlineMarkers,
+      highlightUnselectedOption,
+      highlightMargePreferenceBlock,
+      highlightUnselectedPriceFormats,
+      highlightUnselectedTableauxDePrixGuide,
+      highlightUnselectedMonnaieOption,
+      highlightUnselectedConversionOption,
+      highlightVariantesTechniquesForm,
+      removeNoPrequalQualificationBlock,
+      highlightPrequalificationReferences,
+      highlightUtilitySection,
+    };
+    const r = applyHighlightingRules(docXml, footnotesXml, { formData, anchors, helpers });
+    docXml = r.docXml;
+    if (r.footnotesXml !== undefined) footnotesXml = r.footnotesXml;
   }
 
-  // 3b-sexies-bis-VII. Section III "2. Documents financiers" — the two
-  // "[indiquer le nombre] années" phrases are yellow placeholder fragments
-  // the MOA would have to manually fill with a count. Replace them with a
-  // plain-text phrase that points the soumissionnaire to the Section III
-  // criteria table instead, dropping the yellow highlight.
-  {
-    const r1 = replaceInlinePhrase(docXml, 'les [indiquer le nombre] années', "le nombre d'années requis");
-    docXml = r1.xml;
-    if (r1.replaced) console.log('[exportDocx] Documents financiers: "les [indiquer le nombre] années" remplacé');
-    const r2 = replaceInlinePhrase(docXml, '[indiquer le nombre] années telles que requises', "le nombre d'années requis");
-    docXml = r2.xml;
-    if (r2.replaced) console.log('[exportDocx] Documents financiers: "[indiquer le nombre] années telles que requises" remplacé');
-  }
+  // 3c, 3b-ter, 3b-ter-bis, 3b-quater, 3b-quinquies, 3b-sexies, 3b-sexies-bis,
+  // 3b-sexies-bis-II/III/IV → migrés dans HIGHLIGHTING_RULES (ids:
+  // 'option-non-retenue', 'is-11-1-b-formats-prix-non-retenus',
+  // 'tableaux-de-prix-guide-yellow-to-red', 'is-15-1-monnaie-option-non-retenue',
+  // 'is-32-1-conversion-option-non-retenue', 'is-13-5-variantes-delais',
+  // 'is-34-1-sous-traitants', 'annexe-1-revisions-prix-fermes',
+  // 'annexe-2-alternative-non-retenue', 'variantes-techniques-form-non-autorisees').
 
-  // 3b-sexies-ter. IS 33.1 — red-highlight the whole "Marge de préférence"
-  // block (Section III) when no preference margin is granted.
-  if (formData.marge_preference === "ne sera pas") {
-    const { xml: out, paraCount, runCount } = highlightMargePreferenceBlock(docXml, formData.marge_preference);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] IS 33.1 bloc marge de préférence surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
+  // 3b-sexies-bis-V, 3b-sexies-bis-VI → migrés dans HIGHLIGHTING_RULES
+  // (ids: 'garantie-soumission-non', 'declaration-garantie-non').
 
-  // 3b-sexies-quater. IS 4.5 "n'est pas" — red-highlight the yellow guide
-  // "[sinon supprimer toute cette section]" above the 3.3 qualification
-  // block (Section III) so the MO can clean it up.
-  if (formData.prequalification === "n'est pas") {
-    const { xml: out, paraCount, runCount } = highlightNoPrequalGuide(docXml);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] IS 4.5 guide "sinon supprimer toute cette section" surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-  }
+  // 3b-sexies-bis-VI-bis, VI-ter, VI-quinquies, VI-septies → migrés dans
+  // HIGHLIGHTING_RULES (ids: 'esss-non-contenu-line', 'esss-non-chapter-block',
+  // 'esss-oui-chapter-yellow-to-red', 'esss-oui-exemple-situation',
+  // 'esss-prix-form-conditional', 'esss-non-methodologie-form',
+  // 'esss-non-engagement-intro', 'esss-non-formulaire-engagement').
 
-  // 3b-sexies-quinquies. IS 4.5 "est" — remove the entire 3.3 qualification
-  // block (Section III) since pre-qualification already evaluated these
-  // criteria. Preserves the portrait sectPr so the remaining Section III
-  // paragraphs keep their header/footer.
-  if (formData.prequalification === "est") {
-    const { xml: out, removed, preservedSectPr } = removeNoPrequalQualificationBlock(docXml, formData.prequalification);
-    docXml = out;
-    if (removed > 0) console.log(`[exportDocx] IS 4.5 bloc 3.3 qualification sans préqualif supprimé (${removed} paragraphe(s) retirés${preservedSectPr ? ', sectPr portrait préservé' : ''})`);
-  }
+  // 3b-sexies-bis-VI-sexies → migré dans HIGHLIGHTING_RULES (id:
+  // 'bordereau-surete-form-conditional'). Voir 1.7.3.
 
-  // 3b-septies. Static template guides that are always red-highlighted
-  // regardless of user data: IS 7.4 mi-période hint, IS 14.5 AFD price
-  // revision recommendation, IS 22.1 & 25.1 electronic submission guides.
-  {
-    const { xml: out, paraCount, runCount } = highlightStaticGuides(docXml);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] ${paraCount} guide(s) statique(s) surligné(s) rouge (${runCount} run(s))`);
-  }
+  // 3b-sexies-bis-VI-septies → migré dans HIGHLIGHTING_RULES (ids:
+  // 'esss-non-methodologie-form', 'esss-non-engagement-intro',
+  // 'esss-non-formulaire-engagement'). Voir 1.7.2.
 
-  // 3b-septies-bis. Convention AFD OPTION A/B draft markers — ALWAYS red.
-  // The template scatters yellow drafting notes around every "OPTION A vs
-  // OPTION B (Convention AFD signed before / on or after 1st Feb 2024)"
-  // block (Section V Critères, Section VI Pratiques prohibées, Section IV
-  // Déclaration d'Intégrité, Annexe B, Annexe C). These notes are instructions
-  // to the Maître d'Ouvrage on which OPTION to keep — they must NEVER appear
-  // in the final DAO handed to bidders, regardless of whether `date_convention`
-  // is set. Convert every matching yellow paragraph to red so clean mode
-  // (`stripRedContent`) removes them too. Patterns cover:
-  //   - `[Le contenu de l'Annexe X / la Section X … dépend … de signature]` guide
-  //   - `Pour tout Marché financé par l'AFD via une Convention … (avant|à partir)` bullets
-  //   - `[OPTION A|B – Version … à insérer …]` opening markers
-  //   - `(Sinon supprimer cette partie …)` sub-lines
-  //   - `Fin de l'OPTION A|B]` closing markers
-  {
-    const afdOptionMarkersRe = new RegExp([
-      // Guide paragraph introducing each OPTION A/B block (Annexe X, Section X,
-      // ou Déclaration d'Intégrité — Annexe 3 à la Soumission)
-      "^\\s*\\[Le contenu de (?:l'(?:Annexe|annexe)|la\\s+Section\\s+[A-Z]+|la\\s+Déclaration d'Intégrité)",
-      // Explanation bullets
-      "^Pour tout March[ée] financ[ée] par l'AFD via une Convention de Financement sign[ée]e\\s+(?:avant|[àa]\\s+partir)",
-      // OPTION A/B opening marker (also matches "Version de Déclaration d'Intégrité")
-      "^\\s*\\[OPTION\\s+[AB]\\s*[\\u2013\\u2014\\-]\\s*Version",
-      // "(Sinon supprimer cette partie...)" sub-line
-      "^\\s*\\(Sinon supprimer cette partie",
-      // "Fin de l'OPTION X]" closing marker
-      "^\\s*Fin de l'OPTION\\s+[AB]\\]",
-    ].join('|'), 'i');
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(docXml, afdOptionMarkersRe);
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] ${paraCount} marqueur(s) OPTION A/B Convention AFD → rouge (${runCount} surlignage(s))`);
-  }
+  // 3b-sexies-bis-VI-quater-pre → migré dans HIGHLIGHTING_RULES (ids :
+  // 'surete-oui-bloc-ouverture', 'surete-oui-s07-002-contexte-securitaire',
+  // 'surete-oui-s07-003-roles-mo', 'surete-oui-s07-004-pilotage-entreprise',
+  // 'surete-oui-cocher-option-guide', 'surete-oui-options-n1-n2-non-retenue',
+  // 'surete-oui-4-bullets-s07-005', 'surete-oui-bullet-escortes-s07-006').
+  // Voir 1.7.3.
+
+  // 3b-sexies-bis-VI-quater → migré dans HIGHLIGHTING_RULES (ids :
+  // 'surete-non-chapitre-complet', 'surete-non-sommaire-ligne',
+  // 'surete-non-tableau-section-iii', 'surete-non-footnotes-26-27-28').
+  // Voir 1.7.3.
+
+  // 3b-sexies-bis-VII-bis, 3b-sexies-bis-VII, 3b-sexies-ter, 3b-sexies-quater,
+  // 3b-sexies-quinquies, 3b-septies, 3b-septies-bis, 3c-ter, 3c-bis, 3d, 3d-bis,
+  // 3d-ter → migrés dans HIGHLIGHTING_RULES (ids 'sections-v-vi-yellow-to-red',
+  // 'documents-financiers-replace-phrase-1', 'documents-financiers-replace-phrase-2',
+  // 'marge-preference-non-accordee', 'prequalification-no-prequal-guide',
+  // 'prequalification-est-delete-block-3-3', 'static-guides-always-red',
+  // 'afd-convention-option-markers', 'is-7-4-reunion-block',
+  // 'prequalification-n-est-pas-references', 'prequalification-n-est-pas-utility-section',
+  // 'deletion-markers-always', 'chiffre-affaires-note-yellow-to-red',
+  // 'sst-specialise-non'). Le registre CCAP_YELLOW_DRAFTS (anciennement L25-47
+  // de ce fichier) a aussi été migré en 7 sub-rules `ccap-draft-*`.
 
   // 3b-bis. Fill AAO letter placeholders (Modèle d'Avis d'Appel d'Offres)
   {
     const { xml: out, count } = fillAaoLetterPlaceholders(docXml, formData);
     docXml = out;
     if (count > 0) console.log(`[exportDocx] ${count} placeholder(s) AAO remplis`);
-  }
-
-  // 3c-ter. Red-highlight IS 7.4 reunion block when no meeting is scheduled
-  if (formData.reunion_prevue === "n'est pas prévue") {
-    const { xml: out, paraCount, runCount } = highlightReunionBlock(docXml);
-    docXml = out;
-    if (paraCount > 0) {
-      console.log(`[exportDocx] IS 7.4 bloc réunion surligné rouge (${paraCount} paragraphe(s), ${runCount} run(s))`);
-    }
-  }
-
-  // 3c-bis. Red-highlight prequalification references when IS 4.5 = "n'est pas"
-  if (formData.prequalification === "n'est pas") {
-    const { xml: out, paraCount, runCount } = highlightPrequalificationReferences(docXml);
-    docXml = out;
-    if (paraCount > 0) {
-      console.log(`[exportDocx] ${paraCount} paragraphe(s) pré-qualification surligné(s) rouge (${runCount} run(s))`);
-    }
-    // Full "Quelle est l'utilité de la Préqualification ?" guide section
-    const u = highlightUtilitySection(docXml);
-    docXml = u.xml;
-    if (u.paraCount > 0) {
-      console.log(`[exportDocx] Section "utilité de la préqualification" : ${u.paraCount} paragraphe(s) surligné(s) rouge (${u.runCount} run(s))`);
-    }
-  }
-
-  // 3d. Red-highlight deletion markers ("[Rayer la mention inutile]" etc.)
-  {
-    const { xml: out, count } = highlightDeletionMarkers(docXml);
-    docXml = out;
-    if (count > 0) console.log(`[exportDocx] ${count} marqueur(s) de suppression surligné(s) rouge`);
-  }
-
-  // 3d-bis. Section III §3.2 — toujours convertir jaune→rouge la note draft
-  // "[Le montant devrait se situer entre 1.5 et 2 fois l'estimation du montant
-  // annuel facturé pour les Travaux objet du Marché]" qui jouxte le titre
-  // "Chiffre d'affaires annuel minimum". Rendu inconditionnel : c'est une
-  // note éditoriale au MOA, jamais conservée dans le DAO final.
-  {
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(
-      docXml,
-      /Le montant devrait se situer entre 1\.5 et 2 fois l['']estimation du montant annuel facturé/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] §3.2 note "Le montant devrait se situer…" jaune→rouge (${paraCount} para, ${runCount} run)`);
-  }
-
-  // 3d-ter. Section III §4.2(b)(ii) — Sous-traitant spécialisé.
-  //   • Oui → la description (S03-009d / sst_specialise_description) remplace
-  //     le placeholder jaune via FIELD_MAP (avec valueOverrideIf qui n'exporte
-  //     la valeur que si le toggle est sur "Oui").
-  //   • Non → la ligne (ii) est inapplicable : surligner rouge tout son
-  //     contenu, du placeholder draft "[ajouter le critère suivant…]" jusqu'à
-  //     la cellule "Formulaire EXP-4.2(b)" inclusive (anchor de fin = heading
-  //     suivant "Qualification Environnementale…(ESSS)" exclusif).
-  if (formData.sst_specialise_autorise === 'Non') {
-    const { xml: out, paraCount, runCount } = highlightParagraphRange(
-      docXml,
-      /^\[ajouter le critère suivant si un sous-traitant spécialisé est autorisé/i,
-      /^Qualification Environnementale,\s*Sociale,\s*Santé et Sécurité\s*\(ESSS\)\s*$/i,
-    );
-    docXml = out;
-    if (paraCount > 0) console.log(`[exportDocx] §4.2(b)(ii) Sous-traitant spécialisé (Non): ligne complète surlignée rouge (${paraCount} para, ${runCount} run)`);
-  }
-
-  // 3d-bis. CCAP Partie A — règle "yellow draft → red si champ rempli".
-  // Pour chaque entrée du registre, si la prédicat de remplissage est vrai,
-  // convertir tous les paragraphes correspondants jaune→rouge.
-  for (const entry of CCAP_YELLOW_DRAFTS) {
-    if (!entry.isFilled(formData)) continue;
-    const { xml: out, paraCount, runCount } = convertYellowToRedInMatchingParagraphs(docXml, entry.paraTextRe);
-    docXml = out;
-    if (paraCount > 0) {
-      console.log(`[exportDocx] CCAP draft "${entry.name}" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))`);
-    }
   }
 
   // 3e. Clean mode — strip all red-highlighted content (paragraphs fully red

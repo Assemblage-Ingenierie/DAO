@@ -1,4 +1,7 @@
+import { usePackage } from "../PackageContext.jsx";
+
 export default function ActorTag({ actor, onRemove }) {
+  const { labels, tpl } = usePackage();
   return (
     <span
       style={{
@@ -30,7 +33,7 @@ export default function ActorTag({ actor, onRemove }) {
             fontSize: 13,
             opacity: 0.7,
           }}
-          title={`Retirer ${actor.label}`}
+          title={tpl(labels.actorTag.removeTooltip, { label: actor.label })}
         >
           ×
         </button>

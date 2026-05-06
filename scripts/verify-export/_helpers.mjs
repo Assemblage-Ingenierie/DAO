@@ -1,7 +1,7 @@
 // Helpers partagés pour les scripts de vérification de l'export DOCX.
 //
 // Les scripts `verify*.mjs` simulent à vide les fonctions de surlignage rouge
-// définies dans `src/export/exportDocx.js` et vérifient qu'elles ciblent les
+// définies dans `src/engine/export/exportDocx.js` et vérifient qu'elles ciblent les
 // bons paragraphes du template (template-DTAO.docx) sans déborder dans la
 // Section I (« règle d'or » : cette section ne doit JAMAIS être modifiée).
 //
