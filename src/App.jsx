@@ -103,6 +103,7 @@ export default function App() {
     setExportMsg(null);
     try {
       const filename = await exportDocx({
+        pkg: pkgV2024Fr,
         formData,
         actorAssignments,
         fieldComments,
@@ -136,6 +137,7 @@ export default function App() {
     setExportMsg(null);
     try {
       const filename = await exportXlsx({
+        pkg: pkgV2024Fr,
         formData,
         actorAssignments,
         fieldComments,
@@ -180,7 +182,7 @@ export default function App() {
     setExportMsg(null);
     try {
       const buffer = await file.arrayBuffer();
-      const result = parseXlsxImport(buffer, { actors });
+      const result = parseXlsxImport(buffer, { pkg: pkgV2024Fr, actors });
       const {
         formData: importedForm,
         fieldComments: importedComments,

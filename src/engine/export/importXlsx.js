@@ -4,8 +4,9 @@
 // `__personnel_0`; those are parsed back into their structured rows.
 
 import * as XLSX from 'xlsx-js-style';
-import { SECTIONS } from '../../packages/v2024/fr/sections.js';
-import { isEnjeuEsssLabel, enjeuKeyByLabel } from '../../packages/v2024/fr/enjeux.js';
+
+// Pack-bound names (1.11c). Populated by parseXlsxImport from the active pack.
+let SECTIONS, isEnjeuEsssLabel, enjeuKeyByLabel;
 
 // Build a lookup: field.id → field definition (including type).
 function indexFieldsById() {
@@ -84,7 +85,11 @@ function parseRecipients(cellValue, actors) {
 // "Réf." column prefix: PER-N, MAT-N, PT-N. This means the user can simply
 // add a new row in Excel with an incremented ref (e.g. PER-3) and the poste
 // name in the "Champ" cell — the app will import it as a new personnel entry.
-export function parseXlsxImport(arrayBuffer, { actors }) {
+export function parseXlsxImport(arrayBuffer, { pkg, actors }) {
+  // Bind module-level pack-dependent names (1.11c).
+  SECTIONS = pkg.sections;
+  isEnjeuEsssLabel = pkg.enjeux.isLabel;
+  enjeuKeyByLabel = pkg.enjeux.keyByLabel;
   const wb = XLSX.read(arrayBuffer, { type: 'array' });
   const sheetName = wb.SheetNames[0];
   const ws = wb.Sheets[sheetName];

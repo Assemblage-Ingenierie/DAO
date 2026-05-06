@@ -3,8 +3,17 @@ import JSZip from 'jszip';
 // a 0-byte cloud-only placeholder in this Google Drive shared folder.
 // Use the local equivalent in src/utils/saveBlob.js instead.
 import { saveAs } from '../utils/saveBlob.js';
-import * as anchors from '../../packages/v2024/fr/anchors.js';
-import {
+import { isFilled } from '../utils/fieldStatus.js';
+
+// ── Pack-bound names (1.11c) ───────────────────────────────────────────────
+// These used to be top-level `import { … } from '…/packages/v2024/fr/…'`
+// statements. They are now `let` bindings populated by `exportDocx` from the
+// active pack (`pkg`) before any helper runs. Helper functions in this module
+// reference these names through lexical scope, so the assignment must happen
+// at the very top of `exportDocx` and all helpers are reached only through
+// that entry point. Single-threaded JS + single entry point = safe.
+let SECTIONS, HIGHLIGHTING_RULES, isEnjeuEsssLabel;
+let
   STATIC_GUIDE_ANCHORS,
   IS_13_5_VARIANTES_DELAIS_ANCHORS,
   IS_34_1_SOUS_TRAITANTS_ANCHORS,
@@ -70,12 +79,7 @@ import {
   CCAP_20_2_GUIDE_SOIT_LOWER_RE,
   CCAP_20_2_OPT_TROIS_MEMBRES_RE,
   CCAP_20_2_LISTE_BOUNDARY_RE,
-  CCAP_20_2_SUB_REF_BOUNDARY_RE,
-} from '../../packages/v2024/fr/anchors.js';
-import { HIGHLIGHTING_RULES } from '../../packages/v2024/fr/highlightingRules.js';
-import { isFilled } from '../utils/fieldStatus.js';
-import { isEnjeuEsssLabel } from '../../packages/v2024/fr/enjeux.js';
-import { SECTIONS } from '../../packages/v2024/fr/sections.js';
+  CCAP_20_2_SUB_REF_BOUNDARY_RE;
 
 // ── Utilities ──────────────────────────────────────────────────────────────
 
@@ -777,9 +781,8 @@ function replaceField(xml, search, nth, value, commentIds, global) {
 // (Pourcentage Provisions) and the Tranches table are handled by dedicated
 // helpers that run BEFORE this loop. They never appear here. Phase 1.8 will
 // parametrize those helpers via the pack.
-const ORDERED_BINDING_FIELDS = SECTIONS
-  .flatMap(sec => (sec.fields || []))
-  .filter(f => f.templateBinding);
+// Computed inside `exportDocx` from the active pack (1.11c).
+let ORDERED_BINDING_FIELDS;
 
 // ── Inline caption fill (for fields without bracketed placeholders) ──────
 // Finds a paragraph whose content starts with "<caption>" (optionally followed
@@ -3927,6 +3930,7 @@ function stripEmptyTables(xml) {
 // ── Main export ───────────────────────────────────────────────────────────
 
 export async function exportDocx({
+  pkg,
   formData,
   actorAssignments,
   fieldComments,
@@ -3939,6 +3943,81 @@ export async function exportDocx({
   tranchesRows = [],
   cleanMode = false,
 }) {
+  // ── Bind module-level pack-dependent names from the active pack (1.11c) ──
+  SECTIONS = pkg.sections;
+  HIGHLIGHTING_RULES = pkg.highlightingRules;
+  isEnjeuEsssLabel = pkg.enjeux.isLabel;
+  ({
+    STATIC_GUIDE_ANCHORS,
+    IS_13_5_VARIANTES_DELAIS_ANCHORS,
+    IS_34_1_SOUS_TRAITANTS_ANCHORS,
+    MARGE_PREFERENCE_HEADER_ANCHOR,
+    NO_PREQUAL_GUIDE_ANCHORS,
+    NO_PREQUAL_HEADER_ANCHOR,
+    PRICE_FORMAT_ROW_ANCHORS,
+    PRICE_FORMAT_OR_RE,
+    TABLEAUX_DE_PRIX_GUIDE_ANCHORS,
+    MONNAIE_OPTION_ANCHOR_RE,
+    MONNAIE_OPTION_PRIVILEGIER_RE,
+    CONVERSION_OPTION_ANCHOR_RE,
+    OPTION_A_HEADER_RE,
+    OPTION_B_HEADER_RE,
+    SECTION_OR_IS_BOUNDARY_RE,
+    VARIANTES_TECH_INTRO_RE,
+    VARIANTES_TECH_TITLE_RE,
+    METHODOLOGIE_ESSS_HEADER_RE,
+    CCAP_TRANCHES_CAPTION_RE,
+    CCAP_TRANCHES_TABLE_HEADER_RE,
+    CCAP_ESSS_CHECKBOXES_ANCHOR_TEXT,
+    CCAP_CONDITIONS_CLIMATIQUES_ANCHOR_RE,
+    CCAP_14_1_HEADING_TEXT_LC,
+    CCAP_14_1_REF_TEXT,
+    CCAP_14_1_HEADER_GUIDE_RE,
+    CCAP_14_1_OPT_FORFAITAIRE_RE,
+    CCAP_14_1_OPT_UNITAIRES_RE,
+    CCAP_14_1_OPT_COMBINAISON_RE,
+    CCAP_14_1_OU_SEPARATOR_RE,
+    CCAP_14_1_DESC_FORF_RE,
+    CCAP_14_1_DESC_UNIT_RE,
+    CCAP_14_1_SUB_REF_BOUNDARY_RE,
+    CCAP_13_5_B_II_HEADING_LC_INCLUDES,
+    CCAP_13_5_B_II_REF_PREFIX_LC,
+    CCAP_14_1_B_REF_TEXT,
+    CCAP_14_1_E_REF_TEXT,
+    CCAP_14_1_E_SUPPRIMER_SUFFIX_TEXT,
+    CCAP_14_2_HEADING_TEXT_LC,
+    CCAP_14_2_REF_TEXT,
+    CCAP_14_3_HEADING_TEXT_LC,
+    CCAP_14_3_REF_TEXT,
+    CCAP_14_5_HEADING_TEXT_LC,
+    CCAP_14_5_GUIDE_RE,
+    CCAP_14_5_FOB_REF_PREFIX_LC,
+    CCAP_14_5_ONSITE_REF_PREFIX_LC,
+    CCAP_14_5_NEXT_SUBCLAUSE_RE,
+    CCAP_18_1_HEADING_RE,
+    CCAP_18_1_REF_TEXT,
+    CCAP_18_1_ATTESTATION_LABEL_RE,
+    CCAP_18_1_POLICES_LABEL_RE,
+    CCAP_18_1_UNDERSCORE_JOURS_RE,
+    CCAP_18_1_UNDERSCORE_ONLY_RE,
+    CCAP_18_1_SUB_REF_BOUNDARY_RE,
+    CCAP_18_1_POLICES_OLD_LABEL_LC,
+    CCAP_18_1_POLICES_NEW_LABEL_TEXT,
+    CCAP_18_3_HEADING_RE,
+    CCAP_18_3_REF_TEXT,
+    CCAP_20_2_HEADING_RE,
+    CCAP_20_2_REF_TEXT,
+    CCAP_20_2_GUIDE_SOIT_UPPER_RE,
+    CCAP_20_2_OPT_UN_MEMBRE_RE,
+    CCAP_20_2_GUIDE_SOIT_LOWER_RE,
+    CCAP_20_2_OPT_TROIS_MEMBRES_RE,
+    CCAP_20_2_LISTE_BOUNDARY_RE,
+    CCAP_20_2_SUB_REF_BOUNDARY_RE,
+  } = pkg.anchors);
+  ORDERED_BINDING_FIELDS = SECTIONS
+    .flatMap(sec => (sec.fields || []))
+    .filter(f => f.templateBinding);
+
   // 1. Load template — with one retry for transient failures.
   // Vite HMR briefly drops static asset serving while rebuilding, and the
   // template file lives on Google Drive which can momentarily de-materialise

@@ -15,7 +15,9 @@ import {
   Packer,
 } from "docx";
 import { saveAs } from "../utils/saveBlob.js";
-import { SECTIONS, SECTION_GROUPS } from "../../packages/v2024/fr/sections.js";
+
+// Pack-bound names (1.11c). Populated by generateDocx from the active pack.
+let SECTIONS, SECTION_GROUPS;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -214,6 +216,7 @@ function formatValue(field, value) {
 // ── Main export function ──────────────────────────────────────────────────
 
 export async function generateDocx({
+  pkg,
   formData,
   actorAssignments,
   fieldComments,
@@ -222,6 +225,10 @@ export async function generateDocx({
   materielRows,
   propositionItems,
 }) {
+  // Bind module-level pack-dependent names (1.11c).
+  SECTIONS = pkg.sections;
+  SECTION_GROUPS = pkg.sectionGroups;
+
   const allComments = [];
   let commentId = 1;
 
