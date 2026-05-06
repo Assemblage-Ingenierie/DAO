@@ -7,6 +7,7 @@ import {
   deleteProject,
   duplicateProject,
   renameProject,
+  updateProjectData,
 } from "../projects/projectStore.js";
 import NewProjectModal from "./NewProjectModal.jsx";
 
@@ -61,7 +62,17 @@ export default function ProjectList({ defaultsFromPack }) {
   const handleRename = (project) => {
     const next = window.prompt(labels.projectList.confirmRename, project.name);
     if (next && next.trim() && next.trim() !== project.name) {
-      renameProject(project.id, next.trim());
+      const trimmed = next.trim();
+      renameProject(project.id, trimmed);
+      // Bidirectional sync: also overwrite the doc's "Nom du Projet" field
+      // (PREA-002) so the rename is visible inside the editor too. The
+      // symmetric path is in Editor.handleFieldChange when fieldId is
+      // 'nom_projet'.
+      const updatedData = {
+        ...(project.data || {}),
+        formData: { ...(project.data?.formData || {}), nom_projet: trimmed },
+      };
+      updateProjectData(project.id, updatedData);
     }
   };
 

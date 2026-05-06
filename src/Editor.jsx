@@ -9,6 +9,7 @@ import {
 } from "./packages/v2024/fr/defaults.js";
 import { usePackage } from "./engine/PackageContext.jsx";
 import { useProject } from "./engine/projects/useProject.js";
+import { renameProject } from "./engine/projects/projectStore.js";
 import { isEnjeuEsssLabel } from "./packages/v2024/fr/enjeux.js";
 import { LABELS, tpl } from "./packages/v2024/fr/labels.js";
 import Sidebar from "./engine/components/Sidebar.jsx";
@@ -89,6 +90,14 @@ export function Editor({ projectId }) {
   // Field value change
   const handleFieldChange = (fieldId, value) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
+    // Bidirectional sync: editing the doc's "Nom du Projet" field updates
+    // the project metadata name shown on the home page list. Empty values
+    // are ignored so a momentarily-empty input doesn't blank the card.
+    // Symmetric path: ProjectList.handleRename writes back to formData.
+    if (fieldId === 'nom_projet' && projectId) {
+      const trimmed = typeof value === 'string' ? value.trim() : '';
+      if (trimmed) renameProject(projectId, trimmed);
+    }
   };
 
   // Actor assignment change
