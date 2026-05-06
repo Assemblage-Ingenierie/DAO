@@ -463,3 +463,68 @@ export const CCAP_DRAFT_3_1_POUVOIRS_MOE_RE = /Le Maître d'Ouvrage peut décide
 export const CCAP_DRAFT_4_1_DOCS_ENTREPRENEUR_RE = /Le Maître d'Ouvrage peut décider de demander la fourniture de documents/;
 export const CCAP_DRAFT_4_1_COCHER_CASES_RE = /cocher la \/ les case\(s\) correspondante\(s\)/;
 export const CCAP_DRAFT_8_1_COMMENCEMENT_RE = /Insérer la liste des conditions telles que spécifiées dans le Sous-?Clause\s*8\.1 des CCAG/;
+
+// ── Préambule / TOC / Cover page ──────────────────────────────────────────
+// Pre-amble auto-strip (entre "Préambule" et "Table des matières"), date de
+// référence sur la page de garde ("FÉVRIER 2024"), et le TITLEINTRO du guide
+// "Quelle est l'utilité de la Préqualification" (supprimé en bloc quand le
+// MOA n'a pas fait de pré-qualification).
+export const PREAMBLE_HEADING_RE = /^Pr[eé]\s*ambule\s*$/i;
+export const TOC_HEADING_RE = /^Table des mati[eè]res\s*$/i;
+export const COVER_DATE_RE = /^F[EÉ]VRIER\s+2024$/i;
+export const UTILITY_PREQUAL_TITLE_RE = /Quelle est l'utilit[eé] de la Pr[eé]qualification/i;
+
+// ── AAO letter conditional blocks ─────────────────────────────────────────
+// Le template porte 2 lettres AAO (avec / sans pré-qualif) à choisir selon le
+// projet. Boundaries text-based, robustes hyphen vs en-dash.
+export const AAO_BLOCK_PREQUALIFIES_HEADING_RE = /^Avis d'Appel d'Offres\s*[-–]\s*Lettre aux Soumissionnaires pr[eé][-\s]?qualifi[eé]s\s*$/i;
+export const AAO_BLOCK_NON_PREQUAL_HEADING_RE = /^Avis d'Appel d'Offres\s*[-–]\s*Cas sans pr[eé][-\s]?qualification\s*$/i;
+export const SPEC_TRAVAUX_HEADING_RE = /^Sp[eé]cifications des Travaux\s*$/i;
+
+// "Modèle d'Avis d'Appel d'Offres" délimite le début du bloc à remplir avec
+// les placeholders (nom MOA, ref AOI, dates…). La fin de scan est marquée
+// soit par "Notes relatives à la préparation" soit par "Spécifications des
+// Travaux" (le premier rencontré).
+export const MODELE_AAO_HEADING_RE = /Modèle d'Avis d'Appel d'Offres/i;
+export const AAO_END_OF_SCAN_RE = /Notes relatives à la préparation|^Spécifications des Travaux\s*$/i;
+
+// ── Italic captions on cover-area signature pages ─────────────────────────
+// Pages d'intro AAO : un italic centered "[Nom du Maître d'Ouvrage]" ou
+// "[Nom du Marché]" surplombe une ligne underscore tabulée à pré-remplir.
+export const CAPTION_NOM_MOA_RE = /^\s*\[Nom du Ma[îi]tre\s*d'Ouvrage\]\s*$/;
+export const CAPTION_NOM_MARCHE_RE = /^\s*\[Nom du March[ée]\]\s*$/;
+
+// ── ESSS Articles non applicables (Section IV) ────────────────────────────
+// Header de la table "N° d'Article non applicable / [insérer les explications…]".
+export const ARTICLES_NON_APPLICABLES_TABLE_HEADER_RE = /Numéro d'Article non applicable[\s\S]*insérer les explications/;
+
+// ── Pré-qualification surlignage ──────────────────────────────────────────
+// PREQUAL_RE: le mot lui-même (avec/sans tiret, e/é). Tout paragraphe qui le
+// contient doit être surligné rouge SAUF s'il matche l'une des PREQUAL_EXCLUDE_RES
+// (cas "sans pré-qualification", clauses dual-case, etc.).
+export const PREQUAL_RE = /pr[eé]-?qualif/i;
+export const PREQUAL_EXCLUDE_RES = [
+  /n'a pas été précédé/i,
+  /n'a pas été effectuée/i,
+  /Cas sans pr[eé]-?qualif/i,
+  /\[Section à supprimer si une pr[eé]-?qualif/i,
+  /\[est \/ n'est pas\][\s\S]*pr[eé]-?qualif/i,
+  // DPAO IS 4.5 after placeholder replacement ("n'est pas" baked in)
+  /\[supprimer la mention inutile\]/i,
+  // Préambule §3 — texte méta qui décrit le DTAO lui-même
+  /Ce DTAO a été adapté des Documents Type/i,
+  // IS 17.1 — clause conditionnelle (pré-qualif + examen a posteriori)
+  /Conformément aux dispositions de la Section III[\s\S]*Critères d'évaluation et de qualification/i,
+  // IS 17.3 — règle sur changement de structure post pré-qualif
+  /Tout changement dans la structure ou la composition du Soumissionnaire/i,
+  // IS 34.3 — contrepartie conditionnelle de 34.4
+  /Lorsque l'Appel d'Offres a été précédé/i,
+  // IS 37.1 — règle sur modifications après pré-qualif / invitation
+  /Toute modification dans la structure ou composition d'un Soumissionnaire/i,
+  // IS 37.2 — traite les deux cas explicitement
+  /Le Maître d'Ouvrage s'assurera que le Soumissionnaire/i,
+  // Évaluation ESSS — formulation générique "qualification ou de pré-qualification"
+  /Chaque critère de qualification ou de pr[eé]-?qualification ESSS/i,
+  // Section III §1.3 Marchés pour lots multiples
+  /Les Soumissionnaires ont le choix de soumissionner pour un ou plusieurs lots/i,
+];
