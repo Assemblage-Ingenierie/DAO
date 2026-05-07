@@ -23,6 +23,7 @@ import {
   needsLegacyMigration,
   performLegacyMigration,
 } from "./editors/dtao-travaux/engine/projects/migrateLegacyKeys.js";
+import { performLegacyDtaoMigration } from "./platform/store/migrateLegacyDtao.js";
 
 import ShellLayout from "./platform/components/ShellLayout.jsx";
 import Home from "./platform/pages/Home.jsx";
@@ -38,8 +39,13 @@ import ChecklistConfig from "./platform/pages/ChecklistConfig.jsx";
 
 import "./platform/styles.css";
 
-// Bootstrap one-shot — migration legacy 10-keys → dtao_projects_v2
-// (rétro-compat phase 2). Idempotent : ne fait rien si déjà migré.
+// Bootstrap one-shot, deux étapes idempotentes exécutées dans l'ordre :
+//   1) phase 2 : 10 clés legacy `dtao_*` → store unique dtao_projects_v2
+//   2) phase 3.6 : entrées dtao_projects_v2 → marchés Plateforme sous
+//      "Non classé / DTAO existants", avec editor_data rempli (lu en 3.5
+//      par le DTAO Editor).
+// Les deux migrations conservent leur source en backup et posent un flag
+// pour ne pas se ré-exécuter.
 (function bootstrap() {
   if (typeof localStorage === "undefined") return;
   if (needsLegacyMigration()) {
@@ -48,6 +54,7 @@ import "./platform/styles.css";
       language: pkgV2024Fr.language,
     });
   }
+  performLegacyDtaoMigration();
 })();
 
 export default function App() {

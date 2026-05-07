@@ -70,6 +70,10 @@ export {
   resetPlatform,
 } from "./store/platformStore.js";
 export { usePlatformData } from "./store/usePlatformData.js";
+export {
+  needsLegacyDtaoMigration,
+  performLegacyDtaoMigration,
+} from "./store/migrateLegacyDtao.js";
 
 // Pages
 //   3.3a : Home, Country, Project
