@@ -66,11 +66,20 @@ export {
 } from "./store/platformStore.js";
 export { usePlatformData } from "./store/usePlatformData.js";
 
-// Pages (3.3a — Home, Country, Project ; 3.3b — Market ; 3.3c à venir)
+// Pages
+//   3.3a : Home, Country, Project
+//   3.3b : Market
+//   3.3c : Search, MemoRetex, MemoCodes, RefDocs, Admin, ChecklistConfig
 export { default as Home } from "./pages/Home.jsx";
 export { default as Country } from "./pages/Country.jsx";
 export { default as Project } from "./pages/Project.jsx";
 export { default as Market } from "./pages/Market.jsx";
+export { default as Search } from "./pages/Search.jsx";
+export { default as MemoRetex } from "./pages/MemoRetex.jsx";
+export { default as MemoCodes } from "./pages/MemoCodes.jsx";
+export { default as RefDocs } from "./pages/RefDocs.jsx";
+export { default as Admin } from "./pages/Admin.jsx";
+export { default as ChecklistConfig } from "./pages/ChecklistConfig.jsx";
 
 // Utils (note de relecture HTML)
 export {
