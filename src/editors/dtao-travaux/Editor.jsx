@@ -462,6 +462,7 @@ export function Editor({ projectId, project, setData, onRename, backTo = "/" }) 
           projectName={project.name}
           nomProjet={formData.nom_projet}
           identificationTravaux={formData.identification_travaux}
+          backTo={backTo}
         />
 
         {/* Top bar */}
@@ -660,7 +661,7 @@ export function Editor({ projectId, project, setData, onRename, backTo = "/" }) 
 
 // ── Project header ────────────────────────────────────────────────────────
 
-function ProjectHeader({ projectName, nomProjet, identificationTravaux }) {
+function ProjectHeader({ projectName, nomProjet, identificationTravaux, backTo = "/" }) {
   const hasNom = nomProjet && String(nomProjet).trim();
   const hasId = identificationTravaux && String(identificationTravaux).trim();
   // Only show the project metadata name as a hint when it differs from the
