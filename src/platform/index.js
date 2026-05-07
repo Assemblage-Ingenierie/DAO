@@ -1,0 +1,47 @@
+// ── Plateforme — barrel d'exports ─────────────────────────────────────────
+//
+// Point d'entrée unique pour les modules `src/platform/`. Re-exporte les
+// données catalogues, les checklists et les composants primitifs. Les pages
+// (à venir en 3.3) peuvent importer soit via ce barrel, soit en deep-import
+// vers les sous-modules.
+//
+// Usage attendu (3.3+) :
+//   import { Flag, ReviewItem, MEMO_DATA, CLS_TVX } from "../platform/index.js";
+
+// Données catalogues
+export {
+  TYPES,
+  SECT,
+  LANG,
+  SPI,
+  DEQ,
+  FL,
+  PAYS_LIST,
+  SRC,
+} from "./data/types.js";
+export { MEMO_PAYS, MEMO_DATA } from "./data/memoData.js";
+export { RETEX_THEMES, RETEX_KW, RETEX_DATA } from "./data/retexData.js";
+export { REF_DOCS } from "./data/refDocs.js";
+export {
+  CL_DAO,
+  CL_RAP,
+  CL_CTR,
+  CL_AMI,
+  CL_LR,
+  CL_DP,
+  CL_EVTECH,
+  CL_EVFIN,
+  CL_NEGO,
+  CL_CTRPI,
+  CL_PROG,
+  CL_TDR,
+  CLS_TVX,
+  CLS_PI,
+  TABS_TVX,
+  TABS_PI,
+} from "./data/checklists/index.js";
+
+// Composants primitifs
+export { default as Flag } from "./components/Flag.jsx";
+export { default as Icon } from "./components/Icon.jsx";
+export { default as ReviewItem } from "./components/ReviewItem.jsx";
