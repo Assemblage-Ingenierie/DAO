@@ -16,14 +16,16 @@
 // migration `dtao_projects_v2` → `afd_platform_v1` (fold sous "Non classé"
 // / projet "DTAO existants") arrive en 3.6.
 
-import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { HashRouter, Routes, Route, Navigate, useParams, Link } from "react-router-dom";
 import { pkgV2024Fr } from "./editors/dtao-travaux/packages/v2024/fr/index.js";
 import { PackageContext } from "./editors/dtao-travaux/engine/PackageContext.jsx";
+import { Editor } from "./editors/dtao-travaux/Editor.jsx";
 import {
   needsLegacyMigration,
   performLegacyMigration,
 } from "./editors/dtao-travaux/engine/projects/migrateLegacyKeys.js";
 import { performLegacyDtaoMigration } from "./platform/store/migrateLegacyDtao.js";
+import { useMarketEditor } from "./platform/store/useMarketEditor.js";
 
 import ShellLayout from "./platform/components/ShellLayout.jsx";
 import Home from "./platform/pages/Home.jsx";
@@ -57,6 +59,38 @@ import "./platform/styles.css";
   performLegacyDtaoMigration();
 })();
 
+// Adapter de route : pose l'Editor DTAO sur un marché Plateforme. Le hook
+// useMarketEditor expose la même forme qu'useProject (project, setData,
+// onRename) et résout aussi le projet parent pour câbler le lien retour.
+function DtaoEditorRoute() {
+  const { id: marketId } = useParams();
+  const [project, setData, onRename, parentInfo] = useMarketEditor(marketId);
+
+  if (!project) {
+    return (
+      <ShellLayout>
+        <div style={{ padding: 40, textAlign: "center" }}>
+          <p style={{ color: "#999", marginBottom: 16 }}>Marché introuvable.</p>
+          <Link to="/" className="bo" style={{ textDecoration: "none" }}>
+            ← Accueil
+          </Link>
+        </div>
+      </ShellLayout>
+    );
+  }
+
+  const backTo = parentInfo.projectId ? `/projects/${parentInfo.projectId}` : "/";
+  return (
+    <Editor
+      projectId={marketId}
+      project={project}
+      setData={setData}
+      onRename={onRename}
+      backTo={backTo}
+    />
+  );
+}
+
 export default function App() {
   return (
     <PackageContext.Provider value={pkgV2024Fr}>
@@ -78,7 +112,8 @@ export default function App() {
           {/* Page Market plein-écran (header coloré + tabs propres) */}
           <Route path="/markets/:id/review" element={<Market />} />
 
-          {/* TODO 3.5 : <Route path="/marches/:id/edit" element={<DtaoEditorRoute/>} /> */}
+          {/* Editeur DTAO sur le slot editor_data d'un marché Plateforme */}
+          <Route path="/marches/:id/edit" element={<DtaoEditorRoute />} />
 
           {/* Tout le reste retombe sur la home */}
           <Route path="*" element={<Navigate to="/" replace />} />

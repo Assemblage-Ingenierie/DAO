@@ -513,6 +513,20 @@ function MarketCard({ market, reviews, isEditing, onToggleEdit, onPatch, onRemov
           {isEditing ? "Fermer" : "Éditer"}
         </button>
 
+        {market.cat === "Travaux" && market.role === "production" && (
+          <Link
+            to={`/marches/${market.id}/edit`}
+            className="br"
+            style={{
+              padding: "5px 12px",
+              fontSize: 12,
+              flexShrink: 0,
+              textDecoration: "none",
+            }}
+          >
+            Éditeur DTAO →
+          </Link>
+        )}
         <Link
           to={`/markets/${market.id}/review`}
           className="bo"
