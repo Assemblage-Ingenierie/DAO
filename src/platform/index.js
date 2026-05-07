@@ -46,6 +46,11 @@ export { default as Flag } from "./components/Flag.jsx";
 export { default as Icon } from "./components/Icon.jsx";
 export { default as ReviewItem } from "./components/ReviewItem.jsx";
 
+// Composants de layout (3.4 — shell)
+export { default as Sidebar } from "./components/Sidebar.jsx";
+export { default as Header } from "./components/Header.jsx";
+export { default as ShellLayout } from "./components/ShellLayout.jsx";
+
 // Store + hook
 export {
   PLATFORM_KEY,

@@ -1,23 +1,45 @@
-import {
-  HashRouter,
-  Routes,
-  Route,
-  Navigate,
-  useParams,
-} from "react-router-dom";
+// ── App — shell HashRouter + Sidebar Plateforme ──────────────────────────
+//
+// Le shell de l'app après la fusion (phase 3). Sert :
+//   - les pages Plateforme (Home, Country, Project, Search, Memo*, RefDocs,
+//     Admin, ChecklistConfig) à l'intérieur d'un ShellLayout commun ;
+//   - la page Market en plein écran (header coloré + tabs intégrés) ;
+//   - (à venir 3.5) la route /marches/:id/edit qui rebranche le DTAO Editor
+//     sur le slot editor_data d'un marché Plateforme AO Travaux production.
+//
+// Le PackageContext.Provider est conservé en racine pour que l'éditeur
+// DTAO trouve son pack quand il sera remonté en 3.5, sans avoir à réécrire
+// les composants `usePackage()`.
+//
+// La migration des projets DTAO legacy (anciennes clés `dtao_*` 10-keys
+// pré-phase-2) reste exécutée au chargement — elle est idempotente. La
+// migration `dtao_projects_v2` → `afd_platform_v1` (fold sous "Non classé"
+// / projet "DTAO existants") arrive en 3.6.
+
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { pkgV2024Fr } from "./editors/dtao-travaux/packages/v2024/fr/index.js";
 import { PackageContext } from "./editors/dtao-travaux/engine/PackageContext.jsx";
-import { Editor } from "./editors/dtao-travaux/Editor.jsx";
-import ProjectList from "./editors/dtao-travaux/engine/components/ProjectList.jsx";
 import {
   needsLegacyMigration,
   performLegacyMigration,
 } from "./editors/dtao-travaux/engine/projects/migrateLegacyKeys.js";
 
-// One-shot bootstrap at module init: migrate legacy single-project state
-// into the new dtao_projects_v2 store if it's still in the 10-keys layout
-// from before phase 2. Runs synchronously since localStorage is available
-// at import time in the browser.
+import ShellLayout from "./platform/components/ShellLayout.jsx";
+import Home from "./platform/pages/Home.jsx";
+import Country from "./platform/pages/Country.jsx";
+import Project from "./platform/pages/Project.jsx";
+import Market from "./platform/pages/Market.jsx";
+import Search from "./platform/pages/Search.jsx";
+import MemoRetex from "./platform/pages/MemoRetex.jsx";
+import MemoCodes from "./platform/pages/MemoCodes.jsx";
+import RefDocs from "./platform/pages/RefDocs.jsx";
+import Admin from "./platform/pages/Admin.jsx";
+import ChecklistConfig from "./platform/pages/ChecklistConfig.jsx";
+
+import "./platform/styles.css";
+
+// Bootstrap one-shot — migration legacy 10-keys → dtao_projects_v2
+// (rétro-compat phase 2). Idempotent : ne fait rien si déjà migré.
 (function bootstrap() {
   if (typeof localStorage === "undefined") return;
   if (needsLegacyMigration()) {
@@ -28,43 +50,30 @@ import {
   }
 })();
 
-// Default data shape for a brand-new project. Pulls initial actor/table
-// values from the active pack so a freshly-created project lands on the
-// same baseline the legacy app gave a first-time user.
-function defaultsFromPack(pkg) {
-  return {
-    formData: {},
-    actorAssignments: {},
-    fieldComments: {},
-    actors: pkg.defaults.actors,
-    personnelRows: pkg.defaults.personnelRows,
-    materielRows: pkg.defaults.materielRows,
-    propositionItems: pkg.defaults.propositionItems,
-    bulletListItems: {},
-    articlesEsssRows: [],
-    tranchesRows: [],
-  };
-}
-
-// Pulls the project id out of the URL and feeds it to <Editor/>. Keeping
-// this thin wrapper here means Editor.jsx itself stays router-agnostic.
-function EditorRoute() {
-  const { id } = useParams();
-  return <Editor projectId={id} />;
-}
-
 export default function App() {
   return (
     <PackageContext.Provider value={pkgV2024Fr}>
       <HashRouter>
         <Routes>
-          <Route
-            path="/"
-            element={
-              <ProjectList defaultsFromPack={() => defaultsFromPack(pkgV2024Fr)} />
-            }
-          />
-          <Route path="/projects/:id" element={<EditorRoute />} />
+          {/* Pages Plateforme avec sidebar (ShellLayout commun) */}
+          <Route element={<ShellLayout />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/countries/:id" element={<Country />} />
+            <Route path="/projects/:id" element={<Project />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/memo/retex" element={<MemoRetex />} />
+            <Route path="/memo/codes" element={<MemoCodes />} />
+            <Route path="/refdocs" element={<RefDocs />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/checklist-config" element={<ChecklistConfig />} />
+          </Route>
+
+          {/* Page Market plein-écran (header coloré + tabs propres) */}
+          <Route path="/markets/:id/review" element={<Market />} />
+
+          {/* TODO 3.5 : <Route path="/marches/:id/edit" element={<DtaoEditorRoute/>} /> */}
+
+          {/* Tout le reste retombe sur la home */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </HashRouter>
