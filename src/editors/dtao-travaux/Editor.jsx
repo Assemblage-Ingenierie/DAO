@@ -8,8 +8,6 @@ import {
   DEFAULT_PROPOSITION_ITEMS,
 } from "./packages/v2024/fr/defaults.js";
 import { usePackage } from "./engine/PackageContext.jsx";
-import { useProject } from "./engine/projects/useProject.js";
-import { renameProject } from "./engine/projects/projectStore.js";
 import { isEnjeuEsssLabel } from "./packages/v2024/fr/enjeux.js";
 import { LABELS, tpl } from "./packages/v2024/fr/labels.js";
 import Sidebar from "./engine/components/Sidebar.jsx";
@@ -23,9 +21,19 @@ import { parseXlsxImport } from "./engine/export/importXlsx.js";
 
 const FIRST_SECTION = SECTIONS[0]?.id || "identification";
 
-export function Editor({ projectId }) {
+// L'Editor est désormais "store-agnostic" — il reçoit ses I/O via props et
+// ne sait plus si la donnée vient de `dtao_projects_v2` (legacy) ou du slot
+// `editor_data` d'un marché Plateforme. App.jsx (ou une route adaptée) câble
+// le hook concret et passe :
+//   - `project`   : objet avec un `.data` (les 10 sous-stores) et un `.name`
+//   - `setData`   : (key, valueOrFn) => void — patch un sous-store
+//   - `onRename`  : (newName) => void — propage le rename quand l'utilisateur
+//                   édite le champ "nom_projet" (PREA-002)
+//   - `backTo`    : URL du lien "← retour" (par défaut la home)
+//   - `projectId` : conservé pour identifier le projet dans les logs et
+//                   les useEffect dépendants
+export function Editor({ projectId, project, setData, onRename, backTo = "/" }) {
   const pkg = usePackage();
-  const [project, setData] = useProject(projectId);
 
   // UI state (not persisted)
   const [activeSection, setActiveSection] = useState(FIRST_SECTION);
@@ -87,17 +95,12 @@ export function Editor({ projectId }) {
   const tranchesRows = project.data.tranchesRows ?? [];
   const setTranchesRows = (v) => setData('tranchesRows', v);
 
-  // Field value change
+  // Field value change.
+  // NB : la sync retour Editor → Plateforme (édition de PREA-002 propageant
+  // au market.name) a été coupée. Le champ est pré-rempli à la création du
+  // marché (cf. Project.jsx > createMarket) puis vit sa vie indépendamment.
   const handleFieldChange = (fieldId, value) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
-    // Bidirectional sync: editing the doc's "Nom du Projet" field updates
-    // the project metadata name shown on the home page list. Empty values
-    // are ignored so a momentarily-empty input doesn't blank the card.
-    // Symmetric path: ProjectList.handleRename writes back to formData.
-    if (fieldId === 'nom_projet' && projectId) {
-      const trimmed = typeof value === 'string' ? value.trim() : '';
-      if (trimmed) renameProject(projectId, trimmed);
-    }
   };
 
   // Actor assignment change
@@ -454,6 +457,7 @@ export function Editor({ projectId }) {
           projectName={project.name}
           nomProjet={formData.nom_projet}
           identificationTravaux={formData.identification_travaux}
+          backTo={backTo}
         />
 
         {/* Top bar */}
@@ -652,7 +656,7 @@ export function Editor({ projectId }) {
 
 // ── Project header ────────────────────────────────────────────────────────
 
-function ProjectHeader({ projectName, nomProjet, identificationTravaux }) {
+function ProjectHeader({ projectName, nomProjet, identificationTravaux, backTo = "/" }) {
   const hasNom = nomProjet && String(nomProjet).trim();
   const hasId = identificationTravaux && String(identificationTravaux).trim();
   // Only show the project metadata name as a hint when it differs from the
@@ -681,7 +685,7 @@ function ProjectHeader({ projectName, nomProjet, identificationTravaux }) {
         }}
       >
         <Link
-          to="/"
+          to={backTo}
           style={{
             fontSize: 11,
             fontWeight: 700,
