@@ -66,7 +66,14 @@ export {
 } from "./store/platformStore.js";
 export { usePlatformData } from "./store/usePlatformData.js";
 
-// Pages (3.3a — Home, Country, Project ; 3.3b/c à venir)
+// Pages (3.3a — Home, Country, Project ; 3.3b — Market ; 3.3c à venir)
 export { default as Home } from "./pages/Home.jsx";
 export { default as Country } from "./pages/Country.jsx";
 export { default as Project } from "./pages/Project.jsx";
+export { default as Market } from "./pages/Market.jsx";
+
+// Utils (note de relecture HTML)
+export {
+  buildReviewNoteHTML,
+  openReviewNoteWindow,
+} from "./utils/exportReviewNote.js";
