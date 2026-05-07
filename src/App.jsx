@@ -5,14 +5,14 @@ import {
   Navigate,
   useParams,
 } from "react-router-dom";
-import { pkgV2024Fr } from "./packages/v2024/fr/index.js";
-import { PackageContext } from "./engine/PackageContext.jsx";
-import { Editor } from "./Editor.jsx";
-import ProjectList from "./engine/components/ProjectList.jsx";
+import { pkgV2024Fr } from "./editors/dtao-travaux/packages/v2024/fr/index.js";
+import { PackageContext } from "./editors/dtao-travaux/engine/PackageContext.jsx";
+import { Editor } from "./editors/dtao-travaux/Editor.jsx";
+import ProjectList from "./editors/dtao-travaux/engine/components/ProjectList.jsx";
 import {
   needsLegacyMigration,
   performLegacyMigration,
-} from "./engine/projects/migrateLegacyKeys.js";
+} from "./editors/dtao-travaux/engine/projects/migrateLegacyKeys.js";
 
 // One-shot bootstrap at module init: migrate legacy single-project state
 // into the new dtao_projects_v2 store if it's still in the 10-keys layout
