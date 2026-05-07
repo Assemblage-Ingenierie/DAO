@@ -45,3 +45,28 @@ export {
 export { default as Flag } from "./components/Flag.jsx";
 export { default as Icon } from "./components/Icon.jsx";
 export { default as ReviewItem } from "./components/ReviewItem.jsx";
+
+// Store + hook
+export {
+  PLATFORM_KEY,
+  defaultPlatformData,
+  loadPlatform,
+  savePlatform,
+  addCountry,
+  removeCountry,
+  addProject,
+  removeProject,
+  updateProject,
+  toggleProjectMember,
+  addMarket,
+  removeMarket,
+  updateMarket,
+  addEquipeMember,
+  resetPlatform,
+} from "./store/platformStore.js";
+export { usePlatformData } from "./store/usePlatformData.js";
+
+// Pages (3.3a — Home, Country, Project ; 3.3b/c à venir)
+export { default as Home } from "./pages/Home.jsx";
+export { default as Country } from "./pages/Country.jsx";
+export { default as Project } from "./pages/Project.jsx";

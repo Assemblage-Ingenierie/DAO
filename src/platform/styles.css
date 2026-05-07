@@ -1,0 +1,118 @@
+/* ── Plateforme — classes utilitaires ────────────────────────────────────
+ *
+ * Classes CSS partagées par les pages Plateforme (Home, Country, Project,
+ * Market, Memo, RefDocs, Search, Admin, ChecklistConfig).
+ * Extraites du <style> inline de l'App du single-file
+ * `_imports/plateforme-source.jsx` (ligne 738).
+ *
+ * Importé par n'importe quelle page Plateforme : `import "../styles.css"`.
+ * Le shell (3.4) importera ce fichier une fois pour toutes.
+ *
+ * Note : les resets (* {box-sizing}, html/body, scrollbars, fonts) sont
+ * déjà dans `src/index.css` côté DTAO. On ne re-déclare ici que les
+ * classes purement Plateforme pour ne pas créer de conflit.
+ */
+
+/* Animation d'apparition utilisée sur les pages */
+@keyframes platformFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.fade {
+  animation: platformFadeIn 0.25s ease-out;
+}
+
+/* Carte cliquable (pays / projet) */
+.card {
+  transition: all 0.2s;
+  border: 1.5px solid #DFE4E8;
+  border-radius: 8px;
+  padding: 20px;
+  cursor: pointer;
+  position: relative;
+  background: #fff;
+}
+.card:hover {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+}
+
+/* Item de navigation sidebar */
+.ni {
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+}
+.ni:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Bouton rouge (action principale) */
+.br {
+  background: #E30513;
+  color: #fff;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* Bouton outline (action secondaire) */
+.bo {
+  background: transparent;
+  color: #30323E;
+  border: 1.5px solid #DFE4E8;
+  padding: 8px 20px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 13px;
+}
+.bo:hover {
+  border-color: #E30513;
+  color: #E30513;
+}
+
+/* Champ texte / select / textarea — uniformisés */
+.ip {
+  border: 1.5px solid #DFE4E8;
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 14px;
+  width: 100%;
+  outline: none;
+  background: #fff;
+}
+.ip:focus {
+  border-color: #E30513;
+}
+textarea.ip {
+  resize: vertical;
+  min-height: 50px;
+}
+
+/* Label de champ */
+.lb {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4D4D4D;
+  display: block;
+  margin-bottom: 4px;
+}
+
+/* Bouton supprimer (× en haut à droite d'une carte) */
+.del {
+  background: none;
+  border: none;
+  opacity: 0.2;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 16px;
+  cursor: pointer;
+}
+.del:hover {
+  opacity: 1;
+}
