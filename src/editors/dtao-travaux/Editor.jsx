@@ -95,17 +95,12 @@ export function Editor({ projectId, project, setData, onRename, backTo = "/" }) 
   const tranchesRows = project.data.tranchesRows ?? [];
   const setTranchesRows = (v) => setData('tranchesRows', v);
 
-  // Field value change
+  // Field value change.
+  // NB : la sync retour Editor → Plateforme (édition de PREA-002 propageant
+  // au market.name) a été coupée. Le champ est pré-rempli à la création du
+  // marché (cf. Project.jsx > createMarket) puis vit sa vie indépendamment.
   const handleFieldChange = (fieldId, value) => {
     setFormData((prev) => ({ ...prev, [fieldId]: value }));
-    // Bidirectional sync: editing the doc's "Nom du Projet" field updates
-    // the project metadata name shown on the home page list. Empty values
-    // are ignored so a momentarily-empty input doesn't blank the card.
-    // Symmetric path: ProjectList.handleRename writes back to formData.
-    if (fieldId === 'nom_projet') {
-      const trimmed = typeof value === 'string' ? value.trim() : '';
-      if (trimmed && onRename) onRename(trimmed);
-    }
   };
 
   // Actor assignment change

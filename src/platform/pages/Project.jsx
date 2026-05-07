@@ -685,7 +685,23 @@ export default function Project() {
     setData((prev) => addEquipeMember(prev, name));
   }
   function createMarket(market) {
-    setData((prev) => addMarket(prev, projectId, market));
+    // Pré-remplit editor_data avec le contexte Plateforme : le nom du
+    // projet va dans PREA-002 ("Nom du Projet") et le nom du marché
+    // dans PREA-003 ("Identification des Travaux"). Pré-remplissage
+    // one-shot — l'utilisateur peut ensuite éditer librement, et les
+    // futures modifs côté Plateforme ne propagent plus dans l'éditeur.
+    const enriched = {
+      ...market,
+      editor_data: {
+        ...(market.editor_data || {}),
+        formData: {
+          ...((market.editor_data && market.editor_data.formData) || {}),
+          nom_projet: foundProject.name,
+          identification_travaux: market.name,
+        },
+      },
+    };
+    setData((prev) => addMarket(prev, projectId, enriched));
     setShowNewMarket(false);
   }
   function patchMarket(marketId, updates) {
