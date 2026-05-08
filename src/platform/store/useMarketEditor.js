@@ -151,8 +151,18 @@ export function useMarketEditor(marketId) {
         projectId: snapshot.projectId,
         project: snapshot.project,
         country: snapshot.country,
+        marketType: snapshot.market.type,
+        marketCat: snapshot.market.cat,
+        marketRole: snapshot.market.role,
       }
-    : { projectId: null, project: null, country: null };
+    : {
+        projectId: null,
+        project: null,
+        country: null,
+        marketType: null,
+        marketCat: null,
+        marketRole: null,
+      };
 
   return [project, setData, onRename, parentInfo];
 }

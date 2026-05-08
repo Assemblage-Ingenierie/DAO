@@ -3927,7 +3927,14 @@ export async function exportDocx({
   articlesEsssRows = [],
   tranchesRows = [],
   cleanMode = false,
+  // mode = "dao" (défaut, comportement historique) ou "prequal" (utilise le
+  // template de Pré-qualification + restreint aux champs flaggés `prequal`
+  // ou `prequalOnly` dans sections.js, et adapte le nom du fichier).
+  mode = 'dao',
 }) {
+  const PREQUAL_TEMPLATE_PATH = '/templates/v2024/fr/Pré-qualification Marchés de Travaux PAY - FEVRIER 2024 - DI uniquement - VF.docx';
+  const DAO_TEMPLATE_PATH = '/templates/v2024/fr/template-DTAO.docx';
+  const isPrequalMode = mode === 'prequal';
   // ── Bind module-level pack-dependent names from the active pack (1.11c) ──
   SECTIONS = pkg.sections;
   HIGHLIGHTING_RULES = pkg.highlightingRules;
@@ -4016,19 +4023,24 @@ export async function exportDocx({
   } = pkg.anchors);
   ORDERED_BINDING_FIELDS = SECTIONS
     .flatMap(sec => (sec.fields || []))
-    .filter(f => f.templateBinding);
+    .filter(f => f.templateBinding)
+    // En mode "prequal", on ne touche qu'aux champs marqués comme partagés
+    // ou spécifiques à la phase de Pré-qualification. Les autres restent
+    // tels quels dans le template (avec leurs placeholders).
+    .filter(f => !isPrequalMode || f.prequal === true || f.prequalOnly === true);
 
   // 1. Load template — with one retry for transient failures.
   // Vite HMR briefly drops static asset serving while rebuilding, and the
   // template file lives on Google Drive which can momentarily de-materialise
   // it. A single 600 ms retry covers both cases without masking real outages.
+  const templatePath = isPrequalMode ? PREQUAL_TEMPLATE_PATH : DAO_TEMPLATE_PATH;
   async function fetchTemplate() {
     let lastErr;
     for (let i = 0; i < 2; i++) {
       try {
-        const r = await fetch('/templates/v2024/fr/template-DTAO.docx', { cache: 'no-store' });
+        const r = await fetch(templatePath, { cache: 'no-store' });
         if (r.ok) return r;
-        lastErr = new Error(`Template introuvable : /templates/v2024/fr/template-DTAO.docx (HTTP ${r.status})`);
+        lastErr = new Error(`Template introuvable : ${templatePath} (HTTP ${r.status})`);
       } catch (e) {
         lastErr = e;
       }
@@ -4698,7 +4710,8 @@ export async function exportDocx({
     .trim()
     .replace(/\s+/g, '_');
   const suffix = cleanMode ? '_clean' : '';
-  const filename = `DTAO_${projectName}_${new Date().toISOString().slice(0, 10)}${suffix}.docx`;
+  const prefix = mode === 'prequal' ? 'Prequal' : 'DTAO';
+  const filename = `${prefix}_${projectName}_${new Date().toISOString().slice(0, 10)}${suffix}.docx`;
 
   saveAs(blob, filename);
   return filename;

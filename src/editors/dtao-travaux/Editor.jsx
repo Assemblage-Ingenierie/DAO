@@ -32,8 +32,11 @@ const FIRST_SECTION = SECTIONS[0]?.id || "identification";
 //   - `backTo`    : URL du lien "← retour" (par défaut la home)
 //   - `projectId` : conservé pour identifier le projet dans les logs et
 //                   les useEffect dépendants
-export function Editor({ projectId, project, setData, onRename, backTo = "/" }) {
+export function Editor({ projectId, project, setData, onRename, backTo = "/", marketType = null }) {
   const pkg = usePackage();
+  // True quand le marché est "AO Travaux (pré-qual.)" : on affiche les badges
+  // "Préqual" sur les champs partagés et un second groupe d'export.
+  const isPrequalMarket = marketType === "AO_TVX_PQ";
 
   // UI state (not persisted)
   const [activeSection, setActiveSection] = useState(FIRST_SECTION);
@@ -135,7 +138,11 @@ export function Editor({ projectId, project, setData, onRename, backTo = "/" }) 
 
   // Export DOCX — safe (tout le contenu, surlignages rouges conservés) ou
   // clean (tous les éléments rouges retirés du document final)
-  const handleExportDocx = async (cleanMode = false) => {
+  // `mode` détermine quel template Word + quel sous-ensemble de champs sont
+  // exportés. "dao" = comportement historique. "prequal" = utilise le
+  // template de Pré-qualification + filtre aux champs marqués `prequal:true`
+  // ou `prequalOnly:true` dans sections.js.
+  const handleExportDocx = async (cleanMode = false, mode = "dao") => {
     setExporting(true);
     setExportMsg(null);
     try {
@@ -152,6 +159,7 @@ export function Editor({ projectId, project, setData, onRename, backTo = "/" }) 
         articlesEsssRows,
         tranchesRows,
         cleanMode,
+        mode,
       });
       setExportMsg({ type: "success", text: tpl(LABELS.app.exportSuccess, { filename }) });
     } catch (err) {
@@ -412,6 +420,7 @@ export function Editor({ projectId, project, setData, onRename, backTo = "/" }) 
                   onFieldCommentChange={handleFieldCommentChange}
                   actors={actors}
                   formData={formData}
+                  isPrequalMarket={isPrequalMarket}
                   personnelRows={personnelRows}
                   onPersonnelRowsChange={setPersonnelRows}
                   materielRows={materielRows}
@@ -473,9 +482,80 @@ export function Editor({ projectId, project, setData, onRename, backTo = "/" }) 
             flexShrink: 0,
           }}
         >
+          {/* Groupe Pré-qual : visible seulement quand le marché est typé
+              "AO Travaux (pré-qual.)". Génère un .docx basé sur le
+              template de Pré-qualification, restreint aux champs marqués
+              `prequal:true` ou `prequalOnly:true`. */}
+          {isPrequalMarket && (
+            <>
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  color: "#4D4D4D",
+                  marginRight: 2,
+                }}
+              >
+                Pré-qual
+              </span>
+              <button
+                onClick={() => handleExportDocx(false, "prequal")}
+                disabled={exporting}
+                title="Exporter le document de Pré-qualification — version safe (surlignages conservés)"
+                style={{
+                  padding: "7px 18px",
+                  background: exporting ? "#ccc" : "#1565C0",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 5,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: exporting ? "not-allowed" : "pointer",
+                  fontFamily: "Open Sans, sans-serif",
+                }}
+              >
+                Export safe
+              </button>
+              <button
+                onClick={() => handleExportDocx(true, "prequal")}
+                disabled={exporting}
+                title="Exporter le document de Pré-qualification — version clean (zones rouges retirées)"
+                style={{
+                  padding: "7px 18px",
+                  background: exporting ? "#ccc" : "#E30513",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 5,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  cursor: exporting ? "not-allowed" : "pointer",
+                  fontFamily: "Open Sans, sans-serif",
+                  marginRight: 12,
+                }}
+              >
+                Export clean
+              </button>
+
+              <span
+                style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.5,
+                  textTransform: "uppercase",
+                  color: "#4D4D4D",
+                  marginRight: 2,
+                }}
+              >
+                DAO
+              </span>
+            </>
+          )}
+
           {/* Export safe — document complet, surlignages rouges conservés */}
           <button
-            onClick={() => handleExportDocx(false)}
+            onClick={() => handleExportDocx(false, "dao")}
             disabled={exporting}
             title={LABELS.app.exportSafeTooltip}
             style={{
@@ -498,7 +578,7 @@ export function Editor({ projectId, project, setData, onRename, backTo = "/" }) 
 
           {/* Export clean — retire automatiquement tous les passages rouges */}
           <button
-            onClick={() => handleExportDocx(true)}
+            onClick={() => handleExportDocx(true, "dao")}
             disabled={exporting}
             title={LABELS.app.exportCleanTooltip}
             style={{

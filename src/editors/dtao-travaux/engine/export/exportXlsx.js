@@ -50,7 +50,7 @@ function personnelRowsToTable(rows) {
   // Sub-header row labels mirror the Word table column titles.
   out.push({
     kind: 'tableHeader',
-    cells: ['', '', 'Réf.', 'Poste', 'Exp. gén. (ans)', 'Exp. comp. (ans)', 'Note', ''],
+    cells: ['', '', 'Réf.', 'Poste', 'Exp. gén. (ans)', 'Exp. comp. (ans)', 'Note', '', ''],
   });
   const filtered = (rows || []).filter((r) => !isEmptyPersonnel(r));
   filtered.forEach((r, idx) => {
@@ -65,6 +65,7 @@ function personnelRowsToTable(rows) {
         r.exp_comparable || '',
         r.note || '',
         '',
+        '',
       ],
     });
   });
@@ -75,7 +76,7 @@ function materielRowsToTable(rows) {
   const out = [];
   out.push({
     kind: 'tableHeader',
-    cells: ['', '', 'Réf.', 'Type de matériel', 'Nombre min.', '', '', ''],
+    cells: ['', '', 'Réf.', 'Type de matériel', 'Nombre min.', '', '', '', ''],
   });
   const filtered = (rows || []).filter((r) => !isEmptyMateriel(r));
   filtered.forEach((r, idx) => {
@@ -87,6 +88,7 @@ function materielRowsToTable(rows) {
         String(idx + 1),
         r.type || '',
         r.nombre_min || '',
+        '',
         '',
         '',
         '',
@@ -133,7 +135,7 @@ function articlesRowsToTable(rows) {
   const out = [];
   out.push({
     kind: 'tableHeader',
-    cells: ['', '', 'No.', "N° d'Article non applicable", 'Explications', '', '', ''],
+    cells: ['', '', 'No.', "N° d'Article non applicable", 'Explications', '', '', '', ''],
   });
   const filtered = (rows || []).filter((r) => !isEmptyArticleRow(r));
   // Always emit at least one (possibly empty) row so the table structure is
@@ -151,6 +153,7 @@ function articlesRowsToTable(rows) {
         String(idx + 1),
         r.article || '',
         r.explication || '',
+        '',
         '',
         '',
         '',
@@ -175,7 +178,7 @@ function tranchesRowsToTable(rows) {
   const out = [];
   out.push({
     kind: 'tableHeader',
-    cells: ['', '', 'No.', 'Nom / Description des Tranches', "Délai d'Achèvement", 'Pénalités de retard', '', ''],
+    cells: ['', '', 'No.', 'Nom / Description des Tranches', "Délai d'Achèvement", 'Pénalités de retard', '', '', ''],
   });
   const filtered = (rows || []).filter((r) => !isEmptyTrancheRow(r));
   // Keep at least one (possibly empty) row so the structure is always
@@ -228,7 +231,7 @@ function groupOf(sectionId) {
 // in the app — visible, small gray bold. ID (col 1) is the technical key
 // used for round-tripping; hidden by default.
 function buildAoa({ formData, actorAssignments, fieldComments, actors, personnelRows, materielRows, propositionItems, articlesEsssRows, tranchesRows }) {
-  const NCOL = 8;
+  const NCOL = 9;
   const VALUE_COL = 5; // shifted +1 because UID column was inserted at index 0
   const rows = [];
   const merges = [];
@@ -244,7 +247,7 @@ function buildAoa({ formData, actorAssignments, fieldComments, actors, personnel
   };
 
   // Header row
-  rows.push(['UID', 'ID', 'Réf.', 'Champ', 'Contexte', 'Valeur remplie', 'Commentaires', 'Destinataire']);
+  rows.push(['UID', 'ID', 'Réf.', 'Champ', 'Contexte', 'Valeur remplie', 'Commentaires', 'Destinataire', 'À remplir si préqual ?']);
   rowStyles.push('header');
 
   let lastGroup = null;
@@ -310,7 +313,7 @@ function buildAoa({ formData, actorAssignments, fieldComments, actors, personnel
       }
       const context = field.context || '';
       const uid = field.uid || '';
-      rows.push([uid, field.id, ref, field.label, context, value, commentText, recipientLabels]);
+      rows.push([uid, field.id, ref, field.label, context, value, commentText, recipientLabels, (field.prequal === true || field.prequalOnly === true) ? 'Oui' : '']);
       rowStyles.push('field');
       const rowIdx = rows.length - 1; // 0-indexed position in `rows`
 
@@ -348,7 +351,7 @@ function buildAoa({ formData, actorAssignments, fieldComments, actors, personnel
     }
     if (section.id === 'proposition_technique') {
       for (const e of propositionItemsToEntries(propositionItems)) {
-        rows.push(['', e.id, e.ref, e.label, e.context, e.value, '', '']);
+        rows.push(['', e.id, e.ref, e.label, e.context, e.value, '', '', '']);
         rowStyles.push('field');
       }
     }
@@ -361,7 +364,7 @@ function buildAoa({ formData, actorAssignments, fieldComments, actors, personnel
       const enjeuxField = section.fields.find((f) => f.type === 'enjeux_list');
       if (enjeuxField) {
         for (const e of enjeuxValueToEntries(formData?.[enjeuxField.id])) {
-          rows.push(['', e.id, e.ref, e.label, e.context, e.value, '', '']);
+          rows.push(['', e.id, e.ref, e.label, e.context, e.value, '', '', '']);
           rowStyles.push('field');
           // Per-enjeu Oui/Non dropdown
           dropdowns.push({
@@ -476,7 +479,7 @@ const STYLE = {
 };
 
 function applyLayout(ws, rows, merges, rowStyles) {
-  const NCOL = 8;
+  const NCOL = 9;
   ws['!merges'] = merges;
   // Column widths — UID is visible (user-facing id). ID is technical (hidden
   // by default, kept for round-trip via the importer).
@@ -489,6 +492,7 @@ function applyLayout(ws, rows, merges, rowStyles) {
     { wch: 40, customWidth: 1 },                // 5 Valeur remplie
     { wch: 32, customWidth: 1 },                // 6 Commentaires
     { wch: 22, customWidth: 1 },                // 7 Destinataire
+    { wch: 22, customWidth: 1 },                // 8 À remplir si préqual ?
   ];
   // Row heights: group & section slightly taller.
   ws['!rows'] = rowStyles.map((kind) => {

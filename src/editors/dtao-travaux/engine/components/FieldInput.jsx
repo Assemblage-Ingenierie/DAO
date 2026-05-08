@@ -201,6 +201,7 @@ export default function FieldInput({
   onArticlesEsssRowsChange,
   tranchesRows,
   onTranchesRowsChange,
+  isPrequalMarket = false,
 }) {
   const { labels, tpl } = usePackage();
   const [expanded, setExpanded] = useState(false);
@@ -214,6 +215,12 @@ export default function FieldInput({
     const [condField, condVal] = field.condition.split("=");
     if (!formData || formData[condField] !== condVal) return null;
   }
+
+  // Champs spécifiques à la phase de Pré-qualification (date+heure+adresse
+  // dupliquées). Toujours rendus, mais désactivés/grisés quand le marché
+  // n'est pas typé AO Travaux (pré-qual.) — dans ce cas seul le champ DAO
+  // est utile, le champ préqual sert juste de placeholder visuel.
+  const prequalOnlyDisabled = field.prequalOnly && !isPrequalMarket;
 
   const isSpecialType = [
     "personnel_table",
@@ -642,6 +649,33 @@ export default function FieldInput({
     </div>
   );
 
+  // Badge "Pré-qual" affiché à droite du champ quand (1) le marché est typé
+  // AO Travaux (pré-qual.) et (2) le champ est partagé avec le doc préqual.
+  // Aussi affiché sur les champs prequalOnly (date/heure/adresse dupliquées).
+  const showPrequalBadge =
+    isPrequalMarket && (field.prequal === true || field.prequalOnly === true);
+  const prequalBadge = showPrequalBadge ? (
+    <div
+      style={{
+        flexShrink: 0,
+        background: "#30323E",
+        color: "#fff",
+        padding: "4px 10px",
+        borderRadius: 4,
+        fontSize: 11,
+        fontWeight: 700,
+        letterSpacing: 0.3,
+      }}
+    >
+      Pré-qual
+    </div>
+  ) : null;
+
+  // Quand un champ prequalOnly est rendu sur un marché non-préqual, on le
+  // garde visible (pour cohérence visuelle) mais inerte.
+  const inputOpacity = prequalOnlyDisabled ? 0.45 : (isDelegated ? 0.5 : 1);
+  const inputPointerEvents = prequalOnlyDisabled ? "none" : "auto";
+
   return (
     <div style={cardStyle}>
       {useInlineLayout ? (
@@ -653,12 +687,16 @@ export default function FieldInput({
           }}
         >
           {labelBlock}
-          <div style={{ flex: 1, opacity: isDelegated ? 0.5 : 1 }}>{renderInput()}</div>
+          <div style={{ flex: 1, opacity: inputOpacity, pointerEvents: inputPointerEvents }}>{renderInput()}</div>
           {actionsBlock}
+          {prequalBadge}
         </div>
       ) : (
         <>
-          <div style={{ marginBottom: 6 }}>{labelBlock}</div>
+          <div style={{ marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            {labelBlock}
+            {prequalBadge}
+          </div>
           {/* Context shown BEFORE the input for special/readonly types so the user
               reads the « guide » text from the template before interacting. */}
           {field.context && (
@@ -686,7 +724,11 @@ export default function FieldInput({
               />
             </div>
           )}
-          {!isReadonly && <div>{renderInput()}</div>}
+          {!isReadonly && (
+            <div style={{ opacity: inputOpacity, pointerEvents: inputPointerEvents }}>
+              {renderInput()}
+            </div>
+          )}
         </>
       )}
 

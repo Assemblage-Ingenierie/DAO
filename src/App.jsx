@@ -87,6 +87,7 @@ function DtaoEditorRoute() {
       setData={setData}
       onRename={onRename}
       backTo={backTo}
+      marketType={parentInfo.marketType}
     />
   );
 }
