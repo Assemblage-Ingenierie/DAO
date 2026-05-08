@@ -3347,6 +3347,9 @@ function applyHighlightingRules(docXml, footnotesXml, ctx) {
   let xml = docXml;
   let fnXml = footnotesXml;
   for (const rule of HIGHLIGHTING_RULES) {
+    // Règles spécifiques au DTAO (pas pertinentes pour le document de
+    // Pré-qualification) : on les saute en mode prequal.
+    if (ctx.mode === 'prequal' && rule.daoOnly === true) continue;
     if (!shouldFireRule(rule, ctx.formData)) continue;
     try {
       if (typeof rule.apply === 'function') {
@@ -4594,7 +4597,7 @@ export async function exportDocx({
       highlightPrequalificationReferences,
       highlightUtilitySection,
     };
-    const r = applyHighlightingRules(docXml, footnotesXml, { formData, anchors, helpers });
+    const r = applyHighlightingRules(docXml, footnotesXml, { formData, anchors, helpers, mode });
     docXml = r.docXml;
     if (r.footnotesXml !== undefined) footnotesXml = r.footnotesXml;
   }

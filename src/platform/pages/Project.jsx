@@ -685,11 +685,19 @@ export default function Project() {
     setData((prev) => addEquipeMember(prev, name));
   }
   function createMarket(market) {
-    // Pré-remplit editor_data avec le contexte Plateforme : le nom du
-    // projet va dans PREA-002 ("Nom du Projet") et le nom du marché
-    // dans PREA-003 ("Identification des Travaux"). Pré-remplissage
-    // one-shot — l'utilisateur peut ensuite éditer librement, et les
-    // futures modifs côté Plateforme ne propagent plus dans l'éditeur.
+    // Pré-remplit editor_data avec le contexte Plateforme :
+    //  - PREA-002 (Nom du Projet)         ← nom du projet Plateforme
+    //  - PREA-003 (Identification Travaux) ← nom du marché
+    //  - S02-001 (Pré-qualification est/n'est pas) ← dérivé du type de
+    //    marché : AO_TVX_PQ → "est", AO_TVX_SP → "n'est pas".
+    // Pré-remplissage one-shot — l'utilisateur peut ensuite éditer
+    // librement, et les futures modifs côté Plateforme ne propagent plus.
+    const seedPrequalification =
+      market.type === "AO_TVX_PQ"
+        ? { prequalification: "est" }
+        : market.type === "AO_TVX_SP"
+          ? { prequalification: "n'est pas" }
+          : {};
     const enriched = {
       ...market,
       editor_data: {
@@ -698,6 +706,7 @@ export default function Project() {
           ...((market.editor_data && market.editor_data.formData) || {}),
           nom_projet: foundProject.name,
           identification_travaux: market.name,
+          ...seedPrequalification,
         },
       },
     };

@@ -279,6 +279,7 @@ export const HIGHLIGHTING_RULES = [
   {
     id: 'prequalification-no-prequal-guide',
     description: 'IS 4.5 — guide "[sinon supprimer toute cette section]" rouge si prequalification === "n\'est pas"',
+    daoOnly: true, // règle propre au DTAO ; non pertinente dans l'export du document de Pré-qualification
     trigger: { field: 'prequalification', equals: "n'est pas" },
     ops: [{ type: 'highlight-matching', matchAnchor: 'NO_PREQUAL_GUIDE_ANCHORS' }],
     log: ({ paraCount, runCount }) =>
@@ -769,6 +770,7 @@ export const HIGHLIGHTING_RULES = [
   {
     id: 'prequalification-est-delete-block-3-3',
     description: 'IS 4.5 — supprime le bloc 3.3 "Qualification si une Pré-qualification n\'a pas été effectuée" si prequalification === "est"',
+    daoOnly: true, // bloc spécifique au DTAO ; absent du document de Pré-qualification
     trigger: { field: 'prequalification', equals: 'est' },
     apply: (docXml, formData, ctx) => {
       const r = ctx.helpers.removeNoPrequalQualificationBlock(docXml, formData.prequalification);
@@ -785,6 +787,7 @@ export const HIGHLIGHTING_RULES = [
   {
     id: 'prequalification-n-est-pas-references',
     description: 'Préqualif "n\'est pas" — surligne rouge les références "pré-qualif" sauf exclusions',
+    daoOnly: true, // règle propre au DTAO ; le document de Pré-qualification parle naturellement de "pré-qualif" partout
     trigger: { field: 'prequalification', equals: "n'est pas" },
     apply: (docXml, formData, ctx) => {
       const r = ctx.helpers.highlightPrequalificationReferences(docXml);
