@@ -4027,10 +4027,13 @@ export async function exportDocx({
   ORDERED_BINDING_FIELDS = SECTIONS
     .flatMap(sec => (sec.fields || []))
     .filter(f => f.templateBinding)
-    // En mode "prequal", on ne touche qu'aux champs marqués comme partagés
-    // ou spécifiques à la phase de Pré-qualification. Les autres restent
-    // tels quels dans le template (avec leurs placeholders).
-    .filter(f => !isPrequalMode || f.prequal === true || f.prequalOnly === true);
+    // En mode "prequal", on ne touche à AUCUN champ pour l'instant. Le
+    // template de Pré-qualification a sa propre structure d'anchors qui ne
+    // correspond pas au DTAO ; le remplissage doit être recablé champ par
+    // champ avec les instructions de l'utilisateur (par uid). Pour ne pas
+    // produire un doc à moitié rempli avec de mauvais anchors, on désactive
+    // tout le pipeline de field-binding ici en mode prequal.
+    .filter(() => !isPrequalMode);
 
   // 1. Load template — with one retry for transient failures.
   // Vite HMR briefly drops static asset serving while rebuilding, and the
