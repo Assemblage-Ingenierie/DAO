@@ -519,6 +519,18 @@ export const PREQUAL_5_4_SUPPRIMER_MARKER_RE = /\[A\s+supprimer\s+si\s+le\s+tran
 export const PREQUAL_SURETE_HEADING_RE = /^Sûreté\s*$/i;
 export const PREQUAL_SECTION_IV_HEADING_RE = /^Section\s+IV\b.*Formulaires\s+de\s+Candidature/i;
 
+// Préambule + Notes au MOA (pages 2-10 du PDF de référence) : tout ce
+// contenu décrit comment utiliser le template (Préambule, Quelle est
+// l'utilité de la Pré-qualification, Guide ESSS, Note Sûreté, blueprint
+// d'Avis de Pré-qualification) — il doit être surligné rouge dans
+// l'export pour signaler au MOA qu'il faut le supprimer du document
+// final remis aux candidats.
+// Range : du heading "Préambule" (inclus) jusqu'au heading
+// "AVIS SPECIFIQUE DE PASSATION DE MARCHES" (exclu, c'est la 1re page
+// du document à publier — page 11 du PDF).
+export const PREQUAL_PREAMBULE_HEADING_RE = /^Préambule\s*$/i;
+export const PREQUAL_AVIS_SPECIFIQUE_HEADING_RE = /^AVIS\s+SPECIFIQUE\s+DE\s+PASSATION\s+DE\s+MARCHE/i;
+
 // ── Pré-qualification surlignage ──────────────────────────────────────────
 // PREQUAL_RE: le mot lui-même (avec/sans tiret, e/é). Tout paragraphe qui le
 // contient doit être surligné rouge SAUF s'il matche l'une des PREQUAL_EXCLUDE_RES

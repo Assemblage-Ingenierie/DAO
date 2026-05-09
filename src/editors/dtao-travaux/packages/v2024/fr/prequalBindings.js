@@ -38,7 +38,10 @@ export const PREQUAL_BINDINGS = [
   },
   {
     description: 'Avis Pré-qual — Brève description des travaux',
-    placeholders: ['[Insérer : brève description des travaux]'],
+    placeholders: [
+      '[Insérer : brève description des travaux]',
+      '[Insérer le nom des travaux]',
+    ],
     global: true,
     resolve: (fd) => fd.identification_travaux,
   },
@@ -53,7 +56,12 @@ export const PREQUAL_BINDINGS = [
   // ── Page de garde / corps : références récurrentes ──────────────────────
   {
     description: 'Nom du Maître d\'Ouvrage',
-    placeholders: ['[insérer le nom du Maître d’Ouvrage]', "[insérer le nom du Maître d'Ouvrage]"],
+    placeholders: [
+      '[insérer le nom du Maître d’Ouvrage]',
+      "[insérer le nom du Maître d'Ouvrage]",
+      '[Insérer le nom légal complet du Maître d’Ouvrage]',
+      "[Insérer le nom légal complet du Maître d'Ouvrage]",
+    ],
     global: true,
     resolve: (fd) => fd.nom_maitrise_ouvrage,
   },

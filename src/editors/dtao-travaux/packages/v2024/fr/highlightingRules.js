@@ -918,4 +918,19 @@ export const HIGHLIGHTING_RULES = [
     log: ({ paraCount, runCount }) =>
       paraCount > 0 ? `[exportDocx] Préqual : bloc Sûreté (Critères 6.x) rouge (${paraCount} para, ${runCount} run)` : null,
   },
+
+  // Préambule + Notes au MOA — toujours rouge (pages 2-10 du PDF de
+  // référence). Ce contenu décrit comment utiliser le template (Préambule,
+  // utilité de la pré-qualification, guides ESSS et Sûreté, blueprint de
+  // l'Avis de Pré-qualification) et ne doit pas apparaître dans le document
+  // final remis aux candidats.
+  {
+    id: 'prequal-preamble-always-red',
+    description: 'Préqual — Préambule + Notes au MOA toujours rouges (du heading "Préambule" jusqu\'au heading "AVIS SPECIFIQUE DE PASSATION")',
+    prequalOnly: true,
+    trigger: { always: true },
+    ops: [{ type: 'highlight-range', startAnchor: 'PREQUAL_PREAMBULE_HEADING_RE', endAnchor: 'PREQUAL_AVIS_SPECIFIQUE_HEADING_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Préqual : Préambule + Notes au MOA rouges (${paraCount} para, ${runCount} run)` : null,
+  },
 ];
