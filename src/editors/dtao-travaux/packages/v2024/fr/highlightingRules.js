@@ -929,7 +929,7 @@ export const HIGHLIGHTING_RULES = [
     description: 'Préqual — Préambule + Notes au MOA toujours rouges (du heading "Préambule" jusqu\'au heading "AVIS SPECIFIQUE DE PASSATION")',
     prequalOnly: true,
     trigger: { always: true },
-    ops: [{ type: 'highlight-range', startAnchor: 'PREQUAL_PREAMBULE_HEADING_RE', endAnchor: 'PREQUAL_AVIS_SPECIFIQUE_HEADING_RE' }],
+    ops: [{ type: 'highlight-range', startAnchor: 'PREAMBLE_HEADING_RE', endAnchor: 'PREQUAL_AVIS_SPECIFIQUE_HEADING_RE' }],
     log: ({ paraCount, runCount }) =>
       paraCount > 0 ? `[exportDocx] Préqual : Préambule + Notes au MOA rouges (${paraCount} para, ${runCount} run)` : null,
   },

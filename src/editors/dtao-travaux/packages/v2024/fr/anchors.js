@@ -525,10 +525,10 @@ export const PREQUAL_SECTION_IV_HEADING_RE = /^Section\s+IV\b.*Formulaires\s+de\
 // d'Avis de Pré-qualification) — il doit être surligné rouge dans
 // l'export pour signaler au MOA qu'il faut le supprimer du document
 // final remis aux candidats.
-// Range : du heading "Préambule" (inclus) jusqu'au heading
-// "AVIS SPECIFIQUE DE PASSATION DE MARCHES" (exclu, c'est la 1re page
-// du document à publier — page 11 du PDF).
-export const PREQUAL_PREAMBULE_HEADING_RE = /^Préambule\s*$/i;
+// Range : du heading "Préambule" (inclus, on réutilise PREAMBLE_HEADING_RE
+// défini plus haut, plus tolérant à la fragmentation Word) jusqu'au
+// heading "AVIS SPECIFIQUE DE PASSATION DE MARCHES" (exclu, c'est la 1re
+// page du document à publier — page 11 du PDF).
 export const PREQUAL_AVIS_SPECIFIQUE_HEADING_RE = /^AVIS\s+SPECIFIQUE\s+DE\s+PASSATION\s+DE\s+MARCHE/i;
 
 // ── Pré-qualification surlignage ──────────────────────────────────────────

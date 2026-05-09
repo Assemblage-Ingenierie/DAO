@@ -4108,7 +4108,11 @@ export async function exportDocx({
   // how to use the template itself ("Notes à l'utilisateur") and must not
   // appear in the final DAO handed to bidders. Run this first so all later
   // byte-offset-based operations see the cleaned XML.
-  {
+  // En mode prequal on saute cette étape : la rule
+  // `prequal-preamble-always-red` peint en rouge tout le bloc Préambule
+  // + Notes au MOA et c'est `stripRedContent` (clean mode) qui le retire
+  // si l'utilisateur veut un doc final propre.
+  if (!isPrequalMode) {
     const { xml: out, removed } = stripPreambleBlock(docXml);
     docXml = out;
     if (removed > 0) console.log(`[exportDocx] Bloc Préambule supprimé (${removed} octets)`);
