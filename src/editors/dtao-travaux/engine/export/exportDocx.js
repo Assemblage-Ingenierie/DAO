@@ -784,6 +784,44 @@ function replaceField(xml, search, nth, value, commentIds, global) {
   return r;
 }
 
+// ── Pré-qualification — registre dédié de bindings ─────────────────────────
+//
+// Quand `mode === 'prequal'`, on n'utilise PAS le `templateBinding` porté par
+// chaque field de sections.js (calé sur le DTAO). On itère plutôt le registre
+// `pkg.prequalBindings` qui décrit les substitutions propres au template du
+// document de Pré-qualification.
+//
+// Format d'une entrée :
+//   { description, placeholders: [string], global?: bool, nth?: number,
+//     isDate?: bool, resolve(formData): string }
+//
+// On ne fait QUE des substitutions de placeholders ici — pas de fillCcap*,
+// pas de surlignage spécifique. Les helpers DAO-only sont déjà gates côté
+// pipeline via les `daoOnly` flags des highlight rules.
+function applyPrequalBindings(xml, formData, bindings) {
+  if (!Array.isArray(bindings)) return xml;
+  for (const binding of bindings) {
+    let value = binding.resolve ? binding.resolve(formData) : '';
+    if (value === null || value === undefined || value === '') continue;
+    if (binding.isDate) value = fmtDate(value);
+    else value = Array.isArray(value) ? value.join(', ') : String(value);
+    const placeholders = Array.isArray(binding.placeholders)
+      ? binding.placeholders
+      : [binding.placeholders];
+    for (const ph of placeholders) {
+      if (!ph) continue;
+      const before = xml;
+      xml = replaceField(xml, ph, binding.nth || 1, value, [], !!binding.global);
+      if (xml !== before) {
+        // Premier placeholder qui matche → on s'arrête (les variantes
+        // suivantes du même binding ne devraient pas coexister dans le doc).
+        break;
+      }
+    }
+  }
+  return xml;
+}
+
 // ── Field bindings ─────────────────────────────────────────────────────────
 //
 // Phase 1.6 finished: every exportable field now carries its own
@@ -4507,6 +4545,17 @@ export async function exportDocx({
         console.log(`[exportDocx] ${count} légende(s) remplie(s) pour "${id}" (${tally.underscores}und/${tally.empty}vide/${tally.tabSelf}tab/${tally.tabPrev}tabPrev)`);
       }
     }
+  }
+
+  // 3a-bis. En mode prequal, on applique le registre dédié
+  // `pkg.prequalBindings` (mapping uid → placeholder du template de
+  // Pré-qualification). Les helpers personnel/matériel et la fillAao plus
+  // bas restent silencieux car leurs anchors n'existent pas dans le
+  // template prequal.
+  if (isPrequalMode && pkg.prequalBindings) {
+    const before = docXml;
+    docXml = applyPrequalBindings(docXml, formData, pkg.prequalBindings);
+    if (docXml !== before) console.log('[exportDocx] Bindings préqual appliqués');
   }
 
   // 3b. Fill personnel and matériel tables

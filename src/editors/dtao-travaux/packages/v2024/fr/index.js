@@ -30,6 +30,7 @@ import {
 } from './defaults.js';
 import { LABELS, tpl } from './labels.js';
 import { HIGHLIGHTING_RULES } from './highlightingRules.js';
+import { PREQUAL_BINDINGS } from './prequalBindings.js';
 
 // ── Named re-exports (style 1) ────────────────────────────────────────────
 // Mirrors the existing per-file imports so callers can switch to the barrel
@@ -44,6 +45,7 @@ export {
 };
 export { LABELS, tpl };
 export { HIGHLIGHTING_RULES };
+export { PREQUAL_BINDINGS };
 // anchors.js has ~60 named exports — re-export them all as a single
 // namespace `anchors` rather than enumerating each.
 export { anchors };
@@ -74,4 +76,5 @@ export const pkgV2024Fr = {
   labels: LABELS,
   tpl,
   highlightingRules: HIGHLIGHTING_RULES,
+  prequalBindings: PREQUAL_BINDINGS,
 };
