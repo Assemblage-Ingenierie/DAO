@@ -880,4 +880,42 @@ export const HIGHLIGHTING_RULES = [
     log: ({ paraCount, runCount }) =>
       paraCount > 0 ? `[exportDocx] CCAP draft "SC 8.1 commencement" : ${paraCount} paragraphe(s) jaune→rouge (${runCount} run(s))` : null,
   },
+
+  // ── Règles propres au document de Pré-qualification (mode prequal) ──────
+  // Ces rules ne s'appliquent qu'en `mode === 'prequal'` (gate dans
+  // applyHighlightingRules via `prequalOnly: true`).
+
+  // Marqueur "[A supprimer si le transfert de compétence n'est pas un enjeu]"
+  // — guide MOA, toujours surligné rouge, peu importe le choix utilisateur.
+  {
+    id: 'prequal-5-4-supprimer-marker',
+    description: 'Préqual — marqueur "[A supprimer si transfert pas enjeu]" toujours rouge',
+    prequalOnly: true,
+    trigger: { always: true },
+    ops: [{ type: 'highlight-matching', matchAnchor: 'PREQUAL_5_4_SUPPRIMER_MARKER_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Préqual : marqueur 5.4 "à supprimer" surligné rouge (${paraCount} para, ${runCount} run)` : null,
+  },
+
+  // Bloc Critère 5.4 complet en rouge si transfert_competence === "Non – supprimer 5.4"
+  {
+    id: 'prequal-5-4-block-non-enjeu',
+    description: 'Préqual — bloc complet Critère 5.4 rouge si transfert_competence non retenu',
+    prequalOnly: true,
+    trigger: { field: 'transfert_competence', equals: 'Non – supprimer 5.4' },
+    ops: [{ type: 'highlight-range', startAnchor: 'PREQUAL_CRITERE_5_4_HEADING_RE', endAnchor: 'PREQUAL_CRITERE_5_5_HEADING_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Préqual : bloc Critère 5.4 (transfert compétence) rouge (${paraCount} para, ${runCount} run)` : null,
+  },
+
+  // Bloc Sûreté complet (Critère 6.x) en rouge si surete_applicable === "Non"
+  {
+    id: 'prequal-6-surete-non',
+    description: 'Préqual — bloc complet Critères 6.x (Sûreté) rouge si surete_applicable=Non',
+    prequalOnly: true,
+    trigger: { field: 'surete_applicable', equals: 'Non' },
+    ops: [{ type: 'highlight-range', startAnchor: 'PREQUAL_SURETE_HEADING_RE', endAnchor: 'PREQUAL_SECTION_IV_HEADING_RE' }],
+    log: ({ paraCount, runCount }) =>
+      paraCount > 0 ? `[exportDocx] Préqual : bloc Sûreté (Critères 6.x) rouge (${paraCount} para, ${runCount} run)` : null,
+  },
 ];

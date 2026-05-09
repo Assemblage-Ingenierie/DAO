@@ -3388,6 +3388,9 @@ function applyHighlightingRules(docXml, footnotesXml, ctx) {
     // Règles spécifiques au DTAO (pas pertinentes pour le document de
     // Pré-qualification) : on les saute en mode prequal.
     if (ctx.mode === 'prequal' && rule.daoOnly === true) continue;
+    // Symétrique : règles spécifiques au document de Pré-qualification ne
+    // s'exécutent qu'en mode prequal.
+    if (ctx.mode !== 'prequal' && rule.prequalOnly === true) continue;
     if (!shouldFireRule(rule, ctx.formData)) continue;
     try {
       if (typeof rule.apply === 'function') {

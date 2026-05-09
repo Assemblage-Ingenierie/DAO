@@ -498,6 +498,27 @@ export const CAPTION_NOM_MARCHE_RE = /^\s*\[Nom du March[ée]\]\s*$/;
 // Header de la table "N° d'Article non applicable / [insérer les explications…]".
 export const ARTICLES_NON_APPLICABLES_TABLE_HEADER_RE = /Numéro d'Article non applicable[\s\S]*insérer les explications/;
 
+// ── Anchors propres au document de Pré-qualification (mode prequal) ──────
+// Utilisés par les rules `prequalOnly: true` pour piloter le surlignage
+// rouge conditionnel des sections optionnelles du doc préqual.
+
+// Critère 5.4 — Expérience spécifique de transfert de compétence ESSS.
+// Heading marquant le début du bloc à éventuellement supprimer si
+// `transfert_competence === "Non – supprimer 5.4"`.
+export const PREQUAL_CRITERE_5_4_HEADING_RE = /^Critère\s+5\.4\b.*transfert\s+de\s+compétence/i;
+// Heading suivant qui marque la fin du bloc 5.4.
+export const PREQUAL_CRITERE_5_5_HEADING_RE = /^Critère\s+5\.5\b/i;
+// Marqueur "[A supprimer si le transfert de compétence n'est pas un enjeu]"
+// — toujours surligné rouge comme guide MOA, indépendamment du choix.
+export const PREQUAL_5_4_SUPPRIMER_MARKER_RE = /\[A\s+supprimer\s+si\s+le\s+transfert\s+de\s+compétence\s+n['’]\s*est\s+pas\s+un\s+enjeu\]/i;
+
+// Critère 6 — Sûreté. Le bloc complet (6.1 à 6.5) doit être surligné rouge
+// quand `surete_applicable === "Non"` (pas de zone classée orange/rouge MEAE).
+// Démarre au heading "Sûreté" qui précède le tableau 6.1-6.5 ; finit au
+// heading "Section IV" suivant (Formulaires de Candidature).
+export const PREQUAL_SURETE_HEADING_RE = /^Sûreté\s*$/i;
+export const PREQUAL_SECTION_IV_HEADING_RE = /^Section\s+IV\b.*Formulaires\s+de\s+Candidature/i;
+
 // ── Pré-qualification surlignage ──────────────────────────────────────────
 // PREQUAL_RE: le mot lui-même (avec/sans tiret, e/é). Tout paragraphe qui le
 // contient doit être surligné rouge SAUF s'il matche l'une des PREQUAL_EXCLUDE_RES
