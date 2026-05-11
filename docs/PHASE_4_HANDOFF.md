@@ -159,10 +159,11 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
 
 ### Fixes notables découverts pendant les tests
 
-| Commit | Bug | Cause |
+| Commit / Migration | Bug | Cause |
 |---|---|---|
 | `8deedd1` | Page blanche post-login OAuth | `supabase.channel("dao-platform")` réutilisait le channel existant après ré-exec du useEffect (events `INITIAL_SESSION` + `SIGNED_IN` rapprochés au login). Fix : nom unique par mount `dao-platform-${crypto.randomUUID()}`. |
 | `999d2a5` | React error #310 en cliquant "Checklist →" | `Market.jsx` avait 6 hooks (useState, useMemo) **après** un early return `if (!market) return ...`. Pas un problème en Phase 3 (data sync) mais réveillé par les fluctuations Realtime. Fix : extraire le corps en sous-composant `<MarketContent>` qui ne monte que si market existe. |
+| Migration `harden_assemblage_email_check` | Suite security review Observation 1 : les deux fonctions de check email (RLS `is_assemblage_user` et hook signup `assemblage_domain_check`) utilisaient des prédicats faibles (`LIKE '%@assemblage.net'` et `split_part(.., '@', 2)`). Aucune des deux ne rejetait correctement les emails à plusieurs `@` (ex: `attacker@evil.com@assemblage.net` passait la RLS ; `attacker@assemblage.net@evil.com` passait le hook). Fix : regex stricte `^[^@]+@assemblage\.net$` (case-insensitive via `~*`) appliquée aux deux fonctions. Tests 8/8 PASS : tous les vecteurs d'attaque bloqués, les emails légitimes (toutes casses) passent. Note : `email_verified` n'est pas ajouté car non exposé au top-level du JWT Supabase v2 (vit uniquement dans `user_metadata` user-editable, interdit en authz). À revisiter si Supabase l'expose en top-level ou via `app_metadata`. |
 
 ### Tâches résiduelles (non bloquantes)
 
@@ -170,6 +171,13 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
 - **Site URL Supabase Auth** : pointe encore sur `https://aichantier.assemblage.net`. Pas bloquant car `redirectTo: window.location.origin` est passé explicitement par AuthGate, mais à harmoniser quand un custom domain DAO sera posé.
 - **Import legacy** : en attente de l'extraction JSON par le collègue.
 - **Nettoyage données test** : la "Côte d'Ivoire" créée pendant mes tests MCP reste dans `dao_countries`. À supprimer par Maël via l'UI ou TRUNCATE côté Supabase si reset complet souhaité.
+
+### Backlog hardening (Observations security review, non critiques aujourd'hui)
+
+- [x] **Observation 1 — Regex stricte email** : ✅ appliquée (migration `harden_assemblage_email_check`).
+- [ ] **Observation 2 — `FORCE ROW LEVEL SECURITY` sur les tables `dao_*`** + scoping `id = auth.uid()` sur les UPDATE de `dao_profiles`. Aujourd'hui le workspace partagé est intentionnel ; ces durcissements sont du belt-and-suspenders contre une future faille SECURITY DEFINER ou contre un user d'une autre app de INTERNAL qui voudrait écraser le profil d'un collègue.
+- [ ] **Observation 3 — Pinner `redirectTo` à l'URL canonique** (au lieu de `window.location.origin`) pour réduire la surface phishing. Faible ROI, attendre custom domain.
+- [ ] **Observation 4 — Retirer les paths user-specifiques dans `vite.config.js`** quand le workflow externe de Maël aura été remplacé (probablement quand Phase 5+ tournera enfin sur le workflow Vercel standard).
 
 ## Code review pré-migration (2026-05-11)
 
