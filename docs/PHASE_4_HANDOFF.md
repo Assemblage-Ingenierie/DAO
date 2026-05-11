@@ -7,7 +7,7 @@ C'est une app React (Vite) interne Assemblage qui sert deux usages combinés :
 1. **Plateforme Passation des Marchés AFD** — pilotage de nos appels d'offres : pays → projets → marchés, avec checklists de revue (DAO, AMI, DP, etc.) basées sur les Directives AFD 2024 et notre checklist APM. Memo pays, retex projet, référentiel des docs-types AFD.
 2. **DTAO Travaux PAY** — éditeur interactif qui produit le document Word d'un Dossier Type d'Appel d'Offres Travaux (template AFD-M0030). C'est le module qui s'ouvre quand on clique « Éditeur DTAO → » sur un marché de catégorie Travaux + production.
 
-Phases livrées (sur `main`, repo `mbhoyroo/DAO`) :
+Phases livrées (sur `main`, repo `Assemblage-Ingenierie/DAO`) :
 
 - **Phase 1** : refactor multi-pack du DTAO (engine générique + pack FR v2024 isolé, prêt pour pack EN/ES plus tard)
 - **Phase 2** : multi-projet en localStorage (HashRouter + plusieurs DTAO en parallèle)
@@ -65,7 +65,7 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
 
 5. **Migration des données existantes** — `src/platform/store/migrateLegacyDtao.js` actuellement migre `dtao_projects_v2` (localStorage) → `afd_platform_v1` (localStorage). Il faut une nouvelle étape qui pousse `afd_platform_v1` vers Supabase au premier login. Idempotente, à appeler une fois par utilisateur.
 
-6. **Vercel** — connecter le repo `mbhoyroo/DAO`, branch `main`. Vercel détecte Vite tout seul. Variables d'env à configurer : `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Build command par défaut. Output dir `dist`. Auto-deploy au push activé.
+6. **Vercel** — connecter le repo `Assemblage-Ingenierie/DAO`, branch `main`. Vercel détecte Vite tout seul. Variables d'env à configurer : `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Build command par défaut. Output dir `dist`. Auto-deploy au push activé.
 
 7. **Smoke test** — créer un projet → marché Travaux production → ouvrir Éditeur DTAO → remplir 2 ou 3 champs → recharger → données persistées. Bonus : ouvrir l'app dans 2 navigateurs avec le même login, vérifier que les modifs apparaissent (avec ou sans realtime selon ce qui a été choisi).
 
@@ -96,6 +96,6 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
 
 ## Contacts
 
-- Code : https://github.com/mbhoyroo/DAO (branche `main`, dernier commit `153c6f3`)
+- Code : https://github.com/Assemblage-Ingenierie/DAO (branche `main`, dernier commit `153c6f3`)
 - Référent côté métier : Maël
 - Si tu pivotes sur l'auth ou le modèle de données, fais signe — certains champs (ex : `legacyDtaoId` sur les marchés migrés) sont conservés pour audit, ne pas drop sans réflexion.
