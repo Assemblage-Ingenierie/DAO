@@ -144,25 +144,32 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
 
 ---
 
-## État d'avancement Phase 4 (2026-05-11)
+## État d'avancement Phase 4 (mis à jour 2026-05-11 — Phase 4 livrée)
 
-- ✅ **Étape 1 — Schéma SQL** : 10 tables `dao_*` créées sur INTERNAL via migrations `dao_initial_schema` + `dao_schema_advisor_fixes` + `dao_patch_market_editor_data_rpc`. RLS + Realtime + trigger auto-profile actifs. Seed `dao_equipe` posé (6 noms DEQ). Tests fonctionnels OK (cascade delete, trigger updated_at, RPC jsonb_set).
-- ✅ **Étape 2 — Auth** : Hook `assemblage_domain_check(jsonb)` déployé (migration `assemblage_before_user_created_hook`) et activé dans le dashboard Auth → Hooks. Rejette tout signup hors `@assemblage.net`. Provider Google OAuth réutilisé depuis l'app AI Chantier (même projet Supabase INTERNAL). Redirect URLs : reportées à après création projet Vercel (pas de localhost).
-- 🟡 **Étape 3 — Réécriture store JS (foundation faite, cutover à venir)** :
-  - `src/platform/supabase/client.js` : singleton `createClient` avec `persistSession`+`autoRefreshToken`.
-  - `src/platform/store/mappers.js` : conversion snake_case ↔ camelCase pour les 10 tables.
-  - `src/platform/store/supabaseMutations.js` : 22 primitives CRUD asynchrones (`insertCountry`, `patchMarketEditorData`, `upsertReview`, etc.) + `fetchPlatformData()` qui hydrate le graphe complet en parallèle.
-  - `src/platform/store/useSupabaseData.js` : hook orchestrateur `[data, mutate, status, session]` avec hydratation + Realtime (9 tables) + optimistic updates avec rollback.
-  - **Reste à faire (cutover)** :
-    - Réécrire `useMarketEditor.js` pour appeler `patchMarketEditorData` (RPC) au lieu de `loadPlatform/savePlatform`. Conserver le debounce 250 ms.
-    - Refactor des 7 pages qui font `setData(prev => helper(prev, ...))` : `Home.jsx`, `Country.jsx`, `Project.jsx`, `Market.jsx`, `MemoRetex.jsx`, `RefDocs.jsx`, `Admin.jsx`. Chaque appel devient `await mutate.X(...)`.
-    - `App.jsx` : remplacer l'IIFE bootstrap localStorage par un `useEffect` async + écran d'attente sur `status === "loading"`.
-    - Composant `AuthGate.jsx` : Sign in with Google + Sign out, gate sur `status === "unauthenticated"`.
-    - Supprimer `usePlatformData.js` (legacy) et renommer `useSupabaseData.js` → `usePlatformData.js`.
-- ⏸ **Étape 4 — Hooks Realtime** : déjà couvert par `useSupabaseData.js`. Pas d'étape séparée.
-- ⏸ **Étape 5 — Migration legacy** : bouton manuel "Importer mes données locales" à ajouter dans Admin une fois cutover stable.
-- ⏸ **Étape 6 — Vercel** : à faire en parallèle ou après cutover.
-- ⏸ **Étape 7 — Smoke test multi-navigateur** : critère d'acceptation final.
+| Étape | Statut | Détails |
+|---|---|---|
+| 1 — Schéma SQL | ✅ | 10 tables `dao_*`, RLS, Realtime, trigger auto-profil, seed `dao_equipe`. Migrations `dao_initial_schema` + `dao_schema_advisor_fixes` + `dao_patch_market_editor_data_rpc`. |
+| 2 — Auth Google OAuth | ✅ | Hook `assemblage_domain_check` (`assemblage_before_user_created_hook`) activé. Restriction `@assemblage.net`. Provider Google partagé avec AI Chantier. |
+| 3 — Réécriture store JS | ✅ | `supabase/client.js`, `store/mappers.js`, `store/supabaseMutations.js` (22 primitives), `store/usePlatformData.js` (hook `[data, mutate, status, session]` avec Realtime + optimistic + rollback). 7 pages migrées de `setData(prev=>…)` à `await mutate.X(…)`. `useMarketEditor.js` réécrit (RPC + debounce 250ms + flush beforeunload). |
+| 4 — Hooks Realtime | ✅ | Intégré au hook unique `usePlatformData`. Channel `dao-platform-<uuid>` unique par mount (évite le bug "cannot add postgres_changes callbacks after subscribe()"). Channel `market-<id>` row-specific dans `useMarketEditor`. |
+| 5 — Import legacy | 🟡 partiel | UI Admin avec textarea "Coller JSON legacy" déployée. Côté Maël : reste à extraire `localStorage.getItem('afd_platform_v1')` depuis le navigateur du collègue où l'app tournait, puis coller dans Admin. |
+| 6 — Vercel | ✅ | Projet `dao` (scope `malo-4406s-projects`) lié à `Assemblage-Ingenierie/DAO`. URL prod : https://dao-mocha-nine.vercel.app. Env vars Production + Development OK ; Preview à ajouter manuellement via dashboard (CLI bug). Auto-deploy on push `main` actif. |
+| 7.1 — Smoke test solo | ✅ | 7/7 checks PASS : persistence, cadrage projet, marché + DTAO Editor + flush, review checklist, cascade delete pays, MemoRetex perso, sign out/in. |
+| 7.2 — Smoke test multi-user | ⏸ | À faire quand un 2ᵉ compte `@assemblage.net` est disponible. Valide Realtime sync entre 2 onglets + last-write-wins. |
+
+### Fixes notables découverts pendant les tests
+
+| Commit | Bug | Cause |
+|---|---|---|
+| `8deedd1` | Page blanche post-login OAuth | `supabase.channel("dao-platform")` réutilisait le channel existant après ré-exec du useEffect (events `INITIAL_SESSION` + `SIGNED_IN` rapprochés au login). Fix : nom unique par mount `dao-platform-${crypto.randomUUID()}`. |
+| `999d2a5` | React error #310 en cliquant "Checklist →" | `Market.jsx` avait 6 hooks (useState, useMemo) **après** un early return `if (!market) return ...`. Pas un problème en Phase 3 (data sync) mais réveillé par les fluctuations Realtime. Fix : extraire le corps en sous-composant `<MarketContent>` qui ne monte que si market existe. |
+
+### Tâches résiduelles (non bloquantes)
+
+- **Preview env vars** sur Vercel : ajouter `VITE_SUPABASE_URL` et `VITE_SUPABASE_KEY` pour l'environnement Preview via le dashboard (le CLI a un bug sur cette commande spécifique).
+- **Site URL Supabase Auth** : pointe encore sur `https://aichantier.assemblage.net`. Pas bloquant car `redirectTo: window.location.origin` est passé explicitement par AuthGate, mais à harmoniser quand un custom domain DAO sera posé.
+- **Import legacy** : en attente de l'extraction JSON par le collègue.
+- **Nettoyage données test** : la "Côte d'Ivoire" créée pendant mes tests MCP reste dans `dao_countries`. À supprimer par Maël via l'UI ou TRUNCATE côté Supabase si reset complet souhaité.
 
 ## Code review pré-migration (2026-05-11)
 
