@@ -63,27 +63,11 @@ export default function Header() {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 16, flex: 1 }}>
-        <div
-          style={{
-            width: 32,
-            height: 32,
-            background: "#E30513",
-            borderRadius: 4,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#fff",
-            fontWeight: 700,
-            fontSize: 16,
-          }}
-        >
-          .A
-        </div>
-        <span style={{ fontWeight: 700, fontSize: 14, color: "#30323E", lineHeight: 1.2 }}>
-          Assemblage
-          <br />
-          <span style={{ fontWeight: 400, fontSize: 11, color: "#4D4D4D" }}>ingénierie</span>
-        </span>
+        <img
+          src="https://hhkofvbptnrtwbazftlm.supabase.co/storage/v1/object/public/Branding/logo/sigle_Ai_rouge.svg"
+          alt="Assemblage ingénierie"
+          style={{ height: 40, width: "auto", display: "block" }}
+        />
         <div style={{ width: 1, height: 36, background: "#DFE4E8" }} />
         <span style={{ fontWeight: 700, fontSize: 19, color: "#30323E" }}>
           Passation des Marchés AFD
