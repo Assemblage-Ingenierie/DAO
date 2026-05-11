@@ -95,17 +95,16 @@ function SignInScreen({ onSignIn }) {
           textAlign: "center",
         }}
       >
-        <div
+        <img
+          src="https://hhkofvbptnrtwbazftlm.supabase.co/storage/v1/object/public/Branding/logo/logo_Ai_rouge_HD.png"
+          alt="Assemblage ingénierie"
           style={{
-            fontSize: 32,
-            fontWeight: 800,
-            color: ASSEMBLAGE_RED,
-            marginBottom: 4,
-            letterSpacing: -0.5,
+            display: "block",
+            height: 56,
+            width: "auto",
+            margin: "0 auto 12px",
           }}
-        >
-          .A
-        </div>
+        />
         <h1 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
           Plateforme Assemblage — DAO
         </h1>
