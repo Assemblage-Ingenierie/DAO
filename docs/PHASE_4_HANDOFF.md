@@ -96,7 +96,7 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
    - Idempotence par `legacyDtaoId` conservée côté `dao_markets` pour permettre l'audit "ce marché vient du DTAO importé du <date>" et bloquer un éventuel double import.
 
 6. **Vercel** — connecter le repo `Assemblage-Ingenierie/DAO`, branche `main`. Vercel détecte Vite automatiquement. Configuration :
-   - **Variables d'env** : `VITE_SUPABASE_URL` (URL du projet Supabase, ex: `https://xxx.supabase.co`), `VITE_SUPABASE_ANON_KEY` (clé publique, RLS fait la sécurité). À poser pour les 3 environnements Vercel (Production, Preview, Development).
+   - **Variables d'env** : `VITE_SUPABASE_URL` (URL du projet Supabase, ex: `https://xxx.supabase.co`), `VITE_SUPABASE_KEY` (clé publishable, format `sb_publishable_*`, RLS fait la sécurité). À poser pour les 3 environnements Vercel (Production, Preview, Development). Voir `.env.example` pour le template.
    - **Build command** : par défaut (`npm run build`). **Output directory** : `dist`. **Install command** : par défaut (`npm install`).
    - **Auto-deploy au push `main`** activé. Les PR ouvrent automatiquement un déploiement Preview avec leur propre URL — pratique pour valider une migration avant merge.
    - **Routing** : pas de `vercel.json` à créer. `HashRouter` règle les routes côté client, donc Vercel sert juste `dist/index.html` et le SPA prend la main. Le `template-DTAO.docx` (4,6 Mo) dans `public/` est servi statiquement.
@@ -143,6 +143,26 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
 - Si tu pivotes sur l'auth ou le modèle de données, fais signe — certains champs (ex : `legacyDtaoId` sur les marchés migrés) sont conservés pour audit, ne pas drop sans réflexion.
 
 ---
+
+## État d'avancement Phase 4 (2026-05-11)
+
+- ✅ **Étape 1 — Schéma SQL** : 10 tables `dao_*` créées sur INTERNAL via migrations `dao_initial_schema` + `dao_schema_advisor_fixes` + `dao_patch_market_editor_data_rpc`. RLS + Realtime + trigger auto-profile actifs. Seed `dao_equipe` posé (6 noms DEQ). Tests fonctionnels OK (cascade delete, trigger updated_at, RPC jsonb_set).
+- ✅ **Étape 2 — Auth** : Hook `assemblage_domain_check(jsonb)` déployé (migration `assemblage_before_user_created_hook`) et activé dans le dashboard Auth → Hooks. Rejette tout signup hors `@assemblage.net`. Provider Google OAuth réutilisé depuis l'app AI Chantier (même projet Supabase INTERNAL). Redirect URLs : reportées à après création projet Vercel (pas de localhost).
+- 🟡 **Étape 3 — Réécriture store JS (foundation faite, cutover à venir)** :
+  - `src/platform/supabase/client.js` : singleton `createClient` avec `persistSession`+`autoRefreshToken`.
+  - `src/platform/store/mappers.js` : conversion snake_case ↔ camelCase pour les 10 tables.
+  - `src/platform/store/supabaseMutations.js` : 22 primitives CRUD asynchrones (`insertCountry`, `patchMarketEditorData`, `upsertReview`, etc.) + `fetchPlatformData()` qui hydrate le graphe complet en parallèle.
+  - `src/platform/store/useSupabaseData.js` : hook orchestrateur `[data, mutate, status, session]` avec hydratation + Realtime (9 tables) + optimistic updates avec rollback.
+  - **Reste à faire (cutover)** :
+    - Réécrire `useMarketEditor.js` pour appeler `patchMarketEditorData` (RPC) au lieu de `loadPlatform/savePlatform`. Conserver le debounce 250 ms.
+    - Refactor des 7 pages qui font `setData(prev => helper(prev, ...))` : `Home.jsx`, `Country.jsx`, `Project.jsx`, `Market.jsx`, `MemoRetex.jsx`, `RefDocs.jsx`, `Admin.jsx`. Chaque appel devient `await mutate.X(...)`.
+    - `App.jsx` : remplacer l'IIFE bootstrap localStorage par un `useEffect` async + écran d'attente sur `status === "loading"`.
+    - Composant `AuthGate.jsx` : Sign in with Google + Sign out, gate sur `status === "unauthenticated"`.
+    - Supprimer `usePlatformData.js` (legacy) et renommer `useSupabaseData.js` → `usePlatformData.js`.
+- ⏸ **Étape 4 — Hooks Realtime** : déjà couvert par `useSupabaseData.js`. Pas d'étape séparée.
+- ⏸ **Étape 5 — Migration legacy** : bouton manuel "Importer mes données locales" à ajouter dans Admin une fois cutover stable.
+- ⏸ **Étape 6 — Vercel** : à faire en parallèle ou après cutover.
+- ⏸ **Étape 7 — Smoke test multi-navigateur** : critère d'acceptation final.
 
 ## Code review pré-migration (2026-05-11)
 
