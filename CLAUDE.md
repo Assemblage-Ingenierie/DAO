@@ -41,11 +41,10 @@ Outil d'édition de DTAO Travaux AFD PAY (Février 2024). L'utilisateur est Maî
 
 ## Architecture
 
-- **Frontend** : React (Vite)
-- **Export** : JSZip pour éditer le XML du template .docx côté client
-- **Pas de backend** — tout côté client
-- **Persistance** : localStorage
-- **`npm run dev`** sur localhost
+- **Frontend** : React (Vite), déployé sur Vercel ([https://dao-mocha-nine.vercel.app](https://dao-mocha-nine.vercel.app)).
+- **Export** : JSZip pour éditer le XML du template .docx côté client.
+- **Persistance** : Supabase (Postgres + RLS + Realtime), projet INTERNAL partagé. Plus aucun `localStorage` côté Phase 4 pour la donnée métier — il sert uniquement à : (a) `dao_legacy_imported` flag idempotent et (b) le buffer de session OAuth de supabase-js. Cf. section "Plateforme — Persistance Supabase" plus bas.
+- **`npm run dev`** sur localhost (mais l'auth Google nécessite l'URL dans la Redirect URLs allowlist de Supabase ; pour la dev locale, ajouter `http://localhost:<port>/**` ou bosser sur l'URL Vercel preview).
 
 ## Fichiers sources
 
@@ -101,6 +100,129 @@ END;
 ### Email domain check
 
 Les emails sont contraints à `^[^@]+@assemblage\.net$` (regex stricte, case-insensitive) via deux fonctions partagées : `is_assemblage_user()` (RLS) et `assemblage_domain_check()` (signup hook). Cf. commit `3b84011` pour les vecteurs d'attaque (suffix/middle-injection) que cette regex bloque par rapport aux prédicats LIKE/split_part naïfs précédents.
+
+### Redirect URLs (multi-app sur Supabase INTERNAL partagé)
+
+Le Site URL de Supabase est UNIQUE pour tout le projet — il sert de fallback quand `redirectTo` n'est pas matché par l'allowlist. Pour qu'une app soit redirigée vers SA propre URL après OAuth, sa Redirect URL doit être ajoutée **en wildcard** (`/**`) à l'allowlist. Une entrée bare `https://<app>.vercel.app` ne matche **pas** `https://<app>.vercel.app/?code=xxx` que Supabase tente de construire post-callback → fallback Site URL → user redirigé vers la mauvaise app.
+
+Pour chaque app nouvelle, ajouter dans https://supabase.com/dashboard/project/hhkofvbptnrtwbazftlm/auth/url-configuration :
+```
+https://<app>.vercel.app/**
+```
+(ainsi que d'éventuels custom domains).
+
+---
+
+## Plateforme — Persistance Supabase (Phase 4)
+
+L'ancienne couche localStorage Phase 3 (`afd_platform_v1` mono-clé) a été remplacée par 10 tables `dao_*` + 5 fonctions Postgres (RLS, signup hook, trigger profil, RPC `dao_patch_market_editor_data`, trigger `set_updated_at`). Le store JS est en `src/platform/store/` et `src/platform/supabase/`.
+
+### Tables `dao_*` (préfixe pour namespacing dans INTERNAL multi-apps)
+
+| Table | Forme JS exposée | Particularité |
+|---|---|---|
+| `dao_profiles` | extension de `auth.users`, 1 row/user, `legacy_platform_migrated` flag | Trigger `on_auth_user_created_dao` (auto-création, wrappé EXCEPTION pour ne pas bloquer les signups des autres apps cf. section Plateforme—Auth) |
+| `dao_countries` | `data.countries: [{id, name}]` | Cascade ON DELETE sur projects/markets/reviews |
+| `dao_projects` | `data.projects[countryId]: [{...}]` | Renommage SQL `desc` → `descr` (mot-clé Postgres). Le mapping est dans `mappers.js`. |
+| `dao_markets` | `data.markets[projectId]: [{..., editor_data}]` | `editor_data` (jsonb) = bloc DTAO Editor entier. Patché ciblé via RPC, pas via UPDATE full row. |
+| `dao_reviews` | `data.reviews["<marketId>_<tabId>"][itemId]: {status, comment}` | PK composite `(market_id, tab_id, item_id)` + upsert |
+| `dao_text_overrides` | `data.textOverrides[itemId]: {text, tip}` | PK composite `(item_id, field)`, CHECK `field IN ('text','tip')` |
+| `dao_rex_items`, `dao_custom_retex` | `data.rexItems`, `data.customRetex` arrays | Renommages SQL `text` → `content_text`, `date` → `date_ref` (mots-clés) |
+| `dao_equipe` | `data.equipe: [name]` | PK `name text` (pas d'id) |
+| `dao_ref_versions` | `data.refVersions[docId]: {ver, dir, archived, log[]}` | PK composite `(doc_id, ver)` — l'app n'utilise que 1 ligne par docId (`upsertRefVersion` supprime les autres `ver` avant l'upsert) |
+
+**RLS** : 1 policy unique `assemblage_full_access` par table, `FOR ALL TO authenticated USING (is_assemblage_user()) WITH CHECK (is_assemblage_user())`. Cf. décision archi "workspace partagé équipe" — toute l'équipe Assemblage voit/écrit tout, pas de scoping per-user.
+
+**Realtime** : `ALTER PUBLICATION supabase_realtime ADD TABLE` sur les 9 tables (sauf `dao_profiles`, modifs rares).
+
+### Fichiers du store JS
+
+```
+src/platform/supabase/client.js        # singleton createClient (persistSession, autoRefreshToken, Realtime 10 evt/s)
+src/platform/store/mappers.js          # fromDb/toDb par table — convention snake_case SQL ↔ camelCase JS
+src/platform/store/supabaseMutations.js  # 22 primitives async (insertCountry, upsertReview, patchMarketEditorData via RPC...)
+src/platform/store/usePlatformData.js  # hook orchestrateur [data, mutate, status, session]
+src/platform/store/useMarketEditor.js  # hook DTAO Editor [project, setData, onRename, parentInfo]
+src/platform/store/importLegacy.js     # parse afd_platform_v1 JSON + push vers Supabase (utilisé par Admin.jsx)
+src/platform/components/AuthGate.jsx   # wrapper de routes — sign in/out + écran "loading"/"error"/"unauthenticated"
+```
+
+### Hook `usePlatformData()` — API
+
+Retourne `[data, mutate, status, session]` :
+
+- `data` : graphe complet hydraté depuis Supabase, même forme que l'ancien `loadPlatform()` localStorage pour limiter le diff côté pages (`data.countries`, `data.projects[countryId]`, `data.markets[projectId]`, `data.reviews["<mId>_<tId>"]`, etc.).
+- `mutate` : objet avec 22 méthodes async. Pattern systématique : applique le patch localement (optimistic), appelle Supabase, rollback si erreur. Exemples :
+  - `mutate.addCountry(name)` → renvoie la row créée
+  - `mutate.upsertReview(marketId, tabId, itemId, {status, comment})`
+  - `mutate.toggleProjectMember(countryId, projectId, name)`
+  - `mutate.signInWithGoogle()`, `mutate.signOut()` (auth helpers)
+- `status` : `"loading" | "ready" | "error" | "unauthenticated"` — utilisé par AuthGate pour décider quoi rendre.
+- `session` : objet auth Supabase (ou null).
+
+### Realtime — pattern unique channel par mount (gotcha)
+
+Le hook ouvre un seul channel Supabase Realtime au montage, écoute `postgres_changes` sur les 9 tables, applique INSERT/UPDATE/DELETE localement via reducers. **Le nom du channel doit être unique** par invocation du useEffect :
+
+```js
+const channelName = `dao-platform-${crypto.randomUUID()}`;
+const channel = supabase.channel(channelName);
+```
+
+Avec un nom fixe (`"dao-platform"`), `supabase.channel(name)` réutilise l'instance existante. Si le useEffect se re-run (event `SIGNED_IN` qui arrive après `INITIAL_SESSION` au login, par ex.), on tape `.on()` sur un channel déjà subscribed → crash "cannot add `postgres_changes` callbacks after `subscribe()`". L'UUID garantit qu'un nouveau channel est créé à chaque mount, et le cleanup `supabase.removeChannel(channel)` cible l'instance locale. Cf. commit `8deedd1`.
+
+### `useMarketEditor(marketId)` — patches debouncés via RPC
+
+Pour le DTAO Editor, on évite d'UPDATE le row marché entier (le JSONB `editor_data` peut faire 50+ ko) à chaque frappe utilisateur :
+
+1. Buffer interne `pendingPatchesRef[key] = value` rempli par chaque `setData(key, val)`.
+2. Debounce 250 ms via `setTimeout`, coalesce les frappes rapides.
+3. Au flush : appelle `patchMarketEditorData(marketId, key, value)` qui invoke la **RPC Postgres** `dao_patch_market_editor_data(uuid, text, jsonb)`. Côté DB :
+   ```sql
+   update dao_markets
+   set editor_data = jsonb_set(coalesce(editor_data, '{}'::jsonb), array[p_key], p_value, true)
+   where id = p_market_id
+   returning *;
+   ```
+4. Le flush est aussi déclenché sur `beforeunload` (best-effort — l'unmount cleanup peut ne pas terminer si l'utilisateur ferme l'onglet en plein milieu d'une frappe).
+
+Le channel Realtime de ce hook est aussi unique par mount mais **filtré sur la row courante** : `filter: id=eq.<marketId>` pour ne recevoir que les events du marché ouvert. Echo de ses propres patches ignoré tant qu'un flush est en attente (sinon l'input flickerait pendant la frappe).
+
+### Rules of Hooks gotcha — sous-composants après early return
+
+`Market.jsx` localise un marché dans `data.markets` et fait `if (!market) return <Placeholder/>`. Si on déclarait des `useState`/`useMemo` APRÈS cet early return, React jetterait l'erreur #310 "Rendered more hooks than during the previous render" dès qu'une fluctuation de state Realtime fait passer le composant entre "marché trouvé" et "marché null". Solution : extraire le corps en sous-composant `<MarketContent>` qui ne monte que quand `market` est défini, et qui contient TOUS ses hooks dans son scope.
+
+```jsx
+function Market() {
+  const { id: marketId } = useParams();
+  const [data, mutate] = usePlatformData();
+  const market = locate(data, marketId);
+  if (!market) return <Placeholder />;
+  return <MarketContent market={market} data={data} mutate={mutate} />;
+}
+
+function MarketContent({ market, data, mutate }) {
+  const [currentTab, setCurrentTab] = useState(...);  // safe : ne monte que si market existe
+  const items = useMemo(..., [...]);
+  ...
+}
+```
+
+Pattern à reproduire dans tout composant qui dépend d'une localisation async + early return. Cf. commit `999d2a5`.
+
+### Import legacy localStorage → Supabase (Admin)
+
+Sur le PC de chaque user qui avait travaillé en Phase 3, ses données vivent dans `localStorage['afd_platform_v1']` — un seul gros JSON. Pour les pousser dans le workspace partagé Supabase :
+
+1. L'user extrait sa valeur via la console (`copy(localStorage.getItem('afd_platform_v1'))`) et la transmet à un admin (ou l'a déjà localement).
+2. Dans **Admin → "Importer vos données legacy dans Supabase"**, l'admin colle le JSON dans la textarea.
+3. Validation : `parseLegacyJson()` accepte uniquement les objets contenant au moins une des clés attendues (`countries`, `projects`, `markets`, `rexItems`, `customRetex`, `equipe`).
+4. `importLegacyToSupabase({ payload })` itère dans l'ordre des FK (countries → projects → markets → reviews → ...), maintient des maps `oldId → newId` pour relier les enfants à leurs parents Supabase nouvellement créés. Dédoublonnage par nom (case-insensitive) sur `dao_countries` et `dao_equipe`.
+5. Flag `localStorage["dao_legacy_imported"]="true"` + `dao_profiles.legacy_platform_migrated=true` après succès. Cf. `docs/IMPORT_LEGACY_GUIDE.md` pour le pas-à-pas destiné aux collègues.
+
+### Bonus — vite.config.js portable
+
+La config `vite.config.js` a une logique LOCAL_MODULES qui pointe sur `C:/Users/maelb/AppData/Local/dtao-packages/node_modules` quand ce dossier existe (workflow externe Maël où node_modules vit hors du repo sur Google Drive). Si le dossier n'existe pas (Vercel CI, autre machine), fallback sur le `./node_modules` standard. Permet le `vercel deploy` sans rien casser du workflow Maël.
 
 ---
 
