@@ -27,6 +27,21 @@ import { DEQ } from "../data/types.js";
 
 export const PLATFORM_KEY = "afd_platform_v1";
 
+// Génère un UUID v4. Préféré aux anciens `"C" + Date.now()` pour deux
+// raisons : (1) collision impossible même sur boucle de migration <1ms,
+// (2) compatible PK uuid Postgres (cible Supabase phase 4). Fallback
+// pour les très vieux navigateurs sans crypto.randomUUID (Chrome <92,
+// Safari <15.4) — pattern repris de
+// `editors/dtao-travaux/engine/projects/projectStore.js:75`.
+// Les IDs déjà persistés en localStorage (format `C<timestamp>` etc.)
+// restent valides : le code ne valide jamais le préfixe.
+function newId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 // Forme par défaut pour un store vierge — équipe = DEQ par défaut.
 export function defaultPlatformData() {
   return {
@@ -71,7 +86,7 @@ export function savePlatform(data) {
 export function addCountry(data, name) {
   const trimmed = (name || "").trim();
   if (!trimmed) return data;
-  const id = "C" + Date.now();
+  const id = newId();
   return {
     ...data,
     countries: [...data.countries, { id, name: trimmed }],
@@ -95,7 +110,7 @@ export function removeCountry(data, countryId) {
 export function addProject(data, countryId, name) {
   const trimmed = (name || "").trim();
   if (!trimmed || !countryId) return data;
-  const id = "P" + Date.now();
+  const id = newId();
   const newProject = {
     id,
     name: trimmed,
@@ -156,7 +171,7 @@ export function toggleProjectMember(data, countryId, projectId, memberName) {
 
 export function addMarket(data, projectId, market) {
   if (!projectId) return data;
-  const id = "M" + Date.now();
+  const id = newId();
   const fullMarket = {
     id,
     date: new Date().toISOString().slice(0, 10),

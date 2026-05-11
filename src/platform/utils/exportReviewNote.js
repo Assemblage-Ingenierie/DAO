@@ -20,6 +20,22 @@ const SOURCE_COLORS = {
   REX: "#f59e0b",
 };
 
+// Escape pour interpolation dans du texte HTML. Toutes les valeurs
+// user-controlled (noms de marché/projet/pays, commentaires de relecture,
+// overrides de checklist, etc.) passent par ici avant d'être concaténées
+// dans la chaîne HTML — sans ça, un nom contenant `<script>` exécute dans
+// la fenêtre d'export (XSS stocké, vrai risque dès que plusieurs users
+// partagent le même workspace en Phase 4).
+function esc(value) {
+  if (value === null || value === undefined) return "";
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 // CSS embarqué dans le HTML exporté — charte Assemblage / AFD.
 function buildCSS() {
   return [
@@ -95,14 +111,14 @@ export function buildReviewNoteHTML({
   const catTxt = isPI ? "PRESTATIONS INTELLECTUELLES" : "TRAVAUX";
 
   let html = "<!DOCTYPE html><html><head><meta charset=utf-8>";
-  html += "<title>Note de relecture - " + market.name + "</title>";
+  html += "<title>Note de relecture - " + esc(market.name) + "</title>";
   html += "<style>" + buildCSS() + "</style>";
   html += "</head><body>";
 
   // Bandeau catégorie + étape
-  html += "<div class=ban>" + catTxt + " — Étape : " + tabLabel.toUpperCase() + "</div>";
+  html += "<div class=ban>" + catTxt + " — Étape : " + esc(String(tabLabel).toUpperCase()) + "</div>";
   html += "<h1>NOTE DE RELECTURE</h1>";
-  html += "<p style=font-size:13pt;font-weight:700;color:#30323E>" + market.name + "</p>";
+  html += "<p style=font-size:13pt;font-weight:700;color:#30323E>" + esc(market.name) + "</p>";
   html +=
     "<p style=color:#4D4D4D;border-bottom:3px solid #E30513;padding-bottom:8px;margin-bottom:20px>" +
     frDate(today.toISOString()) +
@@ -144,7 +160,7 @@ export function buildReviewNoteHTML({
     recap.push(["Modalité de vérification AFD", verifLabel]);
   }
   recap.forEach((r) => {
-    if (r[1]) html += "<tr><td class=lb>" + r[0] + "</td><td>" + r[1] + "</td></tr>";
+    if (r[1]) html += "<tr><td class=lb>" + esc(r[0]) + "</td><td>" + esc(r[1]) + "</td></tr>";
   });
   html += "</table>";
 
@@ -167,14 +183,14 @@ export function buildReviewNoteHTML({
   html += "<h2>2. Synthèse de la relecture</h2>";
   html +=
     "<p>La présente note porte sur la relecture de la <strong>" +
-    tabLabel +
+    esc(tabLabel) +
     "</strong> du marché de " +
-    (market.cat || "").toLowerCase() +
+    esc((market.cat || "").toLowerCase()) +
     " « " +
-    market.name +
+    esc(market.name) +
     " »" +
-    (project ? " dans le cadre du projet " + project.name : "") +
-    (country ? " en " + country.name : "") +
+    (project ? " dans le cadre du projet " + esc(project.name) : "") +
+    (country ? " en " + esc(country.name) : "") +
     ".</p>";
   html +=
     "<div class=syn><div class=ok>" +
@@ -206,7 +222,7 @@ export function buildReviewNoteHTML({
     const sectionItems = items.filter((r) => r[1] === sec);
     html +=
       "<h3 style=margin-top:20px;color:#30323E>" +
-      sec +
+      esc(sec) +
       ' <span style=font-weight:400;color:#999;font-size:10pt>(' +
       sectionItems.length +
       " items)</span></h3>";
@@ -225,11 +241,11 @@ export function buildReviewNoteHTML({
       html += "<tr" + rowClass + "><td>";
       r[4].forEach((s) => {
         const co = SOURCE_COLORS[s] || "#999";
-        html += "<span class=bdg style=background:" + co + ">" + s + "</span>";
+        html += "<span class=bdg style=background:" + co + ">" + esc(s) + "</span>";
       });
-      html += "</td><td>" + text;
-      if (tip) html += "<div class=tip>" + tip + "</div>";
-      if (itemState.comment) html += "<div class=obs>Observation : " + itemState.comment + "</div>";
+      html += "</td><td>" + esc(text);
+      if (tip) html += "<div class=tip>" + esc(tip) + "</div>";
+      if (itemState.comment) html += "<div class=obs>Observation : " + esc(itemState.comment) + "</div>";
       html +=
         "</td><td style=text-align:center;background:" +
         stBg +
@@ -278,6 +294,8 @@ export function openReviewNoteWindow({
     if (w) {
       w.document.write(html);
       w.document.close();
+      // Assignation à la propriété .title (pas innerHTML) — pas de parsing
+      // HTML donc pas de risque XSS ici, on garde la chaîne brute.
       w.document.title = "Note relecture - " + market.name;
     } else {
       window.alert(

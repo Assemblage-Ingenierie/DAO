@@ -45,21 +45,33 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
 
 ## Étapes proposées (dans l'ordre)
 
-1. **Schéma Supabase** — créer les tables :
-   - `countries(id, name, owner)`
-   - `projects(id, country_id, name, sec, dir, secu, verif, mt, desc, lang, tcon, ctx, site, resp, eq[])`
-   - `markets(id, project_id, name, type, tl, cat, role, meth, mont, st, date_ami, date_lr, date_dp, date_sel, date_sig, notes, editor_data jsonb, legacy_dtao_id)`
-   - `reviews(market_id, tab_id, item_id, status, comment, primary key composite)`
-   - `text_overrides(item_id, field, value)` — pour les modifs d'items de checklist
-   - `rex_items(id, cat, doc, doc_label, section, text, tip, auteur, pays, projet, conditions, date)`
-   - `equipe(name)`
-   - `ref_versions(doc_id, ver, dir, archived, log jsonb[])`
+1. **Schéma Supabase** — créer les tables (toutes préfixées `dao_*` pour le namespacing si plusieurs apps partagent l'instance) :
+   - `dao_profiles(id uuid PK references auth.users, email, display_name, created_at)` — extension de `auth.users` pour stocker les infos affichables (avatar, nom préféré) et permettre des FK propres depuis les autres tables.
+   - `dao_countries(id uuid PK, name, created_by uuid references auth.users, created_at, updated_at)`
+   - `dao_projects(id uuid PK, country_id, name, sec, dir, secu, verif, mt, desc, lang, tcon, ctx, site, resp, eq[], created_by, created_at, updated_at)`
+   - `dao_markets(id uuid PK, project_id, name, type, tl, cat, role, meth, mont, st, date_ami, date_lr, date_dp, date_sel, date_sig, notes, editor_data jsonb, legacy_dtao_id, created_by, created_at, updated_at)`
+   - `dao_reviews(market_id, tab_id, item_id, status, comment, updated_by, updated_at, primary key (market_id, tab_id, item_id))`
+   - `dao_text_overrides(item_id, field, value, updated_by, updated_at, primary key (item_id, field))` — modifs d'items de checklist
+   - `dao_rex_items(id uuid PK, cat, doc, doc_label, section, text, tip, auteur, pays, projet, conditions, date, created_by, created_at)`
+   - `dao_equipe(name text PK)`
+   - `dao_ref_versions(doc_id, ver, dir, archived, log jsonb[], updated_by, updated_at, primary key (doc_id, ver))`
 
-   Le schéma se déduit du contenu de `src/platform/store/platformStore.js` (commentaires en tête + helpers `addCountry`, `addProject`, `addMarket`, etc.).
+   Le schéma se déduit du contenu de `src/platform/store/platformStore.js` (commentaires en tête + helpers `addCountry`, `addProject`, `addMarket`, etc.). Convention noms de colonnes : snake_case côté SQL, camelCase côté JS, mapping au boundary du store (cf. point 9 de la code review).
 
-2. **Auth Supabase** — définir le modèle. Reco simple pour une v1 : login email magic-link, RLS qui scope par utilisateur (chacun voit ses données). Ou compte partagé Assemblage si on préfère que toute l'équipe voit tout. À discuter avec Maël.
+2. **Auth Supabase** — **Google OAuth, chaque membre de l'équipe avec son propre compte Google, workspace partagé** (décision Maël, 2026-05-11). Pas de magic-link email, pas de compte partagé. Implémentation :
+   - Provider OAuth Google dans le dashboard Supabase Auth.
+   - Restriction du domaine d'email à `@assemblage.net` (sinon n'importe quel compte Google peut s'inscrire — soit hook `before_user_created` qui rejette les autres domaines, soit policy RLS qui contrôle `auth.jwt() ->> 'email' LIKE '%@assemblage.net'`).
+   - **RLS = "tout utilisateur authentifié `@assemblage.net` peut tout lire et tout écrire"** — workspace partagé, pas de silos par user. Toutes les tables (`countries`, `projects`, `markets`, `reviews`, `text_overrides`, `rex_items`, `equipe`, `ref_versions`) ont la même policy : `USING (auth.role() = 'authenticated' AND auth.jwt() ->> 'email' LIKE '%@assemblage.net')`.
+   - On garde tout de même une colonne `created_by uuid references auth.users(id)` sur les tables principales (countries/projects/markets/reviews) pour l'audit ("qui a créé/modifié quoi") — non utilisée par les policies, juste affichée dans l'UI plus tard si besoin.
 
-3. **Réécrire `src/platform/store/platformStore.js`** — remplacer `localStorage.getItem/setItem` par des requêtes Supabase. **L'API publique du module ne change pas** (`loadPlatform`, `savePlatform`, `addCountry`, `removeCountry`, etc.) — c'est le point d'abstraction prévu pour ce switch. Le reste du code (toutes les pages) consomme ces fonctions et n'a pas à être touché.
+3. **Réécrire `src/platform/store/platformStore.js` — décomposition en mutations ciblées** (décision archi du code review du 2026-05-11, voir section ci-dessous). L'approche initialement envisagée — "remplacer les `localStorage.getItem/setItem` derrière la même API `loadPlatform/savePlatform`" — n'est **pas viable** : `savePlatform()` re-sérialise tout le graphe pays+projets+marchés+reviews à chaque mutation. Sur localStorage c'est gratuit, sur HTTP c'est un round-trip réseau (et un conflit potentiel) par frappe utilisateur.
+
+   À la place, on remplace l'API monolithique par des mutations granulaires alignées sur le schéma SQL :
+   - `loadPlatform()` reste (single fetch au démarrage, hydrate le state React)
+   - `savePlatform()` disparaît
+   - À la place : `addCountry / removeCountry / updateCountry`, `addProject / removeProject / updateProject`, `addMarket / removeMarket / updateMarket / patchMarketEditorData(id, key, value)`, `upsertReview(marketId, tabId, itemId, patch)`, `setTextOverride(itemId, field, value)`, etc. — chaque appel = une requête Supabase ciblée.
+   - Toutes les pages qui font aujourd'hui `setData(prev => ({...prev, reviews: {...}}))` doivent être réécrites pour appeler la mutation atomique correspondante. C'est invasif (au moins `Market.jsx`, `Project.jsx`, `ChecklistConfig.jsx`, `Admin.jsx`, `Home.jsx`) mais c'est le seul moyen d'avoir un store cohérent + des mises à jour realtime utilisables.
+   - Le hook `usePlatformData` retournera `{ data, mutations }` au lieu de `[data, setData]`. Les mutations posent l'update local optimistiquement puis confirment côté Supabase (rollback en cas d'erreur).
 
 4. **Adapter les hooks** — `usePlatformData.js` et `useMarketEditor.js` doivent rester réactifs : option simple = refetch après chaque mutation ; option propre = Supabase Realtime channels.
 
@@ -99,3 +111,46 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
 - Code : https://github.com/Assemblage-Ingenierie/DAO (branche `main`, dernier commit `153c6f3`)
 - Référent côté métier : Maël
 - Si tu pivotes sur l'auth ou le modèle de données, fais signe — certains champs (ex : `legacyDtaoId` sur les marchés migrés) sont conservés pour audit, ne pas drop sans réflexion.
+
+---
+
+## Code review pré-migration (2026-05-11)
+
+Audit exhaustif effectué avant d'écrire la première ligne de SQL. Repo globalement très propre (architecture engine/pack/store nette, helpers de store déjà purs, DTAO bien découplé). Les findings ci-dessous sont organisés par priorité ; certains conditionnent la Phase 4, d'autres sont des quick wins indépendants à passer d'abord.
+
+### Décisions actées
+- **Granularité de l'API store** : option **mutations ciblées** (vs. `savePlatform(graphe entier)`). Cf. étape 3 ci-dessus. Refactor invasif mais c'est la seule approche compatible avec Realtime et la collaboration multi-user.
+- **Auth Supabase** : **Google OAuth, un compte Google par membre Assemblage, workspace partagé équipe**. RLS = lecture/écriture pour tout user authentifié `@assemblage.net`. Colonne `created_by` posée pour audit, pas pour scoping.
+- **Concurrency** : **last-write-wins**. À 3-5 users qui éditent rarement le même marché au même moment, l'overhead d'un champ `version int` + check optimiste sur chaque update ne se justifie pas. Si un cas de conflit visible apparaît plus tard, on ajoutera `updated_at` + `If-Match` côté update à ce moment-là.
+- **Namespacing des tables** : la table d'extension d'auth (profile utilisateur, role, etc.) s'appelle **`dao_profiles`** (pas `profiles`) pour ne pas collisionner si l'instance Supabase héberge d'autres applis Assemblage plus tard. **Question ouverte** : faut-il également préfixer toutes les autres tables (`dao_countries`, `dao_projects`, `dao_markets`, `dao_reviews`, etc.) pour la cohérence, ou ne préfixer que `dao_profiles` qui est la seule à risque de collision (les autres noms sont métier-spécifiques à AFD/passation) ? Reco par défaut : préfixer tout en `dao_*` — c'est 30 secondes de schéma, et ça documente clairement quelle app possède quelle table.
+- **Concurrency model** : ouvert — last-write-wins ou versioned-update (`updated_at`/`version` int). Reco par défaut : last-write-wins (3-5 users max, peu de conflits simultanés).
+
+### Quick wins préalables à la migration (1h chacun, indépendants)
+- [ ] **(point 3) XSS dans `src/platform/utils/exportReviewNote.js:279`** — `w.document.write(html)` avec `html` construit par concat de strings contenant `market.name`, commentaires, etc. (tous user-controlled). Aujourd'hui mono-user = théorique, demain multi-user = vrai. Escaper HTML (helper `escapeXml` standard, déjà utilisé côté DTAO export).
+- [ ] **(point 5) IDs en `crypto.randomUUID()`** — remplacer `"C" + Date.now()` (et `"P"`, `"M"`) dans `platformStore.js:74,98,159` + `migrateLegacyDtao.js:43,58` par `crypto.randomUUID()` avec fallback (pattern déjà en place dans `editors/dtao-travaux/engine/projects/projectStore.js:75`). Compatible Postgres PK uuid.
+- [ ] **(point 11) Vitest + tests unitaires** — `package.json` n'a pas de runner de tests. Les helpers de `platformStore.js` sont purs (data in / data out), exactement ce qu'il faut tester avant de muter. 10 tests sur `addCountry`, `removeCountry`, `addProject`, `addMarket`, `removeMarket`, `updateMarket`, `toggleProjectMember`, `addEquipeMember`, `loadPlatform` (avec JSON corrompu), `loadPlatform` (avec champ manquant) → filet de sécurité pour le refactor.
+
+### Findings bloquants Phase 4 (intégrés au plan)
+- [x] **(point 1) Décomposition de `savePlatform`** — couvert par l'étape 3 réécrite ci-dessus.
+- [x] **(point 2) Race condition write-after-read dans `useMarketEditor.persistMarket`** — couvert par la décomposition (mutation ciblée `patchMarketEditorData(id, key, value)` au lieu de read full / write full).
+- [x] **(point 4) Reviews écrites sans debounce** (`Market.jsx:504`) — couvert par la mutation atomique `upsertReview(marketId, tabId, itemId, patch)`.
+
+### Findings à traiter pendant Phase 4
+- [ ] **(point 6) `loadPlatform()` ne valide pas le type de `parsed`** — `{ ...defaultPlatformData(), ...parsed }` plante en silence si `parsed` est une string ou un nombre. Ajouter `if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return defaultPlatformData()`. Trivial.
+- [ ] **(point 7) IIFE bootstrap synchrone dans `App.jsx:51-60`** — la migration legacy en Supabase sera async. Déplacer dans un `useEffect` racine + écran d'attente.
+- [ ] **(point 8) Flush du debounce à l'unmount** (`useMarketEditor.js:80-92`) — Promise non-attendue au `beforeunload`. Prévoir `navigator.sendBeacon` ou endpoint Edge Function pour le flush.
+- [ ] **(point 9) Convention snake_case vs camelCase** — commentaire schéma `platformStore.js:11-25` dit `dateAmi, dateLr, dateDp` ; HANDOFF dit `date_ami, date_lr, date_dp`. Postgres = snake_case. Mapper côté store dans le wrapper Supabase (`mapMarketFromDb` / `mapMarketToDb`). Décision : conserver camelCase côté JS (toutes les pages l'utilisent), convertir au boundary.
+- [ ] **(point 10) `locateMarket` dupliqué** entre `Market.jsx:415-437` et `useMarketEditor.js:18-37` — devient inutile après Supabase (`select * from markets where id=?`). Bonne occasion de supprimer les deux.
+
+### Findings non-bloquants (à laisser pour plus tard)
+- **(point 12) Tous les composants re-render à chaque mutation** (`usePlatformData` retourne objet entier) — acceptable jusqu'à ce qu'on sente une latence visible. Plan B : Zustand avec sélecteurs (14 ko).
+- **(point 13) `eslint-disable react-hooks/exhaustive-deps`** dans `Editor.jsx:62-64` — pas un bug, mais ajouter une ligne de commentaire expliquant l'intent "run-once-per-projectId".
+- **(point 14) Audit secrets** — RÉSOLU : tous les matches `password|secret|api_key|token` sont des faux positifs (mot français "Caractère secret" dans une loi marché Comores, variable `tokenRe` regex, placeholder template Word). Aucun credential en clair dans le repo. OK pour pousser sur Vercel privé.
+
+### Observations positives (à préserver)
+- Helpers de store **purs** (data in / data out) — réutilisables tels quels côté Supabase via wrapper async.
+- **DTAO Editor totalement store-agnostic** : `Editor.jsx` reçoit `setData` via props et ne sait pas d'où vient la donnée. La promesse "ne pas toucher au DTAO" tient — il suffit que `useMarketEditor` retourne la même forme `[project, setData, onRename, parentInfo]`.
+- **Migration legacy idempotente** avec flag `legacyDtaoMigrated` + `legacyDtaoId` conservé pour audit. Reproduire ce pattern pour `legacyPlatformMigrated` côté Supabase.
+- **`crypto.randomUUID()` avec fallback** dans `projectStore.js:75` — exactement ce que veut Postgres en PK uuid. À étendre à `platformStore` (point 5).
+- **`useMemo` correctement placé** dans `Market.jsx` pour `tabItems`, `filteredItems`, `sections`, `status`.
+- **CCAG/CCAP plages intouchables** verrouillées dans `CLAUDE.md` (sections VIII p.152-243 et IX partie B p.259-277) — discipline d'export visible. Phase 4 ne touche à rien de ça.

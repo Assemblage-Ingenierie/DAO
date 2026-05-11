@@ -20,6 +20,16 @@
 import { listProjects } from "../../editors/dtao-travaux/engine/projects/projectStore.js";
 import { loadPlatform, savePlatform } from "./platformStore.js";
 
+// Génère un UUID v4 — même pattern que platformStore.js. Fallback pour les
+// très vieux navigateurs. Les marchés legacy gardent `M_LEGACY_<dtaoId>`
+// (le `dtaoId` est déjà un UUID stable) pour l'audit / anti-doublon.
+function newId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `id_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
 const NON_CLASSE_NAME = "Non classé";
 const DTAO_EXISTANTS_NAME = "DTAO existants";
 const DEFAULT_TYPE = "AO_TVX_PQ"; // AO Travaux (pré-qual.)
@@ -40,7 +50,7 @@ function ensureCountry(platform, name) {
   );
   if (existing) return { platform, countryId: existing.id };
 
-  const id = "C_LEGACY_" + Date.now();
+  const id = newId();
   const next = {
     ...platform,
     countries: [...(platform.countries || []), { id, name }],
@@ -55,7 +65,7 @@ function ensureProject(platform, countryId, name) {
   const existing = list.find((p) => p.name === name);
   if (existing) return { platform, projectId: existing.id };
 
-  const id = "P_LEGACY_" + Date.now();
+  const id = newId();
   const newProject = {
     id,
     name,
