@@ -56,6 +56,52 @@ Outil d'édition de DTAO Travaux AFD PAY (Février 2024). L'utilisateur est Maî
 
 Police: Open Sans. Rouge: `#E30513`. Violet: `#30323E`. Gris: `#DFE4E8`/`#F2F2F2`. Sidebar fond `#30323E`.
 
+### Assets branding (Supabase Storage)
+
+Logo + sigle officiels servis depuis le bucket public `Branding/logo/` du projet INTERNAL. URL base : `https://hhkofvbptnrtwbazftlm.supabase.co/storage/v1/object/public/Branding/logo/`.
+
+| Fichier | Usage | Composant |
+|---|---|---|
+| `logo_Ai_rouge_HD.png` | Logo complet (rouge HD) sur l'écran de login | `src/platform/components/AuthGate.jsx` (SignInScreen) |
+| `sigle_Ai_rouge.svg` | Sigle `.A` seul dans le bandeau top | `src/platform/components/Header.jsx` |
+
+Ne PAS inliner ces logos dans le code (img base64) — ils vivent dans le bucket pour rester partageables entre apps de l'écosystème Assemblage.
+
+---
+
+## Plateforme — Auth (Supabase INTERNAL partagé)
+
+Le projet Supabase `hhkofvbptnrtwbazftlm` (= INTERNAL) est **partagé** entre 3 apps de l'écosystème Assemblage : `aichantier`, `dao`, `renta`. La table `auth.users` est unique pour les 3 ; chaque app possède sa propre table de profils :
+
+| App | Table profils | Trigger AFTER INSERT auth.users | Fonction |
+|---|---|---|---|
+| aichantier | `public.aichantier_profiles` | `on_auth_user_created` | `public.aichantier_handle_new_user()` |
+| dao | `public.dao_profiles` | `on_auth_user_created_dao` | `public.handle_new_dao_user()` |
+| renta | `public.renta_profiles` | `renta_on_auth_user_created` | `extensions.renta_handle_new_user()` |
+
+### Isolation des triggers (migration `isolate_per_app_signup_triggers`, 2026-05-11)
+
+Chaque fonction trigger est wrappée par un sous-bloc `BEGIN ... EXCEPTION WHEN OTHERS THEN RAISE LOG ...; END;` autour de son INSERT :
+
+```sql
+BEGIN
+  BEGIN
+    INSERT INTO public.<app>_profiles (...) VALUES (...) ON CONFLICT (id) DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE LOG '<fn> failed for user % (%): %', NEW.id, NEW.email, SQLERRM;
+  END;
+  RETURN NEW;
+END;
+```
+
+**Raison** : avant cette migration, un schema drift dans une seule app (ex : `aichantier_profiles.full_name` droppée alors que `aichantier_handle_new_user()` y INSERT encore) faisait crasher l'INSERT sur `auth.users`, **ce qui bloquait les signups Google des 3 apps**. Le wrapper transforme un crash app en NO-OP loggué — l'app concernée n'aura pas de row de profil mais les autres ne sont plus affectées, et `auth.users` se peuple correctement.
+
+**Règle d'or** : toute future fonction trigger sur `auth.users` doit suivre ce pattern. Sinon, un bug local re-cascade sur toutes les apps.
+
+### Email domain check
+
+Les emails sont contraints à `^[^@]+@assemblage\.net$` (regex stricte, case-insensitive) via deux fonctions partagées : `is_assemblage_user()` (RLS) et `assemblage_domain_check()` (signup hook). Cf. commit `3b84011` pour les vecteurs d'attaque (suffix/middle-injection) que cette regex bloque par rapport aux prédicats LIKE/split_part naïfs précédents.
+
 ---
 
 ## EXPORT .DOCX — SPÉCIFICATION TECHNIQUE
