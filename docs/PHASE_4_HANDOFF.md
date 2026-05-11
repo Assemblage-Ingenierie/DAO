@@ -73,13 +73,43 @@ Remplacer la couche localStorage par **Supabase** (Postgres + Auth + Realtime) e
    - Toutes les pages qui font aujourd'hui `setData(prev => ({...prev, reviews: {...}}))` doivent être réécrites pour appeler la mutation atomique correspondante. C'est invasif (au moins `Market.jsx`, `Project.jsx`, `ChecklistConfig.jsx`, `Admin.jsx`, `Home.jsx`) mais c'est le seul moyen d'avoir un store cohérent + des mises à jour realtime utilisables.
    - Le hook `usePlatformData` retournera `{ data, mutations }` au lieu de `[data, setData]`. Les mutations posent l'update local optimistiquement puis confirment côté Supabase (rollback en cas d'erreur).
 
-4. **Adapter les hooks** — `usePlatformData.js` et `useMarketEditor.js` doivent rester réactifs : option simple = refetch après chaque mutation ; option propre = Supabase Realtime channels.
+4. **Adapter les hooks — Supabase Realtime, pas refetch** (décision 2026-05-11, conséquence du workspace partagé). Le pattern "refetch après chaque mutation" est rejeté pour deux raisons : (1) si Alice édite, Bob doit voir le changement sans recharger sa page — un refetch local ne suffit pas, (2) avec mutations ciblées, le refetch complet du graphe à chaque tick est gaspilleur. À la place :
+   - Le hook `usePlatformData` ouvre **un seul channel Supabase Realtime** au montage et écoute `postgres_changes` sur toutes les tables `dao_*` :
+     ```js
+     const channel = supabase
+       .channel("dao-platform")
+       .on("postgres_changes", { event: "*", schema: "public", table: "dao_countries" }, applyCountryChange)
+       .on("postgres_changes", { event: "*", schema: "public", table: "dao_projects" }, applyProjectChange)
+       .on("postgres_changes", { event: "*", schema: "public", table: "dao_markets" }, applyMarketChange)
+       .on("postgres_changes", { event: "*", schema: "public", table: "dao_reviews" }, applyReviewChange)
+       .subscribe();
+     ```
+   - Chaque handler patche **localement** le state React (insertion / update / delete d'une seule ligne). Pas de refetch du graphe entier — c'est la consequence directe de la décision "mutations ciblées" : un INSERT sur `dao_reviews` ne refetch QUE cette review, pas les 80 autres.
+   - `useMarketEditor` continue de garder son debounce 250 ms côté write (sinon une frappe = une mutation Supabase). Le Realtime de l'éditeur est utile pour le cas où Bob renomme un marché que Maël a ouvert — Maël voit le nouveau nom apparaître. Réécriture concurrente du même `editor_data` : last-write-wins (cf. décision concurrency).
+   - **Optimistic updates** : chaque mutation côté UI pose immédiatement l'update local AVANT la confirmation Supabase. Si la requête échoue, rollback + toast d'erreur. Le Realtime echo de notre propre mutation est ignoré (on filtre par `eq("id", lastMutationId)` ou via le `commit_timestamp` Supabase).
 
-5. **Migration des données existantes** — `src/platform/store/migrateLegacyDtao.js` actuellement migre `dtao_projects_v2` (localStorage) → `afd_platform_v1` (localStorage). Il faut une nouvelle étape qui pousse `afd_platform_v1` vers Supabase au premier login. Idempotente, à appeler une fois par utilisateur.
+5. **Migration des données legacy localStorage → Supabase** — sémantique adaptée au workspace partagé. Aujourd'hui chaque user a SA propre `afd_platform_v1` en localStorage. Avec workspace partagé Supabase, **on ne migre qu'une seule fois, depuis un seul user**. Stratégie :
+   - Au premier login, le code détecte si la table `dao_countries` est vide côté Supabase (= "personne n'a encore migré").
+   - Si vide ET que l'utilisateur courant a une `afd_platform_v1` non triviale en localStorage → propose une **action manuelle** "Importer mes données locales dans le workspace équipe" (bouton dans Admin). Pas de push silencieux automatique — l'utilisateur valide avant que ses données deviennent visibles par les autres.
+   - Une fois l'import effectué, flag `legacyPlatformMigrated: true` dans `dao_profiles` du user qui a poussé. Les autres users ne verront jamais le bouton car la table n'est plus vide.
+   - `migrateLegacyDtao.js` (localStorage `dtao_projects_v2` → `afd_platform_v1`) reste inchangé pour la transition — il continue de tourner avant l'import Supabase. Le pipeline complet devient : `dtao_projects_v2` → `afd_platform_v1` (local, idempotent, déjà fait) → import manuel → `dao_countries/projects/markets/...` (Supabase, une seule fois).
+   - Idempotence par `legacyDtaoId` conservée côté `dao_markets` pour permettre l'audit "ce marché vient du DTAO importé du <date>" et bloquer un éventuel double import.
 
-6. **Vercel** — connecter le repo `Assemblage-Ingenierie/DAO`, branch `main`. Vercel détecte Vite tout seul. Variables d'env à configurer : `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`. Build command par défaut. Output dir `dist`. Auto-deploy au push activé.
+6. **Vercel** — connecter le repo `Assemblage-Ingenierie/DAO`, branche `main`. Vercel détecte Vite automatiquement. Configuration :
+   - **Variables d'env** : `VITE_SUPABASE_URL` (URL du projet Supabase, ex: `https://xxx.supabase.co`), `VITE_SUPABASE_ANON_KEY` (clé publique, RLS fait la sécurité). À poser pour les 3 environnements Vercel (Production, Preview, Development).
+   - **Build command** : par défaut (`npm run build`). **Output directory** : `dist`. **Install command** : par défaut (`npm install`).
+   - **Auto-deploy au push `main`** activé. Les PR ouvrent automatiquement un déploiement Preview avec leur propre URL — pratique pour valider une migration avant merge.
+   - **Routing** : pas de `vercel.json` à créer. `HashRouter` règle les routes côté client, donc Vercel sert juste `dist/index.html` et le SPA prend la main. Le `template-DTAO.docx` (4,6 Mo) dans `public/` est servi statiquement.
+   - **Supabase Auth callback URL** : ajouter `https://<projet>.vercel.app/auth/callback` (et l'URL prod custom domain quand on aura un) dans la liste des URLs autorisées du provider Google côté Supabase.
 
-7. **Smoke test** — créer un projet → marché Travaux production → ouvrir Éditeur DTAO → remplir 2 ou 3 champs → recharger → données persistées. Bonus : ouvrir l'app dans 2 navigateurs avec le même login, vérifier que les modifs apparaissent (avec ou sans realtime selon ce qui a été choisi).
+7. **Smoke test multi-navigateur** — devient **le** critère d'acceptation Phase 4 (sans ça, pas la peine de switcher localStorage → Supabase). Procédure :
+   - Login avec 2 comptes Google `@assemblage.net` sur 2 navigateurs/profils distincts (Chrome user 1 + Chrome user 2, ou Chrome + Firefox).
+   - User 1 : crée un pays → projet → marché Travaux production. User 2 : voit apparaître les 3 lignes en moins de 2 secondes (Realtime).
+   - User 1 : ouvre l'Éditeur DTAO sur le marché, remplit 3 champs. User 2 : recharge le marché, voit les 3 valeurs (vérifie que le debounce 250 ms a bien flush vers Supabase).
+   - User 2 : modifie un statut review (C/NC/NA) avec commentaire. User 1 : voit le statut basculer instantanément + le commentaire apparaître (Realtime sur `dao_reviews`).
+   - User 1 : ferme l'onglet en cours d'édition d'un champ texte. Réouvre. Le dernier état persisté apparaît (vérifie le flush `beforeunload` via `sendBeacon`).
+   - User 1 ET User 2 éditent simultanément le même champ d'un marché : last-write-wins constaté, pas de crash, pas de boucle infinie de patchs Realtime.
+   - Bonus : login depuis un compte Google `@gmail.com` (non-Assemblage) → rejeté avec message d'erreur clair côté UI.
 
 ## Fichiers à lire en priorité
 
