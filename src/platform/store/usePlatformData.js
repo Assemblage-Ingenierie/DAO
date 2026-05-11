@@ -256,7 +256,13 @@ export function usePlatformData() {
   useEffect(() => {
     if (!session || status !== "ready") return;
 
-    const channel = supabase.channel("dao-platform");
+    // Nom de channel UNIQUE par invocation du useEffect : `supabase.channel(name)`
+    // réutilise l'instance existante si le nom matche. Avec un nom fixe, un
+    // re-run du useEffect (déclenché par INITIAL_SESSION puis SIGNED_IN qui
+    // tombent rapprochés au login) appelle `.on()` sur un channel déjà
+    // subscribe → "cannot add postgres_changes callbacks ... after subscribe()".
+    const channelName = `dao-platform-${crypto.randomUUID()}`;
+    const channel = supabase.channel(channelName);
 
     channel
       .on("postgres_changes", { event: "*", schema: "public", table: "dao_countries" }, (p) => {
