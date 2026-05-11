@@ -14,14 +14,6 @@ import Flag from "../components/Flag.jsx";
 import { TYPES, SECT, LANG, SPI } from "../data/types.js";
 import { CLS_TVX, CLS_PI, TABS_TVX, TABS_PI } from "../data/checklists/index.js";
 import { usePlatformData } from "../store/usePlatformData.js";
-import {
-  updateProject,
-  addMarket,
-  removeMarket,
-  updateMarket,
-  toggleProjectMember,
-  addEquipeMember,
-} from "../store/platformStore.js";
 import "../styles.css";
 
 // Petit badge — extrait de Country.jsx pour cohérence (sera relevé en 3.7).
@@ -643,7 +635,7 @@ function MarketCard({ market, reviews, isEditing, onToggleEdit, onPatch, onRemov
 export default function Project() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = usePlatformData();
+  const [data, mutate] = usePlatformData();
   const [showCadrage, setShowCadrage] = useState(false);
   const [showNewMarket, setShowNewMarket] = useState(false);
   const [editingMarketId, setEditingMarketId] = useState(null);
@@ -675,16 +667,16 @@ export default function Project() {
     );
   }
 
-  function patchProject(updates) {
-    setData((prev) => updateProject(prev, countryId, projectId, updates));
+  async function patchProject(updates) {
+    await mutate.updateProject(countryId, projectId, updates);
   }
-  function toggleMember(memberName) {
-    setData((prev) => toggleProjectMember(prev, countryId, projectId, memberName));
+  async function toggleMember(memberName) {
+    await mutate.toggleProjectMember(countryId, projectId, memberName);
   }
-  function addMember(name) {
-    setData((prev) => addEquipeMember(prev, name));
+  async function addMember(name) {
+    await mutate.addEquipeMember(name);
   }
-  function createMarket(market) {
+  async function createMarket(market) {
     // Pré-remplit editor_data avec le contexte Plateforme :
     //  - PREA-002 (Nom du Projet)         ← nom du projet Plateforme
     //  - PREA-003 (Identification Travaux) ← nom du marché
@@ -710,15 +702,15 @@ export default function Project() {
         },
       },
     };
-    setData((prev) => addMarket(prev, projectId, enriched));
+    await mutate.addMarket(projectId, enriched);
     setShowNewMarket(false);
   }
-  function patchMarket(marketId, updates) {
-    setData((prev) => updateMarket(prev, projectId, marketId, updates));
+  async function patchMarket(marketId, updates) {
+    await mutate.updateMarket(projectId, marketId, updates);
   }
-  function deleteMarket(marketId) {
+  async function deleteMarket(marketId) {
     if (!window.confirm("Supprimer ?")) return;
-    setData((prev) => removeMarket(prev, projectId, marketId));
+    await mutate.removeMarket(marketId);
     if (editingMarketId === marketId) setEditingMarketId(null);
   }
 

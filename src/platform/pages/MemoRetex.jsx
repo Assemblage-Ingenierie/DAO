@@ -14,7 +14,7 @@ import { usePlatformData } from "../store/usePlatformData.js";
 import "../styles.css";
 
 export default function MemoRetex() {
-  const [data, setData] = usePlatformData();
+  const [data, mutate] = usePlatformData();
   const [theme, setTheme] = useState("");
   const [keywords, setKeywords] = useState([]);
   const [search, setSearch] = useState("");
@@ -34,30 +34,27 @@ export default function MemoRetex() {
     setNewKeywords((kws) => (kws.includes(k) ? kws.filter((x) => x !== k) : [...kws, k]));
   }
 
-  function handleAdd() {
+  async function handleAdd() {
     if (!newComment.trim() || !newTheme) return;
-    const item = {
-      id: "NR" + Date.now(),
+    // L'id est généré côté DB (UUID Postgres). Le hook applique
+    // optimistiquement avec un id temporaire puis substitue par la
+    // vraie row retournée.
+    await mutate.addCustomRetex({
       th: newTheme,
       kw: newKeywords.join(" / "),
       pj: newProject.trim(),
       ed: newEditor,
       cm: newComment.trim(),
-      custom: true,
-    };
-    setData((prev) => ({ ...prev, customRetex: [...(prev.customRetex || []), item] }));
+    });
     setNewComment("");
     setNewProject("");
     setNewKeywords([]);
     setShowNewForm(false);
   }
 
-  function handleDelete(id) {
+  async function handleDelete(id) {
     if (!window.confirm("Supprimer ce conseil ?")) return;
-    setData((prev) => ({
-      ...prev,
-      customRetex: (prev.customRetex || []).filter((x) => x.id !== id),
-    }));
+    await mutate.removeCustomRetex(id);
   }
 
   const all = [...RETEX_DATA, ...(data.customRetex || [])];

@@ -1,32 +1,25 @@
-// ── App — shell HashRouter + Sidebar Plateforme ──────────────────────────
+// ── App — shell HashRouter + AuthGate (Phase 4) ──────────────────────────
 //
-// Le shell de l'app après la fusion (phase 3). Sert :
-//   - les pages Plateforme (Home, Country, Project, Search, Memo*, RefDocs,
-//     Admin, ChecklistConfig) à l'intérieur d'un ShellLayout commun ;
-//   - la page Market en plein écran (header coloré + tabs intégrés) ;
-//   - (à venir 3.5) la route /marches/:id/edit qui rebranche le DTAO Editor
-//     sur le slot editor_data d'un marché Plateforme AO Travaux production.
+// Phase 4 : la persistance vit dans Supabase. Le shell est désormais wrappé
+// dans <AuthGate> qui :
+//   - bloque les routes tant que l'utilisateur n'est pas connecté avec un
+//     compte Google `@assemblage.net`,
+//   - affiche un écran "Chargement…" pendant le fetch initial de
+//     `usePlatformData`,
+//   - rend les enfants quand status === "ready".
 //
-// Le PackageContext.Provider est conservé en racine pour que l'éditeur
-// DTAO trouve son pack quand il sera remonté en 3.5, sans avoir à réécrire
-// les composants `usePackage()`.
-//
-// La migration des projets DTAO legacy (anciennes clés `dtao_*` 10-keys
-// pré-phase-2) reste exécutée au chargement — elle est idempotente. La
-// migration `dtao_projects_v2` → `afd_platform_v1` (fold sous "Non classé"
-// / projet "DTAO existants") arrive en 3.6.
+// L'ancien bootstrap localStorage (`performLegacyMigration` + Phase 3.6
+// `performLegacyDtaoMigration`) est supprimé du shell : la donnée
+// localStorage est préservée mais non utilisée. L'import vers Supabase
+// se fera côté Admin via un bouton manuel (Phase 4 étape 5, à venir).
 
 import { HashRouter, Routes, Route, Navigate, useParams, Link } from "react-router-dom";
 import { pkgV2024Fr } from "./editors/dtao-travaux/packages/v2024/fr/index.js";
 import { PackageContext } from "./editors/dtao-travaux/engine/PackageContext.jsx";
 import { Editor } from "./editors/dtao-travaux/Editor.jsx";
-import {
-  needsLegacyMigration,
-  performLegacyMigration,
-} from "./editors/dtao-travaux/engine/projects/migrateLegacyKeys.js";
-import { performLegacyDtaoMigration } from "./platform/store/migrateLegacyDtao.js";
 import { useMarketEditor } from "./platform/store/useMarketEditor.js";
 
+import AuthGate from "./platform/components/AuthGate.jsx";
 import ShellLayout from "./platform/components/ShellLayout.jsx";
 import Home from "./platform/pages/Home.jsx";
 import Country from "./platform/pages/Country.jsx";
@@ -41,27 +34,10 @@ import ChecklistConfig from "./platform/pages/ChecklistConfig.jsx";
 
 import "./platform/styles.css";
 
-// Bootstrap one-shot, deux étapes idempotentes exécutées dans l'ordre :
-//   1) phase 2 : 10 clés legacy `dtao_*` → store unique dtao_projects_v2
-//   2) phase 3.6 : entrées dtao_projects_v2 → marchés Plateforme sous
-//      "Non classé / DTAO existants", avec editor_data rempli (lu en 3.5
-//      par le DTAO Editor).
-// Les deux migrations conservent leur source en backup et posent un flag
-// pour ne pas se ré-exécuter.
-(function bootstrap() {
-  if (typeof localStorage === "undefined") return;
-  if (needsLegacyMigration()) {
-    performLegacyMigration({
-      schemaVersion: pkgV2024Fr.schemaVersion,
-      language: pkgV2024Fr.language,
-    });
-  }
-  performLegacyDtaoMigration();
-})();
-
-// Adapter de route : pose l'Editor DTAO sur un marché Plateforme. Le hook
-// useMarketEditor expose la même forme qu'useProject (project, setData,
-// onRename) et résout aussi le projet parent pour câbler le lien retour.
+// Adapter de route : pose l'Editor DTAO sur un marché Supabase. Le hook
+// `useMarketEditor` expose la même forme `[project, setData, onRename,
+// parentInfo]` qu'en Phase 3 — l'Editor n'a pas à savoir que la donnée
+// vient désormais d'un slot JSONB `editor_data` patché via RPC.
 function DtaoEditorRoute() {
   const { id: marketId } = useParams();
   const [project, setData, onRename, parentInfo] = useMarketEditor(marketId);
@@ -96,29 +72,31 @@ export default function App() {
   return (
     <PackageContext.Provider value={pkgV2024Fr}>
       <HashRouter>
-        <Routes>
-          {/* Pages Plateforme avec sidebar (ShellLayout commun) */}
-          <Route element={<ShellLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/countries/:id" element={<Country />} />
-            <Route path="/projects/:id" element={<Project />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/memo/retex" element={<MemoRetex />} />
-            <Route path="/memo/codes" element={<MemoCodes />} />
-            <Route path="/refdocs" element={<RefDocs />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/checklist-config" element={<ChecklistConfig />} />
-          </Route>
+        <AuthGate>
+          <Routes>
+            {/* Pages Plateforme avec sidebar (ShellLayout commun) */}
+            <Route element={<ShellLayout />}>
+              <Route path="/" element={<Home />} />
+              <Route path="/countries/:id" element={<Country />} />
+              <Route path="/projects/:id" element={<Project />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/memo/retex" element={<MemoRetex />} />
+              <Route path="/memo/codes" element={<MemoCodes />} />
+              <Route path="/refdocs" element={<RefDocs />} />
+              <Route path="/admin" element={<Admin />} />
+              <Route path="/checklist-config" element={<ChecklistConfig />} />
+            </Route>
 
-          {/* Page Market plein-écran (header coloré + tabs propres) */}
-          <Route path="/markets/:id/review" element={<Market />} />
+            {/* Page Market plein-écran (header coloré + tabs propres) */}
+            <Route path="/markets/:id/review" element={<Market />} />
 
-          {/* Editeur DTAO sur le slot editor_data d'un marché Plateforme */}
-          <Route path="/marches/:id/edit" element={<DtaoEditorRoute />} />
+            {/* Editeur DTAO sur le slot editor_data d'un marché Plateforme */}
+            <Route path="/marches/:id/edit" element={<DtaoEditorRoute />} />
 
-          {/* Tout le reste retombe sur la home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+            {/* Tout le reste retombe sur la home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthGate>
       </HashRouter>
     </PackageContext.Provider>
   );

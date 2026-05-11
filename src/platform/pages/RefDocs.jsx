@@ -57,23 +57,19 @@ function tagLabel(cat) {
 }
 
 export default function RefDocs() {
-  const [data, setData] = usePlatformData();
+  const [data, mutate] = usePlatformData();
   const [filter, setFilter] = useState("");
   const [editingId, setEditingId] = useState(null);
   const [logEntry, setLogEntry] = useState("");
 
-  function patchVersion(docId, patch) {
-    setData((prev) => {
-      const refVersions = { ...(prev.refVersions || {}) };
-      refVersions[docId] = { ...(refVersions[docId] || {}), ...patch };
-      return { ...prev, refVersions };
-    });
+  async function patchVersion(docId, patch) {
+    await mutate.upsertRefVersion(docId, patch);
   }
 
-  function appendLog(docId, currentLog) {
+  async function appendLog(docId, currentLog) {
     if (!logEntry.trim()) return;
     const entry = { date: new Date().toISOString().slice(0, 10), text: logEntry.trim() };
-    patchVersion(docId, { log: [...(currentLog || []), entry] });
+    await patchVersion(docId, { log: [...(currentLog || []), entry] });
     setLogEntry("");
   }
 

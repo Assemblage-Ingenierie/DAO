@@ -2,11 +2,8 @@
 //
 // Point d'entrée unique pour les modules `src/platform/`. Re-exporte les
 // données catalogues, les checklists et les composants primitifs. Les pages
-// (à venir en 3.3) peuvent importer soit via ce barrel, soit en deep-import
-// vers les sous-modules.
-//
-// Usage attendu (3.3+) :
-//   import { Flag, ReviewItem, MEMO_DATA, CLS_TVX } from "../platform/index.js";
+// peuvent importer soit via ce barrel, soit en deep-import vers les
+// sous-modules.
 
 // Données catalogues
 export {
@@ -46,39 +43,33 @@ export { default as Flag } from "./components/Flag.jsx";
 export { default as Icon } from "./components/Icon.jsx";
 export { default as ReviewItem } from "./components/ReviewItem.jsx";
 
-// Composants de layout (3.4 — shell)
+// Composants de layout
 export { default as Sidebar } from "./components/Sidebar.jsx";
 export { default as Header } from "./components/Header.jsx";
 export { default as ShellLayout } from "./components/ShellLayout.jsx";
+export { default as AuthGate } from "./components/AuthGate.jsx";
 
-// Store + hook
+// Store Supabase (Phase 4)
+export { usePlatformData } from "./store/usePlatformData.js";
+export { useMarketEditor } from "./store/useMarketEditor.js";
+export { supabase } from "./supabase/client.js";
+
+// Pure helpers de l'ancien store localStorage — gardés pour la future
+// étape 5 (import legacy → Supabase). Ne pas utiliser dans le nouveau
+// code applicatif : passer par `usePlatformData().mutate.*`.
 export {
   PLATFORM_KEY,
   defaultPlatformData,
   loadPlatform,
   savePlatform,
-  addCountry,
-  removeCountry,
-  addProject,
-  removeProject,
-  updateProject,
-  toggleProjectMember,
-  addMarket,
-  removeMarket,
-  updateMarket,
-  addEquipeMember,
   resetPlatform,
 } from "./store/platformStore.js";
-export { usePlatformData } from "./store/usePlatformData.js";
 export {
   needsLegacyDtaoMigration,
   performLegacyDtaoMigration,
 } from "./store/migrateLegacyDtao.js";
 
 // Pages
-//   3.3a : Home, Country, Project
-//   3.3b : Market
-//   3.3c : Search, MemoRetex, MemoCodes, RefDocs, Admin, ChecklistConfig
 export { default as Home } from "./pages/Home.jsx";
 export { default as Country } from "./pages/Country.jsx";
 export { default as Project } from "./pages/Project.jsx";

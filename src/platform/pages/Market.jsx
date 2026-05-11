@@ -408,7 +408,7 @@ function RetexConseilsPanel({ currentTab, customRetex }) {
 export default function Market() {
   const { id: marketId } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = usePlatformData();
+  const [data, mutate] = usePlatformData();
 
   // Localiser le marché et son projet/pays. Le marché est indexé par
   // projectId — on traverse pour retrouver lequel.
@@ -500,17 +500,11 @@ export default function Market() {
   }, [data.reviews, market.id, currentTab]);
 
   // CRUD review item — appelée par <ReviewItem onChange={...}/>
-  function handleReviewChange(itemId, field, value) {
-    setData((prev) => {
-      const reviews = { ...(prev.reviews || {}) };
-      const reviewKey = market.id + "_" + currentTab;
-      if (!reviews[reviewKey]) reviews[reviewKey] = {};
-      reviews[reviewKey] = {
-        ...reviews[reviewKey],
-        [itemId]: { ...(reviews[reviewKey][itemId] || {}), [field]: value },
-      };
-      return { ...prev, reviews };
-    });
+  // Délègue à la mutation atomique `upsertReview` (1 row dao_reviews).
+  // Le hook applique optimistiquement et commit côté Supabase ; en cas
+  // d'erreur réseau, rollback automatique.
+  async function handleReviewChange(itemId, field, value) {
+    await mutate.upsertReview(market.id, currentTab, itemId, { [field]: value });
   }
 
   function getReviewItemState(itemId) {

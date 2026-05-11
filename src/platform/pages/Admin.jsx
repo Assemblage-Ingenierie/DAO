@@ -1,20 +1,17 @@
 // ── Plateforme — page Admin (statistiques + reset) ───────────────────────
 //
-// Trois compteurs : pays, marchés, docs AFD. Bouton "Réinitialiser" qui
-// vide localStorage et restaure les valeurs par défaut. La confirmation
-// est obligatoire pour éviter les pertes accidentelles.
-//
-// Refactor de la branche `nav==="admin"` du single-file
-// `_imports/plateforme-source.jsx` (ligne 1031).
+// Trois compteurs : pays, marchés, docs AFD. Le bouton "Réinitialiser" est
+// désactivé en Phase 4 — la donnée vit désormais dans Supabase (workspace
+// partagé) et un reset depuis une seule machine impacterait toute l'équipe.
+// La remise à zéro doit passer par le dashboard Supabase + un script SQL.
 
 import { useMemo } from "react";
 import { REF_DOCS } from "../data/refDocs.js";
 import { usePlatformData } from "../store/usePlatformData.js";
-import { resetPlatform } from "../store/platformStore.js";
 import "../styles.css";
 
 export default function Admin() {
-  const [data, setData] = usePlatformData();
+  const [data] = usePlatformData();
 
   // Total des marchés à travers tous les projets et pays.
   const marketCount = useMemo(() => {
@@ -24,11 +21,6 @@ export default function Admin() {
     });
     return n;
   }, [data.markets]);
-
-  function handleReset() {
-    if (!window.confirm("Réinitialiser ?")) return;
-    setData(() => resetPlatform());
-  }
 
   const stats = [
     [(data.countries || []).length, "Pays"],
@@ -66,13 +58,21 @@ export default function Admin() {
         ))}
       </div>
 
-      <button
-        className="bo"
-        style={{ color: "#E30513", borderColor: "#E30513" }}
-        onClick={handleReset}
+      <div
+        style={{
+          padding: 14,
+          background: "#FEF2F2",
+          borderLeft: "3px solid #E30513",
+          fontSize: 12,
+          color: "#30323E",
+          borderRadius: 4,
+        }}
       >
-        Réinitialiser
-      </button>
+        <strong style={{ color: "#E30513" }}>Reset désactivé en Phase 4.</strong>{" "}
+        La base est désormais partagée par toute l'équipe (Supabase). Pour
+        repartir d'un état vierge, contactez l'admin Supabase (TRUNCATE des
+        tables <code>dao_*</code> via dashboard ou script SQL).
+      </div>
     </div>
   );
 }

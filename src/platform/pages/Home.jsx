@@ -13,24 +13,23 @@ import { Link } from "react-router-dom";
 import Flag from "../components/Flag.jsx";
 import { PAYS_LIST } from "../data/types.js";
 import { usePlatformData } from "../store/usePlatformData.js";
-import { addCountry, removeCountry } from "../store/platformStore.js";
 import "../styles.css";
 
 export default function Home() {
-  const [data, setData] = usePlatformData();
+  const [data, mutate] = usePlatformData();
   const [showPicker, setShowPicker] = useState(false);
   const [pickerValue, setPickerValue] = useState("");
 
-  function handleAdd() {
+  async function handleAdd() {
     if (!pickerValue) return;
-    setData((prev) => addCountry(prev, pickerValue));
+    await mutate.addCountry(pickerValue);
     setPickerValue("");
     setShowPicker(false);
   }
 
-  function handleRemove(countryId) {
+  async function handleRemove(countryId) {
     if (!window.confirm("Supprimer ce pays ?")) return;
-    setData((prev) => removeCountry(prev, countryId));
+    await mutate.removeCountry(countryId);
   }
 
   // Pays déjà choisis — on les exclut du sélecteur pour éviter les doublons.

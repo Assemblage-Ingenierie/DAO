@@ -11,7 +11,6 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import Flag from "../components/Flag.jsx";
 import { usePlatformData } from "../store/usePlatformData.js";
-import { addProject, removeProject } from "../store/platformStore.js";
 import "../styles.css";
 
 // Petit composant badge réutilisé entre pages — extrait du source line 552.
@@ -36,7 +35,7 @@ function Badge({ bg, color, children }) {
 export default function Country() {
   const { id: countryId } = useParams();
   const navigate = useNavigate();
-  const [data, setData] = usePlatformData();
+  const [data, mutate] = usePlatformData();
   const [showInput, setShowInput] = useState(false);
   const [projectName, setProjectName] = useState("");
 
@@ -55,16 +54,16 @@ export default function Country() {
     );
   }
 
-  function handleAdd() {
+  async function handleAdd() {
     if (!projectName.trim()) return;
-    setData((prev) => addProject(prev, countryId, projectName));
+    await mutate.addProject(countryId, projectName);
     setProjectName("");
     setShowInput(false);
   }
 
-  function handleRemove(projectId) {
+  async function handleRemove(projectId) {
     if (!window.confirm("Supprimer ?")) return;
-    setData((prev) => removeProject(prev, countryId, projectId));
+    await mutate.removeProject(projectId);
   }
 
   return (

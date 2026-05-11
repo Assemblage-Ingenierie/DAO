@@ -11,28 +11,39 @@ import fs from "fs";
 // different absolute paths for the same file and bundles TWO copies of
 // React — which breaks hooks with "Invalid hook call. Hooks can only be
 // called inside of the body of a function component."
-// Workaround: detect the sandboxed location and point the alias at it so
-// every resolution lands on the same file.
+//
+// Workaround : si une des `LOCAL_MODULES_CANDIDATES` contient un node_modules
+// utilisable (cas Maël avec node_modules externes sur Google Drive), on
+// l'utilise pour les alias React. Sinon (Vercel, autre machine), on laisse
+// Vite résoudre depuis le ./node_modules local — comportement standard.
+const LOCAL_MODULES_CANDIDATES = [
+  "C:/Users/maelb/AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Local/dtao-packages/node_modules",
+  "C:/Users/maelb/AppData/Local/dtao-packages/node_modules",
+];
 const LOCAL_MODULES = (() => {
-  const candidates = [
-    "C:/Users/maelb/AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Local/dtao-packages/node_modules",
-    "C:/Users/maelb/AppData/Local/dtao-packages/node_modules",
-  ];
-  for (const p of candidates) {
-    try { if (fs.statSync(path.join(p, "react", "package.json")).isFile()) return p; }
-    catch {}
+  for (const p of LOCAL_MODULES_CANDIDATES) {
+    try {
+      if (fs.statSync(path.join(p, "react", "package.json")).isFile()) return p;
+    } catch {
+      // candidate not present on this machine, try next
+    }
   }
-  return candidates[candidates.length - 1];
+  return null; // fallback : Vite resolves from ./node_modules locally
 })();
-const require = createRequire(pathToFileURL(LOCAL_MODULES + "/"));
+
+// Bootstrap require() depuis LOCAL_MODULES si disponible, sinon depuis
+// l'import.meta.url courant (résolution standard ESM).
+const require = LOCAL_MODULES
+  ? createRequire(pathToFileURL(LOCAL_MODULES + "/"))
+  : createRequire(import.meta.url);
 
 const { defineConfig } = require("vite");
 const react = require("@vitejs/plugin-react");
 
-export default defineConfig({
-  plugins: [react()],
-  resolve: {
-    alias: {
+// Aliases — uniquement quand LOCAL_MODULES est dispo. Si absent, les imports
+// React standards résolvent dans ./node_modules sans alias.
+const alias = LOCAL_MODULES
+  ? {
       react: path.join(LOCAL_MODULES, "react"),
       "react-dom": path.join(LOCAL_MODULES, "react-dom"),
       jszip: path.join(LOCAL_MODULES, "jszip"),
@@ -40,7 +51,13 @@ export default defineConfig({
       docx: path.join(LOCAL_MODULES, "docx"),
       xlsx: path.join(LOCAL_MODULES, "xlsx"),
       "xlsx-js-style": path.join(LOCAL_MODULES, "xlsx-js-style"),
-    },
+    }
+  : {};
+
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias,
     dedupe: ["react", "react-dom"],
   },
   optimizeDeps: {
