@@ -404,10 +404,16 @@ function RetexConseilsPanel({ currentTab, customRetex }) {
 }
 
 // ── Page principale ──────────────────────────────────────────────────────
+//
+// Note Phase 4 : on extrait `MarketContent` en sous-composant pour que tous
+// ses hooks (useState, useMemo) soient appelés de façon stable une fois le
+// marché trouvé. La logique de localisation + early return reste dans
+// `Market` (le wrapper) qui ne contient que les hooks `useParams`,
+// `useNavigate`, `usePlatformData()` — toujours appelés peu importe l'état
+// du marché → conforme aux Rules of Hooks.
 
 export default function Market() {
   const { id: marketId } = useParams();
-  const navigate = useNavigate();
   const [data, mutate] = usePlatformData();
 
   // Localiser le marché et son projet/pays. Le marché est indexé par
@@ -436,7 +442,8 @@ export default function Market() {
     }
   }
 
-  // Cas d'erreur : URL périmée — redirige sur l'accueil.
+  // Cas d'erreur : URL périmée OU marché supprimé par un autre membre
+  // pendant la session. Pas de hooks ici, donc montage/démontage propre.
   if (!market) {
     return (
       <div className="fade" style={{ padding: "60px 0", textAlign: "center" }}>
@@ -448,6 +455,23 @@ export default function Market() {
     );
   }
 
+  return (
+    <MarketContent
+      market={market}
+      project={project}
+      country={country}
+      projectId={projectId}
+      data={data}
+      mutate={mutate}
+    />
+  );
+}
+
+// Sous-composant : tous les hooks (useState, useMemo) sont déclarés ici,
+// appelés de manière stable car ce composant ne monte que si market est
+// trouvé.
+function MarketContent({ market, project, country, projectId, data, mutate }) {
+  const navigate = useNavigate();
   const isPI = market.cat === "PI";
   const tabs = isPI ? TABS_PI : TABS_TVX;
   const checklists = isPI ? CLS_PI : CLS_TVX;
@@ -501,8 +525,6 @@ export default function Market() {
 
   // CRUD review item — appelée par <ReviewItem onChange={...}/>
   // Délègue à la mutation atomique `upsertReview` (1 row dao_reviews).
-  // Le hook applique optimistiquement et commit côté Supabase ; en cas
-  // d'erreur réseau, rollback automatique.
   async function handleReviewChange(itemId, field, value) {
     await mutate.upsertReview(market.id, currentTab, itemId, { [field]: value });
   }
