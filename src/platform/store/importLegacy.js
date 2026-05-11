@@ -44,13 +44,65 @@ export function readLegacyData() {
   if (typeof localStorage === "undefined") return null;
   const raw = localStorage.getItem(LEGACY_KEY);
   if (!raw) return null;
+  return parseLegacyJson(raw);
+}
+
+// Parse une chaîne JSON et valide qu'elle a la forme attendue (objet,
+// optionnellement avec countries/projects/etc.). Utilisé par l'import
+// "coller JSON" depuis un autre domaine (localhost) où le localStorage
+// d'origine vit. Retourne null si invalide.
+export function parseLegacyJson(rawString) {
+  if (!rawString || typeof rawString !== "string") return null;
   try {
-    const parsed = JSON.parse(raw);
+    const parsed = JSON.parse(rawString.trim());
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return null;
+    // Sanity check : doit ressembler à l'état Phase 3
+    if (
+      !("countries" in parsed) &&
+      !("projects" in parsed) &&
+      !("markets" in parsed) &&
+      !("rexItems" in parsed) &&
+      !("customRetex" in parsed) &&
+      !("equipe" in parsed)
+    ) {
+      return null;
+    }
     return parsed;
   } catch {
     return null;
   }
+}
+
+// Compteurs synthétiques d'un payload arbitraire (lu ou collé).
+export function summarizePayload(legacy) {
+  if (!legacy) return null;
+  const projects = Object.values(legacy.projects || {}).reduce(
+    (n, arr) => n + (arr ? arr.length : 0),
+    0,
+  );
+  const markets = Object.values(legacy.markets || {}).reduce(
+    (n, arr) => n + (arr ? arr.length : 0),
+    0,
+  );
+  const reviews = Object.values(legacy.reviews || {}).reduce(
+    (n, slot) => n + Object.keys(slot || {}).length,
+    0,
+  );
+  const textOverrides = Object.keys(legacy.textOverrides || {}).reduce(
+    (n, k) => n + Object.keys(legacy.textOverrides[k] || {}).length,
+    0,
+  );
+  return {
+    countries: (legacy.countries || []).length,
+    projects,
+    markets,
+    reviews,
+    textOverrides,
+    rexItems: (legacy.rexItems || []).length,
+    customRetex: (legacy.customRetex || []).length,
+    equipe: (legacy.equipe || []).length,
+    refVersions: Object.keys(legacy.refVersions || {}).length,
+  };
 }
 
 // Vrai si l'utilisateur n'a pas encore importé ET qu'il y a quelque chose
@@ -73,37 +125,10 @@ export function shouldOfferImport() {
   return nbCountries + nbProjects + nbMarkets + nbRex > 0;
 }
 
-// Stats agrégées pour pré-afficher avant l'import.
+// Stats agrégées pour pré-afficher avant l'import depuis le localStorage
+// local. Pour un payload arbitraire (collé), utiliser summarizePayload.
 export function summarizeLegacyData() {
-  const data = readLegacyData();
-  if (!data) return null;
-  const projects = Object.values(data.projects || {}).reduce(
-    (n, arr) => n + (arr ? arr.length : 0),
-    0,
-  );
-  const markets = Object.values(data.markets || {}).reduce(
-    (n, arr) => n + (arr ? arr.length : 0),
-    0,
-  );
-  const reviews = Object.values(data.reviews || {}).reduce(
-    (n, slot) => n + Object.keys(slot || {}).length,
-    0,
-  );
-  const textOverrides = Object.keys(data.textOverrides || {}).reduce(
-    (n, k) => n + Object.keys(data.textOverrides[k] || {}).length,
-    0,
-  );
-  return {
-    countries: (data.countries || []).length,
-    projects,
-    markets,
-    reviews,
-    textOverrides,
-    rexItems: (data.rexItems || []).length,
-    customRetex: (data.customRetex || []).length,
-    equipe: (data.equipe || []).length,
-    refVersions: Object.keys(data.refVersions || {}).length,
-  };
+  return summarizePayload(readLegacyData());
 }
 
 export function markImportDone() {
@@ -137,21 +162,24 @@ async function fetchExistingRefs() {
 // ── Run import ───────────────────────────────────────────────────────────
 
 /**
- * Importe `afd_platform_v1` (localStorage) → Supabase.
+ * Importe un payload legacy (Phase 3 platformStore) → Supabase.
  *
  * @param {object} options
- * @param {(message: string, progress: {done: number, total: number}) => void} options.onProgress
- *   Appelé à chaque step. `progress.total` est l'estimation finale,
- *   `progress.done` le nombre de mutations exécutées.
+ * @param {object} [options.payload] Données legacy (forme afd_platform_v1).
+ *   Si absent, lit `localStorage["afd_platform_v1"]`. Utile pour permettre
+ *   un import "coller JSON" depuis un autre domaine (localhost).
+ * @param {(message: string, progress: {done: number, total: number}) => void} [options.onProgress]
+ *   Callback de progression — `progress.total` estimation finale,
+ *   `progress.done` nombre de mutations exécutées.
  * @returns {Promise<object>} stats finales (countries, projects, ...).
  */
-export async function importLegacyToSupabase({ onProgress } = {}) {
-  const legacy = readLegacyData();
+export async function importLegacyToSupabase({ payload, onProgress } = {}) {
+  const legacy = payload || readLegacyData();
   if (!legacy) {
-    throw new Error("Aucune donnée legacy à importer (afd_platform_v1 absent ou invalide).");
+    throw new Error("Aucune donnée legacy à importer (payload null et afd_platform_v1 absent).");
   }
 
-  const summary = summarizeLegacyData();
+  const summary = summarizePayload(legacy);
   const total =
     summary.countries +
     summary.projects +
