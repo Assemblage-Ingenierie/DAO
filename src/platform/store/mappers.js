@@ -143,11 +143,13 @@ export const market = {
     setIfDefined(row, "mont", o.mont);
     setIfDefined(row, "st", o.st);
     // Convention JS : dateAmi (camelCase) ↔ SQL date_ami (snake_case)
-    setIfDefined(row, "date_ami", o.dateAmi);
-    setIfDefined(row, "date_lr", o.dateLr);
-    setIfDefined(row, "date_dp", o.dateDp);
-    setIfDefined(row, "date_sel", o.dateSel);
-    setIfDefined(row, "date_sig", o.dateSig);
+    // Les inputs date HTML renvoient "" quand vides — Postgres date n'accepte
+    // pas les chaînes vides, on normalise en null.
+    setIfDefined(row, "date_ami", o.dateAmi || null);
+    setIfDefined(row, "date_lr", o.dateLr || null);
+    setIfDefined(row, "date_dp", o.dateDp || null);
+    setIfDefined(row, "date_sel", o.dateSel || null);
+    setIfDefined(row, "date_sig", o.dateSig || null);
     setIfDefined(row, "notes", o.notes);
     setIfDefined(row, "editor_data", o.editor_data);
     setIfDefined(row, "legacy_dtao_id", o.legacyDtaoId);
